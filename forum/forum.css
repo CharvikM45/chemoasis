@@ -828,3 +828,37 @@ html.f-large-text {
     text-align: left;
   }
 }
+
+/* ---------- edits, mute, drafts ---------- */
+
+.f-edit-form {
+  margin-bottom: 0.5rem;
+}
+
+.f-mute-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.9rem;
+}
+
+.f-h3--spaced {
+  margin-top: 2rem;
+}
+
+.f-muted-list {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.95rem;
+}
+
+.f-muted-list li {
+  margin-bottom: 0.35rem;
+}
+
+.f-page input:disabled,
+.f-page select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

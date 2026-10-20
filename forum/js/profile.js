@@ -32,7 +32,27 @@
 
   list.innerHTML = threads.length ? threads.map(threadCard).join("") : '<li class="f-empty">No public conversations yet.</li>';
 
-  if (!profile.isOwn) return;
+  if (!profile.isOwn) {
+    if (me && profile.type !== "moderator") {
+      box.insertAdjacentHTML(
+        "beforeend",
+        '<p class="f-mute-row"><button type="button" class="f-button f-button--quiet" id="mute-toggle">' + (result.muted ? "Unmute" : "Mute") + "</button> " +
+          '<span class="f-muted">' + (result.muted
+            ? "You don't see their posts. They aren't told."
+            : "Muting hides their posts from you only. They aren't told.") + "</span></p>"
+      );
+      document.getElementById("mute-toggle").addEventListener("click", async () => {
+        try {
+          await Forum.store.setMuted(profile.id, !result.muted);
+          toast(result.muted ? "Unmuted." : "Muted. You won't see their posts.");
+          setTimeout(() => location.reload(), 600);
+        } catch (error) {
+          toast(error.message);
+        }
+      });
+    }
+    return;
+  }
 
   const settings = document.getElementById("settings");
   const form = document.getElementById("profile-form");
@@ -68,6 +88,22 @@
       errorBox.textContent = error.message;
     }
   });
+
+  const mutedList = document.getElementById("muted-list");
+  async function drawMuted() {
+    const muted = await Forum.store.listMuted();
+    mutedList.innerHTML = muted.length
+      ? muted.map((m) => '<li><a href="profile.html?id=' + encodeURIComponent(m.id) + '">' + esc(m.displayName) + '</a> <button type="button" class="f-link-button" data-unmute="' + esc(m.id) + '">Unmute</button></li>').join("")
+      : '<li class="f-muted">You haven\'t muted anyone.</li>';
+  }
+  mutedList.addEventListener("click", async (event) => {
+    const button = event.target.closest("[data-unmute]");
+    if (!button) return;
+    await Forum.store.setMuted(button.dataset.unmute, false);
+    toast("Unmuted.");
+    await drawMuted();
+  });
+  await drawMuted();
 
   document.getElementById("reset-demo").addEventListener("click", async () => {
     if (!confirm("Reset all demo posts, reports and settings in this browser?")) return;

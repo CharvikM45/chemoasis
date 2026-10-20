@@ -1,0 +1,237 @@
+/*
+ * Checks the forum's rules without a browser: safety check, posting, privacy,
+ * reports, moderation, edits, appeals and muting. Uses only demo data.
+ *
+ * Run from the repo root:  node forum/tests/run-tests.js
+ * Needs Node 16 or newer and nothing else.
+ */
+const fs = require("fs");
+const path = require("path");
+const vm = require("vm");
+
+// Loads the same files the pages load, with a pretend browser around them.
+function freshForum() {
+  const storage = {};
+  const window = {
+    localStorage: {
+      getItem: (key) => (key in storage ? storage[key] : null),
+      setItem: (key, value) => (storage[key] = String(value)),
+      removeItem: (key) => delete storage[key]
+    }
+  };
+  window.window = window;
+  const context = vm.createContext(Object.assign(window, { console, Date, JSON, Math, Promise, Set, Error, URL }));
+  for (const file of ["catalog", "seed", "safety", "store"]) {
+    const code = fs.readFileSync(path.join(__dirname, "..", "js", file + ".js"), "utf8");
+    vm.runInContext(code, context, { filename: file + ".js" });
+  }
+  return context.Forum;
+}
+
+const tests = [];
+const test = (name, run) => tests.push({ name, run });
+
+function assert(condition, message) {
+  if (!condition) throw new Error(message || "expected true");
+}
+
+async function rejects(promise, text) {
+  try {
+    await promise;
+  } catch (error) {
+    assert(!text || error.message.includes(text), 'expected error containing "' + text + '", got "' + error.message + '"');
+    return;
+  }
+  throw new Error('expected an error containing "' + text + '"');
+}
+
+// ---------- safety check ----------
+
+test("crisis language shows the 988 Lifeline and does not hold the post", (F) => {
+  const result = F.safety.review({ body: "Some days I want to die." });
+  assert(result.notes.some((n) => /988/.test(n.message)), "988 note missing");
+  assert(!result.hold, "crisis posts should not be held");
+});
+
+test("an unsafe medical claim is held for a moderator", (F) => {
+  assert(F.safety.review({ title: "This cures chemo brain", body: "Stop taking your medication." }).hold);
+});
+
+test("an ordinary post passes with no notes", (F) => {
+  const result = F.safety.review({ body: "Pair Match helped me pass the time today." });
+  assert(!result.hold && result.notes.length === 0);
+});
+
+test("only http and https source links are accepted", (F) => {
+  assert(F.safety.isValidSourceUrl("https://www.cancer.gov/"));
+  assert(!F.safety.isValidSourceUrl("javascript:alert(1)"));
+});
+
+// ---------- posting and privacy ----------
+
+test("members see visible threads but not held ones", async (F) => {
+  const threads = await F.store.listThreads();
+  assert(threads.length === 7, "expected 7, got " + threads.length);
+  assert(!threads.some((t) => t.id === "t-held"));
+});
+
+test("an unsafe new thread is held and its author still sees it", async (F) => {
+  const saved = await F.store.createThread({ categoryId: "games", title: "Miracle game", body: "This game cures neuropathy." });
+  assert(saved.status === "pending");
+  const { thread } = await F.store.getThread(saved.id);
+  assert(thread.isOwn);
+  await F.store.switchDemoUser("u-june");
+  await rejects(F.store.getThread(saved.id), "isn't available");
+});
+
+test("anonymous posts hide the author from others but not from moderators", async (F) => {
+  const saved = await F.store.createThread({ categoryId: "experiences", title: "Quiet post", body: "Posting anonymously.", anonymous: true });
+  await F.store.switchDemoUser("u-june");
+  assert((await F.store.getThread(saved.id)).thread.author.id === null);
+  await F.store.switchDemoUser("u-mod");
+  assert((await F.store.getThread(saved.id)).thread.author.id === "u-river");
+});
+
+test("members can't use the professional label", async (F) => {
+  const saved = await F.store.createThread({ categoryId: "experiences", title: "Advice", body: "My advice.", label: "professional" });
+  assert((await F.store.getThread(saved.id)).thread.label === "experience");
+});
+
+test("professional guidance is never anonymous", async (F) => {
+  await F.store.switchDemoUser("u-nurse");
+  const saved = await F.store.createThread({ categoryId: "ask-a-professional", title: "Sleep tips", body: "Some general tips.", label: "professional", anonymous: true });
+  const { thread } = await F.store.getThread(saved.id);
+  assert(thread.label === "professional" && !thread.anonymous);
+});
+
+test("search also looks at replies", async (F) => {
+  const found = await F.store.listThreads({ query: "go-to on low-energy" });
+  assert(found.length === 1 && found[0].id === "t-hello", "got " + found.map((t) => t.id));
+});
+
+test("members can't pick a name that sounds like a role", async (F) => {
+  await rejects(F.store.updateMyProfile({ displayName: "Nurse Kim" }), "doesn't sound like a role");
+});
+
+// ---------- reports and moderation ----------
+
+test("three different reporters hide a post until a moderator decides", async (F) => {
+  for (const user of ["u-river", "u-june", "u-sam"]) {
+    await F.store.switchDemoUser(user);
+    await F.store.report("thread", "t-seated", "spam", "");
+  }
+  await F.store.switchDemoUser("u-alex");
+  assert(!(await F.store.listThreads()).some((t) => t.id === "t-seated"));
+});
+
+test("the same person can't report a post twice", async (F) => {
+  await F.store.report("thread", "t-seated", "spam", "");
+  await rejects(F.store.report("thread", "t-seated", "spam", ""), "already reported");
+});
+
+test("only moderators can open the review queue or resolve reports", async (F) => {
+  await rejects(F.store.moderationQueue(), "Only moderators");
+  await rejects(F.store.resolve("t-hello", "remove", ""), "Only moderators");
+});
+
+test("a post its author deleted can't be brought back by a moderator", async (F) => {
+  await F.store.switchDemoUser("u-jordan");
+  await F.store.deleteMyPost("reply", "r-quick-tap-2");
+  await F.store.switchDemoUser("u-mod");
+  await rejects(F.store.resolve("r-quick-tap-2", "keep", ""), "no longer exists");
+  assert(!(await F.store.moderationQueue()).some((item) => item.targetId === "r-quick-tap-2"));
+});
+
+test("topic signals for recommendations are counts only", async (F) => {
+  const signals = await F.store.topicSignals(365);
+  const text = JSON.stringify(signals);
+  assert(!/u-|body|title/.test(text), "signals leak people or text: " + text);
+  assert(Object.keys(signals.areas).length > 0);
+});
+
+// ---------- edits ----------
+
+test("authors can edit their own post and it's marked edited", async (F) => {
+  await F.store.editMyPost("thread", "t-pair-match", { title: "Pair Match, updated", body: "New text." });
+  const { thread } = await F.store.getThread("t-pair-match");
+  assert(thread.title === "Pair Match, updated" && thread.editedAt);
+});
+
+test("nobody can edit someone else's post", async (F) => {
+  await rejects(F.store.editMyPost("thread", "t-foggy", { body: "Changed." }), "your own");
+});
+
+test("an edit that adds an unsafe claim is held for review", async (F) => {
+  const saved = await F.store.editMyPost("reply", "r-notebook-1", { body: "This cures chemo brain, stop your medication." });
+  assert(saved.status === "pending");
+});
+
+test("hidden posts can't be edited", async (F) => {
+  await F.store.switchDemoUser("u-mod");
+  await F.store.resolve("t-quick-tap", "hide", "");
+  await F.store.switchDemoUser("u-river");
+  await rejects(F.store.editMyPost("thread", "t-quick-tap", { body: "Sneaky fix." }), "can't be edited");
+});
+
+test("an anonymous post can't be switched to professional guidance", async (F) => {
+  await F.store.switchDemoUser("u-nurse");
+  const saved = await F.store.createThread({ categoryId: "experiences", title: "Anon nurse post", body: "Some thoughts.", anonymous: true });
+  await rejects(F.store.editMyPost("thread", saved.id, { label: "professional" }), "can't become professional");
+});
+
+// ---------- appeals ----------
+
+test("authors can ask once for another review of a hidden post", async (F) => {
+  await F.store.switchDemoUser("u-mod");
+  await F.store.resolve("t-quick-tap", "hide", "");
+  await F.store.switchDemoUser("u-river");
+  await F.store.requestAnotherReview("thread", "t-quick-tap", "Please look again.");
+  await rejects(F.store.requestAnotherReview("thread", "t-quick-tap", ""), "already asked");
+  await F.store.switchDemoUser("u-mod");
+  const item = (await F.store.moderationQueue()).find((i) => i.targetId === "t-quick-tap");
+  assert(item && item.reports.some((r) => r.reason === "appeal"));
+});
+
+test("visible posts and other people's posts can't be appealed", async (F) => {
+  await rejects(F.store.requestAnotherReview("thread", "t-pair-match", ""), "Only hidden or removed");
+  await rejects(F.store.requestAnotherReview("thread", "t-foggy", ""), "your own");
+});
+
+// ---------- muting ----------
+
+test("muting hides someone's named posts and replies from you only", async (F) => {
+  await F.store.setMuted("u-june", true);
+  assert(!(await F.store.listThreads()).some((t) => t.id === "t-seated"));
+  const { replies, mutedCount } = await F.store.getThread("t-pair-match");
+  assert(!replies.some((r) => r.id === "r-pair-1") && mutedCount === 1);
+  await F.store.switchDemoUser("u-alex");
+  assert((await F.store.listThreads()).some((t) => t.id === "t-seated"));
+});
+
+test("moderators and yourself can't be muted", async (F) => {
+  await rejects(F.store.setMuted("u-mod", true), "Moderators can't be muted");
+  await rejects(F.store.setMuted("u-river", true), "can't mute");
+});
+
+test("muting never hides anonymous posts, which would reveal their author", async (F) => {
+  await F.store.switchDemoUser("u-june");
+  const saved = await F.store.createThread({ categoryId: "experiences", title: "Anon by June", body: "Hello.", anonymous: true });
+  await F.store.switchDemoUser("u-river");
+  await F.store.setMuted("u-june", true);
+  assert((await F.store.listThreads()).some((t) => t.id === saved.id));
+});
+
+(async () => {
+  let failed = 0;
+  for (const { name, run } of tests) {
+    try {
+      await run(freshForum());
+      console.log("ok   " + name);
+    } catch (error) {
+      failed++;
+      console.log("FAIL " + name + "\n     " + error.message);
+    }
+  }
+  console.log("\n" + (tests.length - failed) + " of " + tests.length + " passed");
+  process.exit(failed ? 1 : 0);
+})();

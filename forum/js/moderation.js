@@ -13,7 +13,7 @@
   }
 
   const STATUS_NAMES = { visible: "Still visible", pending: "Held, not visible", hidden: "Hidden", removed: "Removed" };
-  const reasonName = (id) => (Forum.catalog.reportReason(id) || { name: id }).name;
+  const reasonName = (id) => (id === "appeal" ? "Author asked for another review" : (Forum.catalog.reportReason(id) || { name: id }).name);
 
   function card(item) {
     const post = item.post;
@@ -32,7 +32,7 @@
       "</ul>" +
       '<label class="f-field"><span>Note for the record (optional)</span><input type="text" maxlength="500" data-note="' + esc(item.targetId) + '"></label>' +
       '<div class="f-actions f-actions--left">' +
-      '<button type="button" class="f-button" data-resolve="keep" data-id="' + esc(item.targetId) + '">Keep it up</button>' +
+      '<button type="button" class="f-button" data-resolve="keep" data-id="' + esc(item.targetId) + '">' + (post.status === "visible" ? "Keep it up" : "Make it visible") + "</button>" +
       '<button type="button" class="f-button f-button--quiet" data-resolve="hide" data-id="' + esc(item.targetId) + '">Hide</button>' +
       '<button type="button" class="f-button f-button--danger" data-resolve="remove" data-id="' + esc(item.targetId) + '">Remove</button>' +
       "</div></li>"
@@ -60,7 +60,7 @@
     const noteInput = area.querySelector('[data-note="' + CSS.escape(id) + '"]');
     try {
       await Forum.store.resolve(id, button.dataset.resolve, noteInput ? noteInput.value : "");
-      toast({ keep: "Kept. The post is visible.", hide: "Hidden.", remove: "Removed." }[button.dataset.resolve]);
+      toast({ keep: "Done. The post is visible.", hide: "Hidden.", remove: "Removed." }[button.dataset.resolve]);
       await draw();
     } catch (error) {
       toast(error.message);

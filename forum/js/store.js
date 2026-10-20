@@ -92,8 +92,18 @@ Forum.store = (function () {
   function canSee(item, viewer) {
     if (item.status === "visible") return true;
     if (!viewer) return false;
-    if (isModerator(viewer)) return item.status !== "removed-by-author";
-    return item.authorId === viewer.id && item.status !== "removed" && item.status !== "removed-by-author";
+    if (item.status === "removed-by-author") return false;
+    // Authors still see their own held, hidden or removed posts, so they know what happened and can ask for another review.
+    return isModerator(viewer) || item.authorId === viewer.id;
+  }
+
+  function mutedIds(data, viewer) {
+    return viewer ? (data.settings[viewer.id] || {}).muted || [] : [];
+  }
+
+  // Anonymous posts are never hidden by muting: hiding one would reveal who wrote it.
+  function isMuted(item, muted) {
+    return !item.anonymous && muted.includes(item.authorId);
   }
 
   function decorate(data, item, kind) {
@@ -105,10 +115,14 @@ Forum.store = (function () {
       helpfulCount: helpfulBy.length,
       markedHelpful: Boolean(viewer) && helpfulBy.includes(viewer.id),
       isOwn: Boolean(viewer) && viewer.id === item.authorId,
-      openReports: data.reports.filter((r) => r.targetId === item.id && r.status === "open").length
+      openReports: data.reports.filter((r) => r.targetId === item.id && r.status === "open").length,
+      appealed: data.reports.some((r) => r.targetId === item.id && r.reason === "appeal")
     });
     delete view.authorId;
-    if (!isModerator(viewer) && !view.isOwn) delete view.openReports;
+    if (!isModerator(viewer) && !view.isOwn) {
+      delete view.openReports;
+      delete view.appealed;
+    }
     return view;
   }
 
@@ -202,10 +216,10 @@ Forum.store = (function () {
       const profile = data.profiles.find((p) => p.id === userId);
       if (!profile) return fail("This profile doesn't exist.");
       const threads = data.threads
-        .filter((t) => t.authorId === userId && canSee(t, viewer) && t.status !== "removed" && (!t.anonymous || (viewer && viewer.id === userId)))
+        .filter((t) => t.authorId === userId && canSee(t, viewer) && (t.status !== "removed" || (viewer && viewer.id === userId)) && (!t.anonymous || (viewer && viewer.id === userId)))
         .map((t) => threadSummary(data, t))
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-      return done({ profile: publicProfile(profile, viewer), threads });
+      return done({ profile: publicProfile(profile, viewer), threads, muted: mutedIds(data, viewer).includes(userId) });
     },
 
     updateMyProfile(patch) {
@@ -246,7 +260,8 @@ Forum.store = (function () {
       const viewer = me(data);
       const query = (opts.query || "").trim().toLowerCase();
 
-      let threads = data.threads.filter((t) => canSee(t, viewer) && t.status !== "removed");
+      const muted = mutedIds(data, viewer);
+      let threads = data.threads.filter((t) => canSee(t, viewer) && t.status !== "removed" && !isMuted(t, muted));
       if (opts.categoryId) threads = threads.filter((t) => t.categoryId === opts.categoryId);
       if (opts.gameId) threads = threads.filter((t) => (t.gameIds || []).includes(opts.gameId));
       if (opts.area) {
@@ -258,7 +273,13 @@ Forum.store = (function () {
         );
       }
       if (query) {
-        threads = threads.filter((t) => (t.title + " " + t.body).toLowerCase().includes(query));
+        threads = threads.filter((t) => {
+          const replyText = data.replies
+            .filter((r) => r.threadId === t.id && canSee(r, viewer) && !isMuted(r, muted))
+            .map((r) => r.body)
+            .join(" ");
+          return (t.title + " " + t.body + " " + replyText).toLowerCase().includes(query);
+        });
       }
 
       const summaries = threads.map((t) => threadSummary(data, t));
@@ -281,12 +302,15 @@ Forum.store = (function () {
       const data = load();
       const viewer = me(data);
       const thread = data.threads.find((t) => t.id === threadId);
-      if (!thread || !canSee(thread, viewer) || thread.status === "removed") return fail("This conversation isn't available. It may have been removed.");
-      const replies = data.replies
-        .filter((r) => r.threadId === threadId && canSee(r, viewer))
+      if (!thread || !canSee(thread, viewer)) return fail("This conversation isn't available. It may have been removed.");
+      const muted = mutedIds(data, viewer);
+      const visibleReplies = data.replies.filter((r) => r.threadId === threadId && canSee(r, viewer));
+      const mutedCount = visibleReplies.filter((r) => isMuted(r, muted)).length;
+      const replies = visibleReplies
+        .filter((r) => !isMuted(r, muted))
         .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
         .map((r) => decorate(data, r, "reply"));
-      return done({ thread: threadSummary(data, thread), replies });
+      return done({ thread: threadSummary(data, thread), replies, mutedCount });
     },
 
     // Checks a draft without saving it, so the page can show safety notes first.
@@ -327,6 +351,88 @@ Forum.store = (function () {
       data.replies.push(reply);
       save();
       return done({ id: reply.id, status: reply.status });
+    },
+
+    // Authors can fix a visible or held post. Edits go through the same safety check as new posts.
+    editMyPost(kind, id, draft) {
+      const data = load();
+      const user = me(data);
+      const list = kind === "thread" ? data.threads : data.replies;
+      const item = list.find((x) => x.id === id);
+      if (!item || !user || item.authorId !== user.id) return fail("You can only edit your own posts.");
+      if (item.status !== "visible" && item.status !== "pending") return fail("This post can't be edited while a moderator has it hidden or removed.");
+
+      const merged = Object.assign({ title: item.title, body: item.body, label: item.label, sourceUrl: item.sourceUrl, anonymous: item.anonymous }, draft);
+      const cleaned = cleanDraft(data, merged, kind === "thread");
+      if (cleaned.error) return fail(cleaned.error);
+      // Professional guidance always shows who wrote it, so switching an anonymous post to it would reveal the author.
+      if (item.anonymous && cleaned.value.label === "professional") {
+        return fail("An anonymous post can't become professional guidance. Please write a new post for that.");
+      }
+
+      item.body = cleaned.value.body;
+      item.label = cleaned.value.label;
+      item.sourceUrl = cleaned.value.sourceUrl;
+      if (kind === "thread") {
+        item.title = cleaned.value.title;
+        if (Array.isArray(draft.gameIds)) item.gameIds = draft.gameIds.filter((g) => Forum.catalog.game(g)).slice(0, 3);
+      }
+      item.editedAt = new Date().toISOString();
+      const alreadyHeld = data.reports.some((r) => r.targetId === id && r.status === "open" && r.reporterId === "system");
+      if (cleaned.review.hold && !alreadyHeld) holdForReview(data, item, kind);
+      save();
+      return done({ id: item.id, status: item.status });
+    },
+
+    // One appeal per post, for posts a moderator hid or removed.
+    requestAnotherReview(kind, id, note) {
+      const data = load();
+      const user = me(data);
+      const list = kind === "thread" ? data.threads : data.replies;
+      const item = list.find((x) => x.id === id);
+      if (!item || !user || item.authorId !== user.id) return fail("You can only ask about your own posts.");
+      if (item.status !== "hidden" && item.status !== "removed") return fail("Only hidden or removed posts can be sent for another review.");
+      if (data.reports.some((r) => r.targetId === id && r.reason === "appeal")) return fail("You've already asked for another review of this post.");
+      data.reports.push({
+        id: newId("rep"),
+        targetType: kind,
+        targetId: id,
+        reporterId: user.id,
+        reason: "appeal",
+        note: String(note || "").trim().slice(0, 500),
+        status: "open",
+        createdAt: new Date().toISOString()
+      });
+      save();
+      return done(true);
+    },
+
+    // Muting hides someone's named posts from you only. They aren't told.
+    setMuted(userId, muted) {
+      const data = load();
+      const user = me(data);
+      if (!user) return fail("Choose a demo account first.");
+      const target = data.profiles.find((p) => p.id === userId);
+      if (!target || target.id === user.id) return fail("You can't mute that account.");
+      if (target.type === "moderator") return fail("Moderators can't be muted, so safety notices always reach you.");
+      const settings = data.settings[user.id] || (data.settings[user.id] = {});
+      const list = settings.muted || (settings.muted = []);
+      const at = list.indexOf(userId);
+      if (muted && at < 0) list.push(userId);
+      if (!muted && at >= 0) list.splice(at, 1);
+      save();
+      return done(list.slice());
+    },
+
+    listMuted() {
+      const data = load();
+      const viewer = me(data);
+      return done(
+        mutedIds(data, viewer)
+          .map((id) => data.profiles.find((p) => p.id === id))
+          .filter(Boolean)
+          .map((p) => ({ id: p.id, displayName: p.displayName }))
+      );
     },
 
     deleteMyPost(kind, id) {

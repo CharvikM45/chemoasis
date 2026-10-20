@@ -34,6 +34,12 @@ Use the **Demo account** menu (top right) to switch between made-up people:
 - **Profiles and privacy:** a nickname as your display name, a choice to show or hide your bio, posting anonymously (moderators can still see who posted), and a larger text option.
 - **Badges:** verified professional, activity creator, moderator. The guidelines page says what each badge does and doesn't mean.
 - **"Found this helpful":** labeled as people's opinion, never as proof that something works.
+- **Edits:** authors can fix their own visible or held posts. Edits go through the same safety check, show "(edited)", and can't change the category or whether a post is anonymous.
+- **Ask for another review:** an author can appeal a hidden or removed post once. It goes to the review queue, where a moderator can make it visible again.
+- **Mute:** hides one person's named posts and replies from you only. Moderators and anonymous posts can't be muted (muting an anonymous post would give away who wrote it).
+- **Saved drafts:** an unsent post or reply is kept in the browser per account, until it's posted or discarded.
+- **Listen:** reads a post aloud with the browser's built-in voice, for people who'd rather hear than read.
+- **Search** covers replies as well as titles and first posts.
 
 ## Files
 
@@ -48,6 +54,7 @@ Use the **Demo account** menu (top right) to switch between made-up people:
 | `js/ui.js` | Shared header, badges and the report dialog |
 | `js/home.js`, `thread.js`, `new-post.js`, `profile.js`, `moderation.js`, `guidelines.js` | One script per page |
 | `supabase/schema.sql` | **Draft** database tables for when Supabase is ready (not run anywhere) |
+| `tests/run-tests.js` | Checks the forum's rules (safety, privacy, moderation, edits, appeals, muting). Run `node forum/tests/run-tests.js` from the repo root. Needs only Node. |
 
 `store.js`, `safety.js`, `catalog.js` and `seed.js` don't touch the page at all, so they can move into the React Native app later as they are.
 
@@ -57,10 +64,15 @@ Use the **Demo account** menu (top right) to switch between made-up people:
 - **Recommendations (Sahas):** `Forum.store.topicSignals(days)` returns how often each training area and game comes up in public conversations. It returns counts only: no user IDs and no post text. That matches the brief's rule that forum signals come from clear categories, not from reading people's posts.
 - **Accounts (Supabase, Sahas):** today the forum uses demo accounts. When sign-in is ready, replace the function bodies in `js/store.js` with Supabase calls. `supabase/schema.sql` is a starting draft of the tables and access rules.
 
+## Testing
+
+- `node forum/tests/run-tests.js` runs 26 checks of the forum's rules in a few seconds, with no installs.
+- The pages were also tested in a real browser (Chromium) on desktop and phone sizes, including the edit, appeal, mute and draft flows.
+- `supabase/schema.sql` was loaded into a scratch PostgreSQL 16 database and its access rules were tested there (for example: anonymous authors stay hidden, people can only appeal their own hidden posts once, and moderators can't be muted).
+
 ## Not done yet
 
 - Real sign-in and storage (waiting on Supabase).
 - Checking professional credentials for real. Today the badge is demo data.
-- An appeals process for moderation decisions.
 - Notifications when someone replies.
 - The brief says the moderation rules should be checked with qualified people before launch.

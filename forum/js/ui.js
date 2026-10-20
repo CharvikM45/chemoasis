@@ -86,11 +86,16 @@ Forum.ui = (function () {
       .join("");
   }
 
-  function statusNote(item) {
+  function statusNote(item, withActions) {
+    const appeal =
+      withActions && item.isOwn && !item.appealed && (item.status === "hidden" || item.status === "removed")
+        ? ' <button type="button" class="f-link-button" data-action="appeal" data-kind="' + item.kind + '" data-id="' + esc(item.id) + '">Ask for another review</button>'
+        : "";
+    const appealed = item.isOwn && item.appealed && (item.status === "hidden" || item.status === "removed") ? " You asked for another review." : "";
     if (item.status === "pending") return '<p class="f-status f-status--pending">Waiting for a moderator to review. Only you and moderators can see this.</p>';
-    if (item.status === "hidden" && item.openReports) return '<p class="f-status f-status--hidden">Hidden while a moderator reviews reports. Only you and moderators can see this.</p>';
-    if (item.status === "hidden") return '<p class="f-status f-status--hidden">Hidden by a moderator. Only you and moderators can see this. You can ask for another review from the conversation page.</p>';
-    if (item.status === "removed") return '<p class="f-status f-status--hidden">Removed by a moderator.</p>';
+    if (item.status === "hidden" && item.openReports) return '<p class="f-status f-status--hidden">Hidden while a moderator reviews it. Only you and moderators can see this.' + appealed + appeal + "</p>";
+    if (item.status === "hidden") return '<p class="f-status f-status--hidden">Hidden by a moderator. Only you and moderators can see this.' + appealed + appeal + "</p>";
+    if (item.status === "removed") return '<p class="f-status f-status--hidden">Removed by a moderator. Only you and moderators can see this.' + appealed + appeal + "</p>";
     return "";
   }
 
@@ -240,15 +245,13 @@ Forum.ui = (function () {
     const update = () => {
       field.hidden = form.elements.label.value !== "info";
       const anon = form.elements.anonymous;
-      if (!anon) return;
+      if (!anon || anon.dataset.locked) return; // locked when editing: anonymity can't change after posting
       const pro = form.elements.label.value === "professional";
       if (pro) anon.checked = false;
       anon.disabled = pro;
       anon.closest("label").title = pro ? "Professional guidance is always posted under your verified name." : "";
     };
-    form.addEventListener("change", (event) => {
-      if (event.target.name === "label") update();
-    });
+    form.addEventListener("change", update);
     update();
   }
 
@@ -267,7 +270,125 @@ Forum.ui = (function () {
     return false;
   }
 
+  // A small dialog that asks for an optional note, used for appeals.
+  function askForNote(title, help, buttonText) {
+    return new Promise((resolve) => {
+      const dialog = document.createElement("dialog");
+      dialog.className = "f-dialog";
+      dialog.innerHTML =
+        '<form method="dialog" class="f-form">' +
+        '<h2 class="f-h2">' + esc(title) + "</h2>" +
+        '<p class="f-muted">' + esc(help) + "</p>" +
+        '<label class="f-field"><span>Note for the moderator (optional)</span><textarea name="note" rows="3" maxlength="500"></textarea></label>' +
+        '<div class="f-actions"><button type="button" class="f-button f-button--quiet" data-cancel>Cancel</button><button type="submit" class="f-button">' + esc(buttonText) + "</button></div>" +
+        "</form>";
+      document.body.appendChild(dialog);
+      let answered = false;
+      dialog.querySelector("[data-cancel]").addEventListener("click", () => dialog.close());
+      dialog.querySelector("form").addEventListener("submit", (event) => {
+        event.preventDefault();
+        answered = true;
+        const note = dialog.querySelector("textarea").value;
+        dialog.close();
+        resolve(note);
+      });
+      dialog.addEventListener("close", () => {
+        dialog.remove();
+        if (!answered) resolve(null);
+      });
+      dialog.showModal();
+    });
+  }
+
+  // "Listen" reads a post aloud with the browser's built-in voice, for people who prefer audio.
+  const canSpeak = "speechSynthesis" in window && typeof SpeechSynthesisUtterance !== "undefined";
+
+  function listenButton(id) {
+    return canSpeak ? '<button type="button" class="f-link-button" data-action="listen" data-id="' + esc(id) + '" aria-pressed="false">Listen</button>' : "";
+  }
+
+  function toggleListen(button, text) {
+    const speaking = button.getAttribute("aria-pressed") === "true";
+    window.speechSynthesis.cancel();
+    document.querySelectorAll('[data-action="listen"][aria-pressed="true"]').forEach((b) => {
+      b.setAttribute("aria-pressed", "false");
+      b.textContent = "Listen";
+    });
+    if (speaking) return;
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 0.95;
+    utterance.onend = utterance.onerror = () => {
+      button.setAttribute("aria-pressed", "false");
+      button.textContent = "Listen";
+    };
+    button.setAttribute("aria-pressed", "true");
+    button.textContent = "Stop";
+    window.speechSynthesis.speak(utterance);
+  }
+
+  /*
+   * Unsent drafts are kept in this browser, so a tired moment or a closed tab doesn't lose a long post.
+   * Only the fields listed are saved, and only until the post is sent or discarded.
+   */
+  function keepDraft(form, key, fields, onRestore) {
+    const storageKey = "chemoasis-forum-draft:" + key;
+    const read = () => {
+      try {
+        return JSON.parse(localStorage.getItem(storageKey) || "null");
+      } catch (error) {
+        return null;
+      }
+    };
+    const write = (value) => {
+      try {
+        if (value) localStorage.setItem(storageKey, JSON.stringify(value));
+        else localStorage.removeItem(storageKey);
+      } catch (error) {
+        // Storage blocked: drafts just aren't kept.
+      }
+    };
+
+    const saved = read();
+    if (saved && fields.some((name) => saved[name])) {
+      fields.forEach((name) => {
+        if (saved[name] !== undefined && form.elements[name]) form.elements[name].value = saved[name];
+      });
+      if (onRestore) onRestore(() => write(null));
+    }
+
+    let timer;
+    form.addEventListener("input", () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        const value = {};
+        fields.forEach((name) => {
+          if (form.elements[name]) value[name] = form.elements[name].value;
+        });
+        write(fields.some((name) => value[name] && value[name].trim()) ? value : null);
+      }, 300);
+    });
+
+    return { clear: () => write(null) };
+  }
+
+  function draftRestoredNotice(container, discard, form) {
+    container.innerHTML =
+      '<div class="f-notice f-notice--info" role="status">We brought back the draft you hadn\'t posted yet. ' +
+      '<button type="button" class="f-link-button" data-discard-draft>Discard it</button></div>';
+    container.querySelector("[data-discard-draft]").addEventListener("click", () => {
+      discard();
+      form.reset();
+      form.dispatchEvent(new Event("change"));
+      container.innerHTML = "";
+    });
+  }
+
   return {
+    askForNote,
+    listenButton,
+    toggleListen,
+    keepDraft,
+    draftRestoredNotice,
     drawLabelOptions,
     wireSourceField,
     confirmSafety,
