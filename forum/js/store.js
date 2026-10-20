@@ -135,13 +135,15 @@ Forum.store = (function () {
     if (needsTitle && title.length > 120) return { error: "Please keep the title under 120 characters." };
     if (body.length < 2) return { error: "Please write something before posting." };
     if (body.length > 5000) return { error: "Please keep posts under 5,000 characters." };
-    if (!Forum.safety.isValidSourceUrl(sourceUrl)) return { error: "The source link needs to be a full web address starting with https://" };
+    if (!Forum.safety.isValidSourceUrl(sourceUrl)) return { error: "The source link needs to be a full web address starting with https:// or http://" };
 
     let label = Forum.catalog.label(draft.label) ? draft.label : "experience";
     if (label === "professional" && !isVerifiedProfessional(author)) label = "experience";
 
     const settings = data.settings[author.id] || {};
-    const anonymous = draft.anonymous === undefined ? Boolean(settings.anonymousByDefault) : Boolean(draft.anonymous);
+    let anonymous = draft.anonymous === undefined ? Boolean(settings.anonymousByDefault) : Boolean(draft.anonymous);
+    // Professional guidance is only worth something when readers can see whose credentials stand behind it.
+    if (label === "professional") anonymous = false;
 
     return {
       value: { title, body, sourceUrl: sourceUrl || undefined, label, anonymous },
@@ -200,7 +202,7 @@ Forum.store = (function () {
       const profile = data.profiles.find((p) => p.id === userId);
       if (!profile) return fail("This profile doesn't exist.");
       const threads = data.threads
-        .filter((t) => t.authorId === userId && canSee(t, viewer) && (!t.anonymous || (viewer && viewer.id === userId)))
+        .filter((t) => t.authorId === userId && canSee(t, viewer) && t.status !== "removed" && (!t.anonymous || (viewer && viewer.id === userId)))
         .map((t) => threadSummary(data, t))
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
       return done({ profile: publicProfile(profile, viewer), threads });
@@ -213,6 +215,10 @@ Forum.store = (function () {
       if (patch.displayName !== undefined) {
         const name = String(patch.displayName).trim();
         if (name.length < 2 || name.length > 40) return fail("Display names need 2 to 40 characters.");
+        // Names that could pass for staff, a badge or an anonymous post would mislead readers.
+        if ((user.type === "member" || user.type === "creator") && /\b(anonymous|moderator|mod|admin|chemoasis|verified|official|staff|nurse|doctor|dr)\b/i.test(name)) {
+          return fail("Please pick a name that doesn't sound like a role, a badge or the app itself.");
+        }
         user.displayName = name;
       }
       if (patch.bio !== undefined) user.bio = String(patch.bio).trim().slice(0, 300);
@@ -265,7 +271,7 @@ Forum.store = (function () {
       const data = load();
       const viewer = me(data);
       const counts = {};
-      data.threads.filter((t) => canSee(t, viewer) && t.status === "visible").forEach((t) => {
+      data.threads.filter((t) => canSee(t, viewer) && t.status !== "removed").forEach((t) => {
         counts[t.categoryId] = (counts[t.categoryId] || 0) + 1;
       });
       return done(counts);
@@ -330,6 +336,15 @@ Forum.store = (function () {
       const item = list.find((x) => x.id === id);
       if (!item || !user || item.authorId !== user.id) return fail("You can only delete your own posts.");
       item.status = "removed-by-author";
+      // Nobody can see the post any more, so its open reports are closed rather than left for a moderator to undo.
+      const closedAt = new Date().toISOString();
+      data.reports.forEach((r) => {
+        if (r.targetId === id && r.status === "open") {
+          r.status = "dismissed";
+          r.resolution = "author-deleted";
+          r.resolvedAt = closedAt;
+        }
+      });
       save();
       return done(true);
     },
@@ -338,6 +353,8 @@ Forum.store = (function () {
       const data = load();
       const user = me(data);
       if (!user) return fail("Choose a demo account first.");
+      const post = data.threads.find((t) => t.id === id) || data.replies.find((r) => r.id === id);
+      if (!post || post.status !== "visible") return fail("You can only mark visible posts as helpful.");
       const list = data.helpful[id] || (data.helpful[id] = []);
       const at = list.indexOf(user.id);
       if (at >= 0) list.splice(at, 1);
@@ -388,7 +405,7 @@ Forum.store = (function () {
         const reports = byTarget[targetId];
         const kind = reports[0].targetType;
         const source = (kind === "thread" ? data.threads : data.replies).find((x) => x.id === targetId);
-        if (!source) return null;
+        if (!source || source.status === "removed-by-author") return null;
         const parent = kind === "reply" ? data.threads.find((t) => t.id === source.threadId) : source;
         return {
           targetId,
@@ -426,7 +443,7 @@ Forum.store = (function () {
       const moderator = me(data);
       if (!isModerator(moderator)) return fail("Only moderators can do that.");
       const item = data.threads.find((t) => t.id === targetId) || data.replies.find((r) => r.id === targetId);
-      if (!item) return fail("That post no longer exists.");
+      if (!item || item.status === "removed-by-author") return fail("That post no longer exists.");
       const statuses = { keep: "visible", hide: "hidden", remove: "removed" };
       if (!statuses[action]) return fail("Unknown action.");
       item.status = statuses[action];

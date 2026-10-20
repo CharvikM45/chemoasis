@@ -88,7 +88,8 @@ Forum.ui = (function () {
 
   function statusNote(item) {
     if (item.status === "pending") return '<p class="f-status f-status--pending">Waiting for a moderator to review. Only you and moderators can see this.</p>';
-    if (item.status === "hidden") return '<p class="f-status f-status--hidden">Hidden while a moderator reviews reports. Only you and moderators can see this.</p>';
+    if (item.status === "hidden" && item.openReports) return '<p class="f-status f-status--hidden">Hidden while a moderator reviews reports. Only you and moderators can see this.</p>';
+    if (item.status === "hidden") return '<p class="f-status f-status--hidden">Hidden by a moderator. Only you and moderators can see this. You can ask for another review from the conversation page.</p>';
     if (item.status === "removed") return '<p class="f-status f-status--hidden">Removed by a moderator.</p>';
     return "";
   }
@@ -234,9 +235,16 @@ Forum.ui = (function () {
   }
 
   // Shows the source field only for "General information" posts.
+  // Professional guidance is always signed, so the anonymous box turns off for it.
   function wireSourceField(form, field) {
     const update = () => {
       field.hidden = form.elements.label.value !== "info";
+      const anon = form.elements.anonymous;
+      if (!anon) return;
+      const pro = form.elements.label.value === "professional";
+      if (pro) anon.checked = false;
+      anon.disabled = pro;
+      anon.closest("label").title = pro ? "Professional guidance is always posted under your verified name." : "";
     };
     form.addEventListener("change", (event) => {
       if (event.target.name === "label") update();

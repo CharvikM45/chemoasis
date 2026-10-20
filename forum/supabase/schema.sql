@@ -76,7 +76,15 @@ create index on public.forum_threads (category_id, created_at desc);
 create index on public.forum_replies (thread_id, created_at);
 create index on public.forum_reports (status, target_id);
 
--- ---------- row level security ----------
+-- ---------- access rules ----------
+-- How reading works: people never select from the base tables. They read the
+-- *_feed views below, which apply the visibility rules and blank out the author
+-- of anonymous posts. Views run with their owner's rights, which is what lets
+-- them hide a column per row (row level security alone can't do that).
+-- Writes (insert/update) still go to the base tables, checked by the policies.
+-- People can select only the id and status columns of their own rows (an
+-- UPDATE or DELETE with a WHERE clause needs that), so the app must not use
+-- `insert ... returning *`; read the new row back through the feed view.
 
 alter table public.forum_profiles enable row level security;
 alter table public.forum_threads enable row level security;
@@ -84,60 +92,120 @@ alter table public.forum_replies enable row level security;
 alter table public.forum_helpful enable row level security;
 alter table public.forum_reports enable row level security;
 
+revoke all on public.forum_profiles, public.forum_threads, public.forum_replies,
+  public.forum_helpful, public.forum_reports from anon, authenticated;
+
 create or replace function public.forum_is_moderator()
 returns boolean language sql stable security definer set search_path = public as $$
   select exists (select 1 from public.forum_profiles where user_id = auth.uid() and role = 'moderator');
 $$;
 
--- Profiles: signed-in people can read profiles; you can edit only your own safe fields.
--- (Hide bio when show_bio is false through a view or the app; RLS works per row, not per column.)
-create policy "profiles readable" on public.forum_profiles for select to authenticated using (true);
-create policy "create own profile" on public.forum_profiles for insert to authenticated
-  with check (user_id = auth.uid() and role = 'member' and pro_verified = false);
-create policy "edit own profile" on public.forum_profiles for update to authenticated
-  using (user_id = auth.uid())
-  with check (
-    user_id = auth.uid()
-    and role = (select role from public.forum_profiles where user_id = auth.uid())
-    and pro_verified = (select pro_verified from public.forum_profiles where user_id = auth.uid())
-  );
+create or replace function public.forum_thread_is_visible(thread uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.forum_threads where id = thread and status = 'visible');
+$$;
 
--- Threads and replies: everyone signed in sees visible posts; authors see their own;
--- moderators see everything except posts the author deleted.
-create policy "read threads" on public.forum_threads for select to authenticated
-  using (status = 'visible' or author_id = auth.uid() or (public.forum_is_moderator() and status <> 'removed-by-author'));
+-- Profiles. People edit only their own safe columns; role, verification and
+-- credentials are set by the team with the service role, never by the user.
+grant insert (user_id, display_name, bio, show_bio, anonymous_by_default, large_text) on public.forum_profiles to authenticated;
+grant update (display_name, bio, show_bio, anonymous_by_default, large_text) on public.forum_profiles to authenticated;
+create policy "create own profile" on public.forum_profiles for insert to authenticated
+  with check (user_id = auth.uid());
+create policy "edit own profile" on public.forum_profiles for update to authenticated
+  using (user_id = auth.uid()) with check (user_id = auth.uid());
+grant select (user_id) on public.forum_profiles to authenticated;
+create policy "find own profile row" on public.forum_profiles for select to authenticated
+  using (user_id = auth.uid());
+
+create view public.forum_profiles_feed as
+  select user_id, display_name,
+         case when show_bio or user_id = auth.uid() then bio else '' end as bio,
+         case when user_id = auth.uid() then show_bio end as show_bio,
+         case when user_id = auth.uid() then anonymous_by_default end as anonymous_by_default,
+         case when user_id = auth.uid() then large_text end as large_text,
+         role, pro_verified,
+         case when pro_verified then pro_credential end as pro_credential,
+         case when pro_verified then pro_specialty end as pro_specialty,
+         case when pro_verified then pro_location end as pro_location,
+         created_at
+  from public.forum_profiles
+  where auth.uid() is not null;
+
+-- Threads.
+grant insert (category_id, author_id, title, body, label, source_url, game_ids, anonymous, status) on public.forum_threads to authenticated;
+grant update (title, body, label, source_url, game_ids, status) on public.forum_threads to authenticated;
 create policy "write own threads" on public.forum_threads for insert to authenticated
   with check (author_id = auth.uid() and status in ('visible', 'pending'));
-create policy "author deletes own thread" on public.forum_threads for update to authenticated
-  using (author_id = auth.uid()) with check (status = 'removed-by-author');
+-- Authors can edit or delete their own post only while it's visible or waiting
+-- for review, so they can't pull a post out from under a moderator's decision.
+create policy "author edits or deletes own thread" on public.forum_threads for update to authenticated
+  using (author_id = auth.uid() and status in ('visible', 'pending'))
+  with check (author_id = auth.uid() and status in ('visible', 'pending', 'removed-by-author'));
 create policy "moderators update threads" on public.forum_threads for update to authenticated
-  using (public.forum_is_moderator());
+  using (public.forum_is_moderator()) with check (public.forum_is_moderator());
+grant select (id, status) on public.forum_threads to authenticated;
+create policy "find own or moderated threads" on public.forum_threads for select to authenticated
+  using (author_id = auth.uid() or public.forum_is_moderator());
 
-create policy "read replies" on public.forum_replies for select to authenticated
-  using (status = 'visible' or author_id = auth.uid() or (public.forum_is_moderator() and status <> 'removed-by-author'));
+create view public.forum_threads_feed as
+  select id, category_id,
+         case when anonymous and author_id <> auth.uid() and not public.forum_is_moderator() then null else author_id end as author_id,
+         title, body, label, source_url, game_ids, anonymous, status, created_at
+  from public.forum_threads
+  where status = 'visible'
+     or (author_id = auth.uid() and status in ('pending', 'hidden'))
+     or public.forum_is_moderator();
+
+-- Replies: only on threads everyone can see.
+grant insert (thread_id, author_id, body, label, source_url, anonymous, status) on public.forum_replies to authenticated;
+grant update (body, label, source_url, status) on public.forum_replies to authenticated;
 create policy "write own replies" on public.forum_replies for insert to authenticated
-  with check (author_id = auth.uid() and status in ('visible', 'pending'));
-create policy "author deletes own reply" on public.forum_replies for update to authenticated
-  using (author_id = auth.uid()) with check (status = 'removed-by-author');
+  with check (author_id = auth.uid() and status in ('visible', 'pending') and public.forum_thread_is_visible(thread_id));
+create policy "author edits or deletes own reply" on public.forum_replies for update to authenticated
+  using (author_id = auth.uid() and status in ('visible', 'pending'))
+  with check (author_id = auth.uid() and status in ('visible', 'pending', 'removed-by-author'));
 create policy "moderators update replies" on public.forum_replies for update to authenticated
-  using (public.forum_is_moderator());
+  using (public.forum_is_moderator()) with check (public.forum_is_moderator());
+grant select (id, status) on public.forum_replies to authenticated;
+create policy "find own or moderated replies" on public.forum_replies for select to authenticated
+  using (author_id = auth.uid() or public.forum_is_moderator());
 
-create policy "read helpful" on public.forum_helpful for select to authenticated using (true);
+create view public.forum_replies_feed as
+  select id, thread_id,
+         case when anonymous and author_id <> auth.uid() and not public.forum_is_moderator() then null else author_id end as author_id,
+         body, label, source_url, anonymous, status, created_at
+  from public.forum_replies
+  where status = 'visible'
+     or (author_id = auth.uid() and status in ('pending', 'hidden'))
+     or public.forum_is_moderator();
+
+-- "Found this helpful": people see counts and their own marks, never who else marked a post.
+grant insert, delete on public.forum_helpful to authenticated;
+grant select (post_id, user_id) on public.forum_helpful to authenticated;
+create policy "see own marks" on public.forum_helpful for select to authenticated using (user_id = auth.uid());
 create policy "mark helpful" on public.forum_helpful for insert to authenticated with check (user_id = auth.uid());
 create policy "unmark helpful" on public.forum_helpful for delete to authenticated using (user_id = auth.uid());
 
--- Reports are private: reporters see their own, moderators see all.
+create view public.forum_helpful_counts as
+  select post_id, count(*)::int as helpful_count, bool_or(user_id = auth.uid()) as marked_by_me
+  from public.forum_helpful
+  group by post_id;
+
+-- Reports are private: people can file them; only moderators read and resolve them.
+grant insert (target_type, target_id, reporter_id, reason, note) on public.forum_reports to authenticated;
+grant select, update on public.forum_reports to authenticated;
 create policy "file a report" on public.forum_reports for insert to authenticated
-  with check (reporter_id = auth.uid() and status = 'open');
+  with check (reporter_id = auth.uid());
 create policy "read reports" on public.forum_reports for select to authenticated
   using (reporter_id = auth.uid() or public.forum_is_moderator());
 create policy "moderators resolve reports" on public.forum_reports for update to authenticated
-  using (public.forum_is_moderator());
+  using (public.forum_is_moderator()) with check (public.forum_is_moderator());
+
+grant select on public.forum_profiles_feed, public.forum_threads_feed, public.forum_replies_feed,
+  public.forum_helpful_counts to authenticated;
 
 -- Still to decide with the team before this goes live:
--- 1. "Professional guidance" labels should be enforced on the server too
---    (a trigger that checks role = 'professional' and pro_verified).
--- 2. Auto-hide after 3 reports and the automatic safety hold should run in a
---    database function or Edge Function, so they can't be skipped.
--- 3. Anonymous posts: the app must not send author_id to other users for them.
---    A view that blanks author_id when anonymous is true would handle it.
+-- 1. The safety check, the "Professional guidance" rule (verified professionals
+--    only, never anonymous) and auto-hide after 3 reports should also run in a
+--    trigger or Edge Function, so a modified app can't skip them.
+-- 2. Edits by authors should go through the same safety check as new posts.

@@ -46,7 +46,7 @@
       : '<div class="f-notice f-notice--info" role="status">All clear. Nothing is waiting for review.</div>';
 
     const past = await Forum.store.moderationHistory();
-    const verbs = { keep: "Kept", hide: "Hid", remove: "Removed" };
+    const verbs = { keep: "Kept", hide: "Hid", remove: "Removed", "author-deleted": "Closed (the author deleted it):" };
     history.innerHTML = past.length
       ? past.map((r) => "<li>" + esc(verbs[r.resolution] || r.resolution) + " a " + esc(r.targetType) + " reported for " + esc(reasonName(r.reason).toLowerCase()) +
           (r.moderatorNote ? ' · "' + esc(r.moderatorNote) + '"' : "") + ' <span class="f-muted">' + timeAgo(r.resolvedAt) + "</span></li>").join("")
