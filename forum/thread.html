@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="A conversation in the Chemoasis community.">
+  <title>Conversation · Chemoasis community</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono&family=DM+Sans:wght@400;500;600&family=Playfair+Display:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="../enhancements.css">
+  <link rel="stylesheet" href="forum.css">
+</head>
+<body class="f-page">
+  <header class="f-header" data-forum-header></header>
+  <main id="main" class="f-main f-main--narrow">
+    <p class="f-back"><a href="index.html">← All conversations</a></p>
+    <div id="thread"></div>
+
+    <section class="f-replies" aria-labelledby="replies-heading" hidden>
+      <h2 class="f-h2" id="replies-heading">Replies</h2>
+      <ol class="f-posts" id="replies"></ol>
+    </section>
+
+    <section class="f-compose" id="compose" aria-labelledby="compose-heading" hidden>
+      <h2 class="f-h2" id="compose-heading">Add a reply</h2>
+      <form class="f-form" id="reply-form" novalidate>
+        <label class="f-field"><span>Your reply</span><textarea name="body" rows="5" maxlength="5000" required></textarea></label>
+        <fieldset class="f-label-picker"><legend>What kind of reply is this?</legend><div id="label-options"></div></fieldset>
+        <label class="f-field" id="source-field" hidden><span>Source link (recommended for general information)</span><input type="url" name="sourceUrl" placeholder="https://"></label>
+        <label class="f-check"><input type="checkbox" name="anonymous"> Post anonymously (moderators can still see who posted)</label>
+        <div id="reply-notes"></div>
+        <div class="f-error" role="alert" id="reply-error"></div>
+        <div class="f-actions"><button class="f-button" type="submit" id="reply-submit">Post reply</button></div>
+      </form>
+    </section>
+  </main>
+  <footer class="f-footer">
+    <p>Chemoasis community · <a href="guidelines.html">Community guidelines</a> · All people and posts shown are made-up demo data.</p>
+  </footer>
+  <script src="js/catalog.js"></script>
+  <script src="js/seed.js"></script>
+  <script src="js/safety.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/thread.js"></script>
+</body>
+</html>
