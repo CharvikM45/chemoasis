@@ -12,31 +12,36 @@ window.Forum = window.Forum || {};
 Forum.store = (function () {
   const STORAGE_KEY = "chemoasis-forum-demo-v1";
   const AUTO_HIDE_REPORTS = 3;
-  let memoryCopy = null; // used when the browser blocks localStorage
+  let memoryCopy = null;
+  let persistent = true; // false when the browser blocks localStorage
 
   // ---------- storage ----------
 
+  // Reads the saved copy every time, so two open tabs never overwrite each other's newer changes.
   function load() {
-    if (memoryCopy) return memoryCopy;
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        memoryCopy = JSON.parse(saved);
-        return memoryCopy;
+    if (persistent) {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          memoryCopy = JSON.parse(saved);
+          return memoryCopy;
+        }
+      } catch (error) {
+        persistent = false; // Private mode or blocked storage: keep changes in memory for this page only.
       }
-    } catch (error) {
-      // Private mode or blocked storage: fall through to fresh demo data.
     }
+    if (memoryCopy) return memoryCopy;
     memoryCopy = Forum.seed();
     save();
     return memoryCopy;
   }
 
   function save() {
+    if (!persistent) return;
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(memoryCopy));
     } catch (error) {
-      // Changes still live in memory for this visit.
+      persistent = false;
     }
   }
 
@@ -184,6 +189,12 @@ Forum.store = (function () {
 
   return {
     AUTO_HIDE_REPORTS,
+
+    // False when the browser won't let the demo save anything, so the page can warn people.
+    isPersistent() {
+      load();
+      return persistent;
+    },
 
     currentUser() {
       const data = load();
@@ -361,6 +372,10 @@ Forum.store = (function () {
       const item = list.find((x) => x.id === id);
       if (!item || !user || item.authorId !== user.id) return fail("You can only edit your own posts.");
       if (item.status !== "visible" && item.status !== "pending") return fail("This post can't be edited while a moderator has it hidden or removed.");
+      // Keeps the text people reported in place until a moderator has seen it.
+      if (data.reports.some((r) => r.targetId === id && r.status === "open" && r.reporterId !== "system" && r.reason !== "appeal")) {
+        return fail("This post can't be edited while a moderator reviews a report about it.");
+      }
 
       const merged = Object.assign({ title: item.title, body: item.body, label: item.label, sourceUrl: item.sourceUrl, anonymous: item.anonymous }, draft);
       const cleaned = cleanDraft(data, merged, kind === "thread");
@@ -441,6 +456,8 @@ Forum.store = (function () {
       const list = kind === "thread" ? data.threads : data.replies;
       const item = list.find((x) => x.id === id);
       if (!item || !user || item.authorId !== user.id) return fail("You can only delete your own posts.");
+      // A moderator's decision stands: deleting would quietly close the reports on a hidden post.
+      if (item.status !== "visible" && item.status !== "pending") return fail("This post can't be deleted while a moderator has it hidden or removed.");
       item.status = "removed-by-author";
       // Nobody can see the post any more, so its open reports are closed rather than left for a moderator to undo.
       const closedAt = new Date().toISOString();
@@ -476,7 +493,8 @@ Forum.store = (function () {
       if (!Forum.catalog.reportReason(reason)) return fail("Please choose a reason.");
       const list = kind === "thread" ? data.threads : data.replies;
       const item = list.find((x) => x.id === id);
-      if (!item) return fail("That post no longer exists.");
+      if (!item || item.status !== "visible") return fail("That post no longer exists.");
+      if (item.authorId === user.id) return fail("You can't report your own post. You can edit or delete it instead.");
       if (data.reports.some((r) => r.targetId === id && r.reporterId === user.id && r.status === "open")) {
         return fail("You've already reported this. A moderator will look at it.");
       }
@@ -529,6 +547,21 @@ Forum.store = (function () {
         };
       }).filter(Boolean);
       items.sort((a, b) => b.reports.length - a.reports.length);
+      return done(items);
+    },
+
+    // Posts a moderator hid with no open reports left, so they can come back to them later.
+    hiddenPosts() {
+      const data = load();
+      if (!isModerator(me(data))) return fail("Only moderators can see hidden posts.");
+      const open = new Set(data.reports.filter((r) => r.status === "open").map((r) => r.targetId));
+      const items = [];
+      [["thread", data.threads], ["reply", data.replies]].forEach(([kind, list]) => {
+        list.filter((x) => x.status === "hidden" && !open.has(x.id)).forEach((x) => {
+          const parent = kind === "reply" ? data.threads.find((t) => t.id === x.threadId) : x;
+          items.push({ targetId: x.id, kind, post: decorate(data, x, kind), threadId: parent ? parent.id : null, threadTitle: parent ? parent.title : "" });
+        });
+      });
       return done(items);
     },
 

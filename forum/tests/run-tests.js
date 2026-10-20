@@ -25,6 +25,7 @@ function freshForum() {
     const code = fs.readFileSync(path.join(__dirname, "..", "js", file + ".js"), "utf8");
     vm.runInContext(code, context, { filename: file + ".js" });
   }
+  context.Forum.__storage = window.localStorage;
   return context.Forum;
 }
 
@@ -116,11 +117,11 @@ test("members can't pick a name that sounds like a role", async (F) => {
 // ---------- reports and moderation ----------
 
 test("three different reporters hide a post until a moderator decides", async (F) => {
-  for (const user of ["u-river", "u-june", "u-sam"]) {
+  for (const user of ["u-river", "u-alex", "u-sam"]) {
     await F.store.switchDemoUser(user);
     await F.store.report("thread", "t-seated", "spam", "");
   }
-  await F.store.switchDemoUser("u-alex");
+  await F.store.switchDemoUser("u-jordan");
   assert(!(await F.store.listThreads()).some((t) => t.id === "t-seated"));
 });
 
@@ -219,6 +220,44 @@ test("muting never hides anonymous posts, which would reveal their author", asyn
   await F.store.switchDemoUser("u-river");
   await F.store.setMuted("u-june", true);
   assert((await F.store.listThreads()).some((t) => t.id === saved.id));
+});
+
+// ---------- fixes from the Claudex review ----------
+
+test("authors can't delete a post a moderator has hidden", async (F) => {
+  await F.store.switchDemoUser("u-mod");
+  await F.store.resolve("t-quick-tap", "hide", "");
+  await F.store.switchDemoUser("u-river");
+  await rejects(F.store.deleteMyPost("thread", "t-quick-tap"), "can't be deleted");
+});
+
+test("hidden posts stay listed for moderators after the reports close", async (F) => {
+  await F.store.switchDemoUser("u-mod");
+  await F.store.resolve("t-quick-tap", "hide", "");
+  assert(!(await F.store.moderationQueue()).some((i) => i.targetId === "t-quick-tap"));
+  assert((await F.store.hiddenPosts()).some((i) => i.targetId === "t-quick-tap"));
+});
+
+test("people can't report their own post or one that isn't visible", async (F) => {
+  await rejects(F.store.report("thread", "t-pair-match", "spam", ""), "your own post");
+  await rejects(F.store.report("thread", "t-held", "spam", ""), "no longer exists");
+});
+
+test("a reported post can't be edited until a moderator has seen it", async (F) => {
+  await F.store.switchDemoUser("u-june");
+  await F.store.report("thread", "t-pair-match", "misinformation", "");
+  await F.store.switchDemoUser("u-river");
+  await rejects(F.store.editMyPost("thread", "t-pair-match", { body: "Different text now." }), "reviews a report");
+});
+
+test("changes made in another tab aren't overwritten", async (F) => {
+  await F.store.createThread({ categoryId: "welcome", title: "From tab one", body: "Hello." });
+  const raw = JSON.parse(F.__storage.getItem("chemoasis-forum-demo-v1"));
+  raw.threads.push(Object.assign({}, raw.threads[0], { id: "t-other-tab", title: "From tab two" }));
+  F.__storage.setItem("chemoasis-forum-demo-v1", JSON.stringify(raw));
+  await F.store.createThread({ categoryId: "welcome", title: "From tab one again", body: "Hello." });
+  const titles = (await F.store.listThreads()).map((t) => t.title);
+  assert(titles.includes("From tab two") && titles.includes("From tab one again"));
 });
 
 (async () => {

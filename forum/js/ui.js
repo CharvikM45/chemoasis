@@ -176,7 +176,10 @@ Forum.ui = (function () {
       users.map((u) => '<option value="' + esc(u.id) + '"' + (user && u.id === user.id ? " selected" : "") + ">" + esc(u.displayName) + "</option>").join("") +
       "</select></label>" +
       "</div>" +
-      '<p class="f-banner">Chemoasis is supportive and educational. It does not diagnose and does not replace your care team. For new, severe or worsening symptoms, contact your care team, or call 911 in an emergency.</p>';
+      '<p class="f-banner">Chemoasis is supportive and educational. It does not diagnose and does not replace your care team. For new, severe or worsening symptoms, contact your care team, or call 911 in an emergency.</p>' +
+      (Forum.store.isPersistent()
+        ? ""
+        : '<p class="f-banner f-banner--warning" role="status">This browser is blocking site storage, so anything you post in this demo disappears when you leave the page.</p>');
 
     header.querySelector("#f-demo-user").addEventListener("change", async (event) => {
       await Forum.store.switchDemoUser(event.target.value);
@@ -186,15 +189,16 @@ Forum.ui = (function () {
   }
 
   // One report dialog shared by every page.
-  function openReportDialog(kind, id) {
+  function openReportDialog(kind, id, onReported) {
     let dialog = document.getElementById("f-report-dialog");
     if (!dialog) {
       dialog = document.createElement("dialog");
       dialog.id = "f-report-dialog";
       dialog.className = "f-dialog";
+      dialog.setAttribute("aria-labelledby", "f-report-title");
       dialog.innerHTML =
         '<form method="dialog" class="f-form">' +
-        '<h2 class="f-h2">Report this post</h2>' +
+        '<h2 class="f-h2" id="f-report-title">Report this post</h2>' +
         '<p class="f-muted">Reports are private. A moderator reviews every one.</p>' +
         '<fieldset><legend>What\'s wrong?</legend>' +
         Forum.catalog.REPORT_REASONS.map(
@@ -220,6 +224,7 @@ Forum.ui = (function () {
         await Forum.store.report(kind, id, data.get("reason"), data.get("note"));
         dialog.close();
         toast("Thanks. A moderator will review your report.");
+        if (onReported) await onReported(); // a third report can hide the post, so the page redraws
       } catch (err) {
         error.textContent = err.message;
       }
@@ -262,7 +267,15 @@ Forum.ui = (function () {
   async function confirmSafety(form, notesBox, submitButton, draft) {
     const result = await Forum.store.previewDraft(draft);
     const fingerprint = JSON.stringify(draft);
-    if (!result.notes.length || form.dataset.reviewed === fingerprint) return true;
+    if (!submitButton.dataset.defaultText) submitButton.dataset.defaultText = submitButton.textContent;
+    if (!result.notes.length) {
+      // The text changed and is fine now, so old notes and "Send for review" no longer apply.
+      notesBox.innerHTML = "";
+      submitButton.textContent = submitButton.dataset.defaultText;
+      delete form.dataset.reviewed;
+      return true;
+    }
+    if (form.dataset.reviewed === fingerprint) return true;
     form.dataset.reviewed = fingerprint;
     notesBox.innerHTML = safetyNotes(result.notes) + '<p class="f-muted">You can edit your post, or press the button again to post it as is.</p>';
     submitButton.textContent = result.hold ? "Send for review" : "Post anyway";
@@ -275,9 +288,10 @@ Forum.ui = (function () {
     return new Promise((resolve) => {
       const dialog = document.createElement("dialog");
       dialog.className = "f-dialog";
+      dialog.setAttribute("aria-labelledby", "f-note-title");
       dialog.innerHTML =
         '<form method="dialog" class="f-form">' +
-        '<h2 class="f-h2">' + esc(title) + "</h2>" +
+        '<h2 class="f-h2" id="f-note-title">' + esc(title) + "</h2>" +
         '<p class="f-muted">' + esc(help) + "</p>" +
         '<label class="f-field"><span>Note for the moderator (optional)</span><textarea name="note" rows="3" maxlength="500"></textarea></label>' +
         '<div class="f-actions"><button type="button" class="f-button f-button--quiet" data-cancel>Cancel</button><button type="submit" class="f-button">' + esc(buttonText) + "</button></div>" +
@@ -348,15 +362,22 @@ Forum.ui = (function () {
       }
     };
 
+    let timer;
     const saved = read();
     if (saved && fields.some((name) => saved[name])) {
       fields.forEach((name) => {
         if (saved[name] !== undefined && form.elements[name]) form.elements[name].value = saved[name];
       });
-      if (onRestore) onRestore(() => write(null));
+      // Discarding clears only the saved fields, so settings like "post anonymously" stay as they were.
+      if (onRestore) onRestore(() => {
+        clearTimeout(timer);
+        write(null);
+        fields.forEach((name) => {
+          if (form.elements[name] && !form.elements[name].disabled) form.elements[name].value = "";
+        });
+      });
     }
 
-    let timer;
     form.addEventListener("input", () => {
       clearTimeout(timer);
       timer = setTimeout(() => {
@@ -368,7 +389,12 @@ Forum.ui = (function () {
       }, 300);
     });
 
-    return { clear: () => write(null) };
+    return {
+      clear: () => {
+        clearTimeout(timer); // a save still waiting must not bring back a post that was just sent
+        write(null);
+      }
+    };
   }
 
   function draftRestoredNotice(container, discard, form) {
@@ -377,7 +403,7 @@ Forum.ui = (function () {
       '<button type="button" class="f-link-button" data-discard-draft>Discard it</button></div>';
     container.querySelector("[data-discard-draft]").addEventListener("click", () => {
       discard();
-      form.reset();
+      delete form.dataset.reviewed;
       form.dispatchEvent(new Event("change"));
       container.innerHTML = "";
     });

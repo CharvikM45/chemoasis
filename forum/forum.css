@@ -815,8 +815,14 @@ html.f-large-text {
 }
 
 @media (max-width: 560px) {
+  /* Hidden visually but still read out, so the menu keeps its name. */
   .f-demo-switch span {
-    display: none;
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
   }
 
   .f-card,
@@ -861,4 +867,9 @@ html.f-large-text {
 .f-page select:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.f-banner--warning {
+  background: var(--clay);
+  color: #fff;
 }

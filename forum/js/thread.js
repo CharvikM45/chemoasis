@@ -28,10 +28,12 @@
       );
     }
     parts.push(Forum.ui.listenButton(post.id));
-    if (post.isOwn && (visible || post.status === "pending")) {
+    // While a moderator has a post hidden or removed, its author can ask for another review but not edit or delete it.
+    const authorCanChange = post.isOwn && (visible || post.status === "pending");
+    if (authorCanChange) {
       parts.push('<button type="button" class="f-link-button" data-action="edit" data-kind="' + post.kind + '" data-id="' + esc(post.id) + '">Edit</button>');
     }
-    if (post.isOwn) {
+    if (authorCanChange) {
       parts.push('<button type="button" class="f-link-button" data-action="delete" data-kind="' + post.kind + '" data-id="' + esc(post.id) + '">Delete</button>');
     } else if (visible) {
       parts.push('<button type="button" class="f-link-button" data-action="report" data-kind="' + post.kind + '" data-id="' + esc(post.id) + '">Report</button>');
@@ -63,6 +65,9 @@
       result = await Forum.store.getThread(threadId);
     } catch (error) {
       threadBox.innerHTML = '<div class="f-notice f-notice--warning" role="status">' + esc(error.message) + ' <a href="index.html">Back to all conversations</a>.</div>';
+      repliesSection.hidden = true;
+      repliesList.innerHTML = "";
+      compose.hidden = true;
       return;
     }
     const { thread, replies, mutedCount } = result;
@@ -124,13 +129,16 @@
     const { action, id, kind } = button.dataset;
     try {
       if (action === "helpful") {
-        await Forum.store.toggleHelpful(id);
-        await draw();
+        // Updated in place, so keyboard and screen reader users keep their spot on the page.
+        const result = await Forum.store.toggleHelpful(id);
+        button.setAttribute("aria-pressed", String(result.marked));
+        button.textContent = (result.marked ? "✓ Found helpful" : "Found this helpful") + (result.count ? " · " + result.count : "");
+        if (posts[id]) Object.assign(posts[id], { markedHelpful: result.marked, helpfulCount: result.count });
       } else if (action === "listen") {
         const post = posts[id];
         if (post) Forum.ui.toggleListen(button, (post.title ? post.title + ". " : "") + post.body);
       } else if (action === "report") {
-        Forum.ui.openReportDialog(kind, id);
+        Forum.ui.openReportDialog(kind, id, draw);
       } else if (action === "edit") {
         if (kind === "thread") location.href = "new.html?edit=" + encodeURIComponent(id);
         else editReplyInPlace(id);

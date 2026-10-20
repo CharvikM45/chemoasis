@@ -30,7 +30,7 @@ Use the **Demo account** menu (top right) to switch between made-up people:
   - Urgent symptoms point people to their care team or 911.
   - Phone numbers, emails or addresses get a privacy warning.
 - **Reports:** anyone can report a post. If 3 different people report the same post, it's hidden until a moderator reviews it.
-- **Review queue for moderators:** keep, hide or remove a post, with a note and a history of decisions.
+- **Review queue for moderators:** keep, hide or remove a post, with a note and a history of decisions. Hidden posts stay listed so a moderator can come back to them.
 - **Profiles and privacy:** a nickname as your display name, a choice to show or hide your bio, posting anonymously (moderators can still see who posted), and a larger text option.
 - **Badges:** verified professional, activity creator, moderator. The guidelines page says what each badge does and doesn't mean.
 - **"Found this helpful":** labeled as people's opinion, never as proof that something works.
@@ -66,9 +66,10 @@ Use the **Demo account** menu (top right) to switch between made-up people:
 
 ## Testing
 
-- `node forum/tests/run-tests.js` runs 26 checks of the forum's rules in a few seconds, with no installs.
+- `node forum/tests/run-tests.js` runs 31 checks of the forum's rules in a few seconds, with no installs.
 - The pages were also tested in a real browser (Chromium) on desktop and phone sizes, including the edit, appeal, mute and draft flows.
 - `supabase/schema.sql` was loaded into a scratch PostgreSQL 16 database and its access rules were tested there (for example: anonymous authors stay hidden, people can only appeal their own hidden posts once, and moderators can't be muted).
+- The database repeats the app's key rules itself, so a modified app can't skip them: the unsafe-claim hold, "professional guidance" for verified professionals only, auto-hide after 3 reports, and only moderators changing whether a post is visible. `forum_needs_review` in `schema.sql` copies the hold patterns from `js/safety.js`, so change both together.
 
 ## Not done yet
 
