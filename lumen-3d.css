@@ -1,0 +1,31 @@
+#lumen-3d {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  overflow: hidden;
+  background: #040410;
+  color: #fff9ef;
+  font-family: "DM Sans", sans-serif;
+}
+
+#lumen-3d[hidden] { display: none; }
+#lumen-3d canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
+.lumen-vignette { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at center, transparent 32%, rgba(2, 1, 12, .72) 120%); }
+.lumen-hud { position: absolute; inset: 0; pointer-events: none; padding: clamp(18px, 3vw, 44px); display: flex; justify-content: space-between; align-items: flex-start; }
+.lumen-copy { max-width: 560px; text-shadow: 0 2px 20px #090117; }
+.lumen-kicker { margin: 0 0 8px; color: #f5c66e; font: 500 11px/1.2 "DM Mono", monospace; letter-spacing: .16em; text-transform: uppercase; }
+.lumen-hud h2 { margin: 0; font: 400 clamp(31px, 4vw, 58px)/.95 "Playfair Display", serif; letter-spacing: -.045em; }
+.lumen-status { margin: 14px 0 0; max-width: 430px; font-size: 15px; line-height: 1.45; color: #efe2ff; }
+.lumen-exit, .lumen-enter { pointer-events: auto; border: 1px solid rgba(255,255,255,.45); background: rgba(9, 4, 24, .66); color: #fff9ef; backdrop-filter: blur(10px); font: 500 11px "DM Mono", monospace; letter-spacing: .08em; text-transform: uppercase; padding: 12px 15px; cursor: pointer; }
+.lumen-exit:hover, .lumen-enter:hover { background: #f5c66e; color: #130826; border-color: #f5c66e; }
+.lumen-sequence { position: absolute; z-index: 2; pointer-events: none; left: 50%; top: 25px; transform: translateX(-50%); min-width: min(580px, calc(100vw - 36px)); padding: 12px 16px 14px; text-align: center; border: 1px solid rgba(255,255,255,.22); background: rgba(9, 5, 24, .58); backdrop-filter: blur(12px); }
+.lumen-sequence small { display: block; color: #e8c7ff; font: 500 10px "DM Mono", monospace; letter-spacing: .14em; text-transform: uppercase; }
+.lumen-sequence-items { display: flex; justify-content: center; gap: 10px; margin-top: 9px; }
+.lumen-token { border: 1px solid rgba(247,217,255,.42); border-radius: 999px; padding: 6px 10px; color: #fff9ef; font-size: 13px; white-space: nowrap; }
+.lumen-help { position: absolute; left: clamp(18px, 3vw, 44px); bottom: 27px; max-width: 350px; color: #ded3e9; font-size: 12px; line-height: 1.5; text-shadow: 0 2px 10px #000; pointer-events: none; }
+.lumen-help b { color: #f5c66e; font-family: "DM Mono", monospace; font-size: 11px; }
+.lumen-enter { position: absolute; z-index: 4; left: 50%; top: 58%; transform: translate(-50%, -50%); padding: 16px 21px; box-shadow: 0 0 45px rgba(165, 84, 255, .38); }
+.lumen-crosshair { position: absolute; left: 50%; top: 50%; width: 18px; height: 18px; transform: translate(-50%, -50%); pointer-events: none; opacity: .84; }
+.lumen-crosshair::before, .lumen-crosshair::after { content: ""; position: absolute; background: #fff7de; box-shadow: 0 0 7px #d563ff; }
+.lumen-crosshair::before { width: 18px; height: 1px; top: 8px; }.lumen-crosshair::after { height: 18px; width: 1px; left: 8px; }
+@media (max-width: 650px) { .lumen-hud h2 { font-size: 34px; } .lumen-sequence { top: 13px; } .lumen-hud { padding-top: 121px; } .lumen-token { font-size: 11px; padding: 5px 7px; } .lumen-status { font-size: 13px; } .lumen-help { bottom: 15px; max-width: 280px; } }

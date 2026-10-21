@@ -1,2 +1,48 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Reframe — recovery, at your pace</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=DM+Mono&family=DM+Sans:wght@400;500;600&family=Playfair+Display:ital,wght@0,400;1,400&display=swap" rel="stylesheet"><link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="experience.css"></head><body>
-<main><div class="scene" aria-hidden="true"><canvas id="mosaic"></canvas></div><div class="scene-glow" aria-hidden="true"></div><div class="vignette" aria-hidden="true"></div><div class="content-scrim" aria-hidden="true"></div><nav class="nav" id="nav"><a href="#top" class="brand">✣ reframe</a><span>A recovery companion</span><button id="launch">Launch experience →</button></nav><section class="hero" id="top"><div class="hero-copy"><p class="eyebrow">Post-chemotherapy support</p><h1>Make room for<br><em>your way back.</em></h1><p>A calmer way to discover reviewed activities for attention, memory, coordination, and the small daily wins that matter.</p><button class="hero-launch" id="hero-launch">Explore three activities →</button></div><div class="scroll-cue" id="scrollCue">Scroll to begin <b></b></div></section><section class="intro-scroll" id="mosaic-intro"></section><section class="landing"><p class="eyebrow">Recovery is not one-size-fits-all</p><h2>Start with what feels<br><em>possible today.</em></h2><p>Reframe is a supportive digital space for trying short, adaptable activities that fit your energy, preferences, and goals. You remain in control of the pace.</p><div class="promise"><article><b>01</b><h3>Made for your pace</h3><p>Choose when to explore. There are no streaks, timers, or pressure.</p></article><article><b>02</b><h3>Clear by design</h3><p>Every activity explains what it is, how it works, and what to expect.</p></article><article><b>03</b><h3>Supportive, not clinical</h3><p>Reframe supports your routine; it does not replace professional care.</p></article></div></section></main><section id="experience" hidden></section><script src="script.js"></script><script src="experience.js"></script></body></html>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="A gentle, supportive recovery platform concept for people after chemotherapy." />
+    <title>Reframe — recovery, at your pace</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&family=Playfair+Display:ital,wght@0,400;0,500;1,400;1,500&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="experience.css?v=three-games-2" />
+    <link rel="stylesheet" href="experience-games.css?v=three-games-2" />
+    <link rel="stylesheet" href="game-launch.css?v=corner-2" />
+    <link rel="stylesheet" href="immersive-worlds.css?v=1" />
+    <link rel="stylesheet" href="lumen-3d.css?v=1" />
+    <link rel="stylesheet" href="other-worlds-3d.css?v=1" />
+    <link rel="stylesheet" href="new-worlds-3d.css?v=1" />
+  </head>
+  <body>
+    <main>
+      <div class="scene" aria-hidden="true"><canvas id="mosaic"></canvas></div>
+      <div class="scene-glow" aria-hidden="true"></div>
+      <div class="vignette" aria-hidden="true"></div>
+      <div class="content-scrim" aria-hidden="true"></div>
+      <nav class="nav" id="nav" aria-label="Primary navigation">
+        <a href="#top" class="brand"><span class="brand-mark"><i></i><i></i><i></i><i></i></span>reframe</a>
+        <span class="nav-note">A recovery companion</span>
+        <a class="nav-link" href="#approach">Our approach <span aria-hidden="true">↗</span></a>
+      </nav>
+      <section class="hero" id="top" aria-labelledby="hero-title">
+        <div class="hero-copy"><p class="eyebrow">Post-chemotherapy support</p><h1 id="hero-title">Make room for<br /><em>your way back.</em></h1><p class="hero-summary">A calmer way to discover reviewed activities for attention, memory, coordination, and the small daily wins that matter.</p></div>
+        <div class="scroll-cue" id="scrollCue"><span>Scroll to begin</span><b></b></div>
+      </section>
+      <section class="intro-scroll" id="mosaic-intro" aria-hidden="true"></section>
+      <section class="landing" id="approach">
+        <div class="landing-top"><p class="eyebrow">Recovery is not one-size-fits-all</p><h2>Start with what feels<br /><em>possible today.</em></h2><p>Reframe is a supportive digital space for trying short, adaptable activities that fit your energy, preferences, and goals. You remain in control of the pace.</p></div>
+        <div class="stat-grid" aria-label="Chemotherapy recovery context">
+          <article class="stat-card"><span class="stat-number">68.1%</span><p>of people in a meta-analysis reported chemotherapy-induced peripheral neuropathy in the first month after treatment.</p><a href="https://www.cancer.gov/about-nci/organization/ccct/steering-committees/ncorp/symptom-management/cipn-ctpm-execsum-jnci2019.pdf" target="_blank" rel="noreferrer">NCI evidence summary <span>↗</span></a></article>
+          <article class="stat-card stat-card-dark"><span class="stat-number">30%</span><p>reported peripheral-neuropathy symptoms six months or more after chemotherapy in that review.</p><a href="https://www.cancer.gov/about-nci/organization/ccct/steering-committees/ncorp/symptom-management/cipn-ctpm-execsum-jnci2019.pdf" target="_blank" rel="noreferrer">NCI evidence summary <span>↗</span></a></article>
+          <article class="stat-card stat-card-soft"><span class="stat-word">Many</span><p>people experience changes in memory or concentration during or after cancer treatment; experiences and causes vary.</p><a href="https://www.cancer.gov/about-cancer/treatment/side-effects/memory" target="_blank" rel="noreferrer">NCI patient guidance <span>↗</span></a></article>
+        </div>
+        <div class="promise"><div><p class="eyebrow">Designed with care</p><h3>Guidance that respects<br />the whole person.</h3></div><ul><li><span>01</span> Personalized by your preferences, never assumptions</li><li><span>02</span> Clear, adjustable activities for variable-energy days</li><li><span>03</span> Supportive by design—not medical advice or treatment</li></ul></div>
+        <p class="disclaimer">Reframe is a proposed supportive platform, not a diagnostic tool or replacement for oncology, rehabilitation, or other clinical care. New, severe, or worsening symptoms should be discussed with a healthcare professional.</p>
+      </section>
+    </main><script src="script.js?v=three-games-2"></script><script src="experience.js?v=six-games-1"></script><script src="game-launch.js?v=corner-1"></script><script type="module" src="lumen-3d.js?v=1"></script><script type="module" src="starling-3d.js?v=1"></script><script type="module" src="cloudpath-3d.js?v=1"></script><script type="module" src="new-worlds-3d.js?v=1"></script>
+  </body>
+</html>
