@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Talk with people recovering after chemotherapy in a moderated, supportive space.">
+  <title>Community · Chemoasis community</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono&family=DM+Sans:wght@400;500;600&family=Playfair+Display:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="../enhancements.css">
+  <link rel="stylesheet" href="forum.css">
+</head>
+<body class="f-page">
+  <header class="f-header" data-forum-header></header>
+  <main id="main" class="f-main">
+    <section class="f-hero">
+      <p class="eyebrow">Community</p>
+      <h1 class="f-h1">Talk with people who <em>get it.</em></h1>
+      <p class="f-lede">Share what recovery is like, compare notes on activities, and ask questions in a moderated space. Personal stories are labeled as personal stories, so you always know what you're reading.</p>
+      <a class="f-button" href="new.html">Start a conversation</a>
+    </section>
+
+    <div class="f-layout">
+      <aside class="f-sidebar" aria-labelledby="categories-heading">
+        <h2 class="f-h3" id="categories-heading">Categories</h2>
+        <ul class="f-categories" id="categories"></ul>
+      </aside>
+
+      <section class="f-content" aria-labelledby="threads-heading">
+        <form class="f-filters" id="filters" role="search">
+          <label class="f-field f-field--grow"><span>Search conversations</span><input type="search" name="q" placeholder="Try &quot;seated&quot; or &quot;focus&quot;"></label>
+          <label class="f-field"><span>Game</span><select name="game"><option value="">Any game</option></select></label>
+          <label class="f-field"><span>Training area</span><select name="area"><option value="">Any area</option></select></label>
+          <label class="f-field"><span>Sort</span><select name="sort"><option value="recent">Recent activity</option><option value="replies">Most replies</option></select></label>
+        </form>
+        <div class="f-list-head">
+          <h2 class="f-h2" id="threads-heading">All conversations</h2>
+          <p class="f-muted" id="result-count" aria-live="polite"></p>
+        </div>
+        <ul class="f-cards" id="threads"></ul>
+      </section>
+    </div>
+  </main>
+  <footer class="f-footer">
+    <p>Chemoasis community · <a href="guidelines.html">Community guidelines</a> · All people and posts shown are made-up demo data.</p>
+  </footer>
+  <script src="js/catalog.js"></script>
+  <script src="js/seed.js"></script>
+  <script src="js/safety.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/home.js"></script>
+</body>
+</html>

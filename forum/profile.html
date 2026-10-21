@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="A member profile in the Chemoasis community.">
+  <title>Profile · Chemoasis community</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono&family=DM+Sans:wght@400;500;600&family=Playfair+Display:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="../enhancements.css">
+  <link rel="stylesheet" href="forum.css">
+</head>
+<body class="f-page">
+  <header class="f-header" data-forum-header></header>
+  <main id="main" class="f-main f-main--narrow">
+    <div id="profile"></div>
+
+    <section id="settings" aria-labelledby="settings-heading" hidden>
+      <h2 class="f-h2" id="settings-heading">Profile and privacy</h2>
+      <form class="f-form" id="profile-form" novalidate>
+        <label class="f-field"><span>Display name</span><input type="text" name="displayName" maxlength="40" required></label>
+        <p class="f-hint">Use a nickname if you like. You don't need to use your real name.</p>
+        <label class="f-field"><span>About you (optional)</span><textarea name="bio" rows="3" maxlength="300"></textarea></label>
+        <label class="f-check"><input type="checkbox" name="showBio"> Show "About you" on my public profile</label>
+        <label class="f-check"><input type="checkbox" name="anonymousByDefault"> Post anonymously by default</label>
+        <label class="f-check"><input type="checkbox" name="largeText"> Larger text and buttons</label>
+        <div class="f-error" role="alert" id="profile-error"></div>
+        <div class="f-actions"><button class="f-button" type="submit">Save</button></div>
+      </form>
+      <h3 class="f-h3 f-h3--spaced">People you've muted</h3>
+      <ul class="f-muted-list" id="muted-list"></ul>
+      <div class="f-danger">
+        <h3 class="f-h3">Demo data</h3>
+        <p class="f-muted">Everything here is saved only in this browser. Resetting brings back the original made-up posts.</p>
+        <button class="f-button f-button--quiet" type="button" id="reset-demo">Reset demo data</button>
+      </div>
+    </section>
+
+    <section aria-labelledby="posts-heading">
+      <h2 class="f-h2" id="posts-heading">Conversations started</h2>
+      <ul class="f-cards" id="profile-threads"></ul>
+    </section>
+  </main>
+  <footer class="f-footer">
+    <p>Chemoasis community · <a href="guidelines.html">Community guidelines</a> · All people and posts shown are made-up demo data.</p>
+  </footer>
+  <script src="js/catalog.js"></script>
+  <script src="js/seed.js"></script>
+  <script src="js/safety.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/profile.js"></script>
+</body>
+</html>
