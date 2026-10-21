@@ -2,7 +2,7 @@
  * Checks the forum's rules without a browser: safety check, posting, privacy,
  * reports, moderation, edits, appeals and muting. Uses only demo data.
  *
- * Run from the repo root:  node forum/tests/run-tests.js
+ * Run from the repo root:  node forum/tests/forum.test.js
  * Needs Node 16 or newer and nothing else.
  */
 const fs = require("fs");
@@ -22,7 +22,7 @@ function freshForum() {
   window.window = window;
   const context = vm.createContext(Object.assign(window, { console, Date, JSON, Math, Promise, Set, Error, URL }));
   for (const file of ["catalog", "seed", "safety", "store"]) {
-    const code = fs.readFileSync(path.join(__dirname, "..", "js", file + ".js"), "utf8");
+    const code = fs.readFileSync(path.join(__dirname, "..", "assets", "js", file + ".js"), "utf8");
     vm.runInContext(code, context, { filename: file + ".js" });
   }
   context.Forum.__storage = window.localStorage;
