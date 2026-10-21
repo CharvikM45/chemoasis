@@ -164,8 +164,9 @@ Forum.ui = (function () {
     header.innerHTML =
       '<a class="skip-link" href="#main">Skip to main content</a>' +
       '<div class="f-header__inner">' +
-      '<a class="f-brand" href="../index.html">✣ chemoasis</a>' +
-      '<nav class="f-nav" aria-label="Forum">' +
+      '<a class="f-brand" href="../index.html">✣ reframe</a>' +
+      '<nav class="f-nav" aria-label="Primary navigation">' +
+      '<a href="../index.html">Games portal</a>' +
       link("index.html", "Forum") +
       link("new.html", "New post") +
       link("guidelines.html", "Guidelines") +
