@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Sign in to Reframe and get three starting games suggested from a short questionnaire.">
+  <title>Your starting games · Reframe</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono&family=DM+Sans:wght@400;500;600&family=Playfair+Display:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/account.css">
+</head>
+<body>
+  <div class="backdrop" aria-hidden="true"><i></i><i></i><i></i></div>
+
+  <header class="topbar">
+    <a class="brand" href="../home/index.html">✣ reframe</a>
+    <div class="who" id="who" hidden>
+      <span id="whoName"></span>
+      <button class="link-btn" id="signOutTop">Sign out</button>
+    </div>
+  </header>
+
+  <main id="main">
+    <!-- Sign in / create account -->
+    <section class="view" id="signinView" aria-labelledby="signinTitle" hidden>
+      <div class="card">
+        <p class="eyebrow">Welcome to Reframe</p>
+        <h1 id="signinTitle">Find your <em>starting place.</em></h1>
+        <p class="lede">Sign in, answer ten short questions, and we'll suggest three games to start with. You can change your answers any time.</p>
+
+        <div class="tabs" role="tablist" aria-label="Account">
+          <button role="tab" id="tabCreate" aria-selected="true" aria-controls="authForm">Create account</button>
+          <button role="tab" id="tabSignin" aria-selected="false" aria-controls="authForm">Sign in</button>
+        </div>
+
+        <form id="authForm" class="form" novalidate>
+          <label class="field" id="nameField">
+            <span>First name or nickname</span>
+            <input name="name" autocomplete="nickname" maxlength="40">
+          </label>
+          <label class="field">
+            <span>Email</span>
+            <input name="email" type="email" autocomplete="email" required>
+          </label>
+          <label class="field">
+            <span>Password</span>
+            <input name="password" type="password" autocomplete="new-password" minlength="8" required>
+            <small id="passwordHint">At least 8 characters.</small>
+          </label>
+          <p class="error" id="authError" role="alert"></p>
+          <button class="primary" type="submit" id="authSubmit">Create account</button>
+        </form>
+        <p class="note"><strong>Demo sign-in.</strong> Your account and answers are saved only in this browser and aren't sent anywhere. Please don't reuse a real password.</p>
+      </div>
+    </section>
+
+    <!-- Questionnaire intro -->
+    <section class="view" id="introView" aria-labelledby="introTitle" hidden>
+      <div class="card">
+        <p class="eyebrow">About 3 minutes · 10 questions</p>
+        <h1 id="introTitle">A little about <em>you.</em></h1>
+        <p class="lede">Your answers help us suggest games that fit what you'd like to work on and how much energy you have. Every question can be skipped.</p>
+        <ul class="promises">
+          <li><b>01</b>Part 1 asks about treatment. Skip anything you'd rather not share.</li>
+          <li><b>02</b>Part 2 asks what bothers you most. This shapes your suggestions the most.</li>
+          <li><b>03</b>Answers stay in this browser. They're never shown on the forum.</li>
+        </ul>
+        <p class="note">This is not a medical assessment and can't tell you what's safe for you. For new, severe, or worsening symptoms, contact your care team.</p>
+        <div class="row">
+          <button class="primary" id="startQuiz">Start</button>
+          <button class="ghost" id="skipQuiz">Not now</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- One question at a time -->
+    <section class="view" id="questionView" aria-labelledby="qTitle" hidden>
+      <div class="card card--wide">
+        <div class="q-head">
+          <p class="eyebrow" id="qPart"></p>
+          <p class="q-count" id="qCount"></p>
+        </div>
+        <div class="bar" aria-hidden="true"><span id="qBar"></span></div>
+        <p class="part-note" id="qPartNote" hidden></p>
+        <h2 id="qTitle" tabindex="-1"></h2>
+        <p class="help" id="qHelp"></p>
+        <div id="qBody"></div>
+        <p class="note" id="qNote" hidden></p>
+        <div class="q-actions">
+          <button class="ghost" id="qBack">Back</button>
+          <span class="spacer"></span>
+          <button class="link-btn" id="qSkip">Skip</button>
+          <button class="primary" id="qNext">Next</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Recommendations -->
+    <section class="view" id="resultsView" aria-labelledby="resultsTitle" hidden>
+      <div class="results">
+        <header class="results-head">
+          <p class="eyebrow" id="hello"></p>
+          <h1 id="resultsTitle">Your three <em>starting games.</em></h1>
+          <p class="lede">In order of priority, based on your answers and how you use Reframe. Start with the first, or whichever feels right today.</p>
+          <div class="heard" id="heard"></div>
+        </header>
+
+        <ol class="picks" id="picks"></ol>
+        <div class="global-notes" id="globalNotes"></div>
+
+        <section class="panel" aria-labelledby="signalsTitle">
+          <h2 class="panel-title" id="signalsTitle">What shaped these suggestions</h2>
+          <ul class="signals" id="signals"></ul>
+          <button class="switch" role="switch" id="ownPostsSwitch" aria-checked="false">
+            Use my own forum posts
+            <small>Looks for topics like “word-finding” or “numb fingers” in posts you wrote. Only in this browser, and you can turn it off any time.</small>
+          </button>
+        </section>
+
+        <details class="panel how">
+          <summary>How suggestions work</summary>
+          <p>A small learning model gives each game a fit score from your questionnaire answers. It starts from weights that link each answer to the games that practice it (for example, “trouble finding words” and Story Echo). Then it learns from you: each time you play a game or choose “Not for me,” it adjusts your own weights so suggestions follow what you actually choose. Community topics count a little, as popularity only.</p>
+          <p>The score shows how well a game fits your answers and choices. It isn't a chance that a game will help a medical condition, and none of these games have been clinically tested. This is not a health result.</p>
+        </details>
+
+        <div class="row row--quiet">
+          <button class="ghost" id="editAnswers">Edit my answers</button>
+          <button class="ghost" id="resetModel">Reset personalization</button>
+          <button class="ghost" id="deleteAccount">Delete my account and data</button>
+        </div>
+        <p class="status" id="resultsStatus" role="status"></p>
+      </div>
+    </section>
+  </main>
+
+  <!-- Forum data (for community topics and, if allowed, your own posts) -->
+  <script src="../forum/assets/js/catalog.js"></script>
+  <script src="../forum/assets/js/seed.js"></script>
+  <script src="../forum/assets/js/safety.js"></script>
+  <script src="../forum/assets/js/store.js"></script>
+
+  <script src="assets/js/questions.js"></script>
+  <script src="assets/js/recommender.js"></script>
+  <script src="assets/js/auth.js"></script>
+  <script src="assets/js/context.js"></script>
+  <script src="assets/js/app.js"></script>
+</body>
+</html>
