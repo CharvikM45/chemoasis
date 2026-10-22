@@ -1,0 +1,226 @@
+:root {
+  --ink: #33241e;
+  --espresso: #4a3025;
+  --clay: #a86c4e;
+  --latte: #d7b391;
+  --cream: #f7f0e7;
+  --paper: #fffaf4;
+  --muted: #80695b;
+  --line: #bda998;
+  --sage: #7d8f69;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--cream);
+  color: var(--ink);
+  font-family: "DM Sans", sans-serif;
+}
+
+#stage {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+  cursor: pointer;
+}
+
+/* Top bar */
+.topbar {
+  position: fixed;
+  z-index: 10;
+  inset: 0 0 auto;
+  padding: 22px clamp(20px, 4vw, 56px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  pointer-events: none;
+}
+.topbar > * { pointer-events: auto; }
+.brand {
+  font: 600 21px "DM Sans";
+  color: var(--espresso);
+  text-decoration: none;
+  letter-spacing: -1px;
+}
+.title {
+  font: 10px "DM Mono";
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.controls { display: flex; gap: 10px; }
+.icon-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid #bda99880;
+  background: #fffaf4b3;
+  backdrop-filter: blur(8px);
+  color: var(--espresso);
+  font: 15px "DM Sans";
+  cursor: pointer;
+  transition: background .3s, transform .3s;
+}
+.icon-btn:hover { background: var(--paper); transform: translateY(-1px); }
+.icon-btn[aria-pressed="false"] { color: var(--line); text-decoration: line-through; }
+
+/* Overlays */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 90px 20px 30px;
+  background: #f7f0e766;
+  backdrop-filter: blur(6px);
+  overflow-y: auto;
+  animation: fadeIn .6s ease both;
+}
+.overlay[hidden] { display: none; }
+/* Keep the bloomed plant visible behind the end card. */
+#endScreen { background: transparent; backdrop-filter: none; }
+
+.card {
+  width: min(560px, 100%);
+  padding: clamp(28px, 5vw, 48px);
+  background: #fffaf4e6;
+  border: 1px solid #bda99866;
+  border-radius: 28px;
+  box-shadow: 0 30px 60px #4a302514;
+  text-align: center;
+  animation: rise .7s cubic-bezier(.2, .7, .2, 1) both;
+}
+.card--small { width: min(460px, 100%); }
+
+.eyebrow {
+  margin: 0 0 16px;
+  color: var(--clay);
+  font: 10px "DM Mono";
+  letter-spacing: .19em;
+  text-transform: uppercase;
+}
+h1, h2 {
+  font-family: "Playfair Display", serif;
+  font-weight: 400;
+  letter-spacing: -.05em;
+  margin: 0;
+  color: var(--espresso);
+}
+h1 { font-size: clamp(48px, 7vw, 72px); line-height: .95; }
+h2 { font-size: clamp(36px, 5vw, 50px); line-height: 1; }
+em { color: var(--clay); }
+
+.lede {
+  margin: 20px auto 26px;
+  max-width: 420px;
+  color: #674e40;
+  line-height: 1.65;
+  font-size: 16px;
+}
+
+fieldset { border: 0; margin: 0 0 18px; padding: 0; }
+legend {
+  margin: 0 auto 10px;
+  font: 10px "DM Mono";
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.chip {
+  padding: 11px 18px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--espresso);
+  font: 500 15px "DM Sans";
+  cursor: pointer;
+  transition: background .3s, color .3s, border-color .3s;
+}
+.chip:hover { border-color: var(--clay); }
+.chip[aria-checked="true"] { background: var(--espresso); border-color: var(--espresso); color: var(--cream); }
+.hint { margin: 10px 0 0; font-size: 13px; color: var(--muted); min-height: 1.4em; }
+
+.keys-help {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  justify-content: center;
+  margin: 8px 0 26px;
+  font-size: 13px;
+  color: var(--muted);
+}
+kbd {
+  display: inline-block;
+  min-width: 26px;
+  padding: 3px 7px;
+  margin: 0 2px;
+  border: 1px solid var(--line);
+  border-bottom-width: 2px;
+  border-radius: 7px;
+  background: var(--paper);
+  font: 12px "DM Mono";
+  color: var(--espresso);
+}
+
+.primary, .ghost {
+  padding: 15px 34px;
+  border-radius: 999px;
+  font: 500 16px "DM Sans";
+  cursor: pointer;
+  transition: transform .3s, background .3s, box-shadow .3s;
+}
+.primary {
+  border: 0;
+  background: var(--clay);
+  color: var(--paper);
+  box-shadow: 0 10px 22px #a86c4e40;
+}
+.primary:hover { transform: translateY(-2px); background: #9a6145; }
+.ghost { border: 1px solid var(--line); background: transparent; color: var(--espresso); }
+.ghost:hover { border-color: var(--clay); }
+.row { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+
+.note { margin: 22px auto 0; max-width: 400px; font-size: 12px; line-height: 1.55; color: var(--muted); }
+
+button:focus-visible, a:focus-visible { outline: 3px solid var(--clay); outline-offset: 3px; }
+
+/* Breathing circle */
+.breath {
+  width: 120px;
+  height: 120px;
+  margin: 28px auto 6px;
+  display: grid;
+  place-items: center;
+}
+.breath span {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: radial-gradient(circle, #9aab84 0%, #9aab8466 60%, transparent 72%);
+  animation: breathe 8s ease-in-out infinite;
+}
+.breath-label { margin: 0 0 24px; font: 12px "DM Mono"; letter-spacing: .12em; text-transform: uppercase; color: var(--sage); }
+
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+@keyframes fadeIn { from { opacity: 0; } }
+@keyframes rise { from { opacity: 0; transform: translateY(18px); } }
+@keyframes breathe { 0%, 100% { transform: scale(.55); } 50% { transform: scale(1); } }
+
+@media (max-width: 700px) {
+  .title { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+  .breath span { transform: scale(.8); }
+}
