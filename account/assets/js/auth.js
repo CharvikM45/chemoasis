@@ -1,15 +1,15 @@
 /*
- * Demo sign-in. Accounts, answers and the personal model live only in this browser
- * (localStorage). Every function returns a Promise, like Forum.store, so the bodies can
- * be swapped for Supabase Auth + tables later without changing the pages.
+ * Accounts. Sign-up, sign-in and sessions go to the account server (/api/auth, see server/).
+ * The session lives in an HttpOnly cookie that page scripts can't read.
  *
- * This is NOT real security: anyone with access to this browser can read the data.
+ * Questionnaire answers and the personal recommender model are still saved only in this
+ * browser (localStorage), under the account's id. Moving them to the server is a separate
+ * decision, because they include health information.
  */
 window.Account = window.Account || {};
 
 Account.auth = (function () {
-  const USERS = "chemoasis.account.users";
-  const SESSION = "chemoasis.account.session";
+  const SESSION = "chemoasis.account.session"; // remembers who's signed in, for the home page's play logging
   const userKey = (id) => "chemoasis.account.user." + id;
 
   const memory = {};
@@ -28,91 +28,87 @@ Account.auth = (function () {
   };
   const read = (key, fallback) => { try { return JSON.parse(storage.get(key)) || fallback; } catch (_) { return fallback; } };
   const write = (key, value) => storage.set(key, JSON.stringify(value));
-  const fail = (message) => Promise.reject(new Error(message));
 
-  const normalEmail = (email) => String(email || "").trim().toLowerCase();
-  const toHex = (buf) => Array.from(new Uint8Array(buf), (b) => b.toString(16).padStart(2, "0")).join("");
-
-  async function hash(password, salt) {
-    const subtle = window.crypto && window.crypto.subtle;
-    if (subtle) {
-      const key = await subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveBits"]);
-      const bits = await subtle.deriveBits({ name: "PBKDF2", salt: new TextEncoder().encode(salt), iterations: 120000, hash: "SHA-256" }, key, 256);
-      return "pbkdf2:" + toHex(bits);
+  async function api(path, options) {
+    const opts = options || {};
+    let res;
+    try {
+      res = await fetch("/api/auth" + path, {
+        method: opts.method || "GET",
+        credentials: "same-origin",
+        headers: opts.body ? { "Content-Type": "application/json" } : {},
+        body: opts.body ? JSON.stringify(opts.body) : undefined
+      });
+    } catch (_) {
+      throw new Error("We can't reach the account server right now. Check your connection and try again.");
     }
-    // Fallback for browsers without Web Crypto. Demo only.
-    let h = 5381;
-    for (const ch of salt + password) h = ((h << 5) + h + ch.charCodeAt(0)) >>> 0;
-    return "djb2:" + h.toString(16);
+    const data = res.status === 204 ? null : await res.json().catch(() => null);
+    if (!res.ok) {
+      const error = new Error((data && data.error) || "Something went wrong. Please try again.");
+      error.status = res.status;
+      throw error;
+    }
+    return data;
   }
 
-  function randomId(prefix) {
-    const bytes = new Uint8Array(8);
-    (window.crypto || { getRandomValues: (b) => b.map(() => Math.floor(Math.random() * 256)) }).getRandomValues(bytes);
-    return prefix + toHex(bytes);
+  let cached; // undefined = not asked yet, null = signed out
+  function remember(user) {
+    cached = user;
+    if (user) write(SESSION, { userId: user.id, at: Date.now() });
+    else storage.remove(SESSION);
+    return user;
   }
-
-  const publicUser = (u) => ({ id: u.id, email: u.email, name: u.name, createdAt: u.createdAt });
 
   return {
     async createAccount({ email, name, password }) {
-      const e = normalEmail(email);
-      const n = String(name || "").trim();
-      if (!/^\S+@\S+\.\S+$/.test(e)) return fail("Please enter an email address like name@example.com.");
-      if (!n) return fail("Please enter a first name or nickname.");
-      if (String(password || "").length < 8) return fail("Please use a password with at least 8 characters.");
-      const users = read(USERS, []);
-      if (users.some((u) => u.email === e)) return fail("There's already an account with that email in this browser. Try signing in.");
-      const salt = randomId("s-");
-      const user = { id: randomId("u-"), email: e, name: n.slice(0, 40), salt, hash: await hash(password, salt), createdAt: new Date().toISOString() };
-      users.push(user);
-      write(USERS, users);
-      write(SESSION, { userId: user.id, at: Date.now() });
-      return publicUser(user);
+      const { user } = await api("/signup", { method: "POST", body: { email, name, password } });
+      return remember(user);
     },
 
     async signIn({ email, password }) {
-      const user = read(USERS, []).find((u) => u.email === normalEmail(email));
-      if (!user || (await hash(String(password || ""), user.salt)) !== user.hash) {
-        return fail("That email and password don't match an account in this browser.");
+      const { user } = await api("/login", { method: "POST", body: { email, password } });
+      return remember(user);
+    },
+
+    async signOut() {
+      try { await api("/logout", { method: "POST" }); } catch (_) { /* still sign out on this device */ }
+      remember(null);
+      return true;
+    },
+
+    async currentUser() {
+      if (cached !== undefined) return cached;
+      try {
+        const { user } = await api("/me");
+        return remember(user);
+      } catch (error) {
+        if (error.status === 401) return remember(null);
+        throw error;
       }
-      write(SESSION, { userId: user.id, at: Date.now() });
-      return publicUser(user);
     },
 
-    signOut() {
-      storage.remove(SESSION);
-      return Promise.resolve(true);
-    },
-
-    currentUser() {
-      const session = read(SESSION, null);
-      const user = session && read(USERS, []).find((u) => u.id === session.userId);
-      return Promise.resolve(user ? publicUser(user) : null);
-    },
-
-    // Answers, the personal model and preferences for the signed-in person.
+    // Answers, the personal model and preferences for the signed-in person (this browser only).
     async getData() {
       const user = await this.currentUser();
-      if (!user) return fail("Please sign in first.");
+      if (!user) throw new Error("Please sign in first.");
       return read(userKey(user.id), { answers: {}, completedAt: null, useOwnPosts: false, model: null });
     },
 
     async saveData(patch) {
       const user = await this.currentUser();
-      if (!user) return fail("Please sign in first.");
+      if (!user) throw new Error("Please sign in first.");
       const next = Object.assign(read(userKey(user.id), {}), patch);
       write(userKey(user.id), next);
       return next;
     },
 
-    // Removes the account and everything saved for it from this browser.
+    // Deletes the account on the server and everything saved for it in this browser.
     async deleteAccount() {
       const user = await this.currentUser();
       if (!user) return true;
-      write(USERS, read(USERS, []).filter((u) => u.id !== user.id));
+      await api("/me", { method: "DELETE" });
       storage.remove(userKey(user.id));
-      storage.remove(SESSION);
+      remember(null);
       return true;
     },
 
