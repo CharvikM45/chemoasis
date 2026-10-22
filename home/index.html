@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&family=Playfair+Display:ital,wght@0,400;0,500;1,400;1,500&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="assets/css/styles.css" />
-    <link rel="stylesheet" href="assets/css/brain.css?v=1" />
+    <link rel="stylesheet" href="assets/css/brain.css?v=2" />
     <script type="importmap">{ "imports": { "three": "https://unpkg.com/three@0.161.0/build/three.module.js", "three/addons/": "https://unpkg.com/three@0.161.0/examples/jsm/" } }</script>
     <link rel="stylesheet" href="../games/assets/css/experience.css?v=three-games-2" />
     <link rel="stylesheet" href="../games/assets/css/experience-games.css?v=three-games-2" />
@@ -18,6 +18,7 @@
     <link rel="stylesheet" href="../games/assets/css/lumen-3d.css?v=1" />
     <link rel="stylesheet" href="../games/assets/css/other-worlds-3d.css?v=1" />
     <link rel="stylesheet" href="../games/assets/css/new-worlds-3d.css?v=1" />
+    <link rel="stylesheet" href="../games/assets/css/levels.css?v=1" />
   </head>
   <body class="brain-mode">
     <main>
@@ -48,23 +49,6 @@
         <p class="disclaimer">Reframe is a proposed supportive platform, not a diagnostic tool or replacement for oncology, rehabilitation, or other clinical care. New, severe, or worsening symptoms should be discussed with a healthcare professional.</p>
       </section>
     </main>
-    <div class="brain-overlay" id="brainOverlay">
-      <div class="brain-labels" id="brainLabels" aria-hidden="true"></div>
-      <div class="brain-caption">
-        <p class="eyebrow">Inside chemo brain</p>
-        <h2>Some parts feel it <em>more than others.</em></h2>
-        <p>Brain-imaging studies most often find changes in the frontal lobe, the hippocampus and the white matter that connects the two halves. Experiences vary from person to person, and many changes ease with time.</p>
-      </div>
-      <div class="brain-legend">
-        <span>Brighter: less often affected</span><i aria-hidden="true"></i><span>Duller: more often affected</span>
-        <small>Illustrative, based on brain-imaging research on chemotherapy. Not a picture of any one person's brain.</small>
-      </div>
-      <ul class="sr-only">
-        <li>Often affected: frontal lobe (planning, focus and multitasking), hippocampus (forming new memories), corpus callosum (white matter linking both halves).</li>
-        <li>Sometimes affected: parietal lobe (attention, touch and sense of space), temporal lobe (language, hearing and memory).</li>
-        <li>Less often affected: cerebellum (balance and coordination), occipital lobe (vision), brainstem (breathing, heartbeat and alertness).</li>
-      </ul>
-    </div>
     <script>
       // If the 3D intro can't start (no WebGL, or the 3D library fails to load), show the original mosaic.
       window.brainFallback = function () {
@@ -77,6 +61,6 @@
       };
       setTimeout(function () { if (!window.__brainStarted) window.brainFallback(); }, 10000);
     </script>
-    <script type="module" src="assets/js/brain/intro.js?v=1" onerror="brainFallback()"></script><script src="../account/assets/js/auth.js"></script><script src="assets/js/account-link.js"></script><script src="../games/assets/js/experience.js?v=six-games-1"></script><script src="../games/assets/js/game-launch.js?v=corner-1"></script><script type="module" src="../games/assets/js/lumen-3d.js?v=1"></script><script type="module" src="../games/assets/js/starling-3d.js?v=1"></script><script type="module" src="../games/assets/js/cloudpath-3d.js?v=1"></script><script type="module" src="../games/assets/js/new-worlds-3d.js?v=1"></script>
+    <script type="module" src="assets/js/brain/intro.js?v=2" onerror="brainFallback()"></script><script src="../account/assets/js/auth.js"></script><script src="assets/js/account-link.js"></script><script src="../games/assets/js/experience.js?v=six-games-1"></script><script src="../games/assets/js/game-launch.js?v=corner-1"></script><script src="../games/assets/js/levels.js?v=1"></script><script type="module" src="../games/assets/js/lumen-3d.js?v=2"></script><script type="module" src="../games/assets/js/starling-3d.js?v=2"></script><script type="module" src="../games/assets/js/cloudpath-3d.js?v=2"></script><script type="module" src="../games/assets/js/new-worlds-3d.js?v=2"></script>
   </body>
 </html>

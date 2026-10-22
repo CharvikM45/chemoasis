@@ -1,0 +1,93 @@
+/* Level select and level complete screens (games/assets/js/levels.js), shared by all six games. */
+
+.level-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 24px 16px;
+  overflow-y: auto;
+  background: rgba(3, 5, 14, .72);
+  backdrop-filter: blur(10px);
+  color: #fffaf0;
+  font-family: "DM Sans", sans-serif;
+  text-shadow: none;
+  animation: level-in .35s ease both;
+}
+@keyframes level-in { from { opacity: 0; } }
+@keyframes level-rise { from { opacity: 0; transform: translateY(12px); } }
+
+.level-panel {
+  width: min(760px, 100%);
+  padding: clamp(22px, 4vw, 40px);
+  border: 1px solid rgba(255, 248, 224, .26);
+  background: rgba(6, 11, 25, .78);
+  box-shadow: 0 24px 90px rgba(0, 0, 0, .55);
+  animation: level-rise .45s cubic-bezier(.2, .7, .2, 1) both;
+}
+.level-kicker { margin: 0 0 10px; color: #f0ce88; font: 500 11px "DM Mono", monospace; letter-spacing: .15em; text-transform: uppercase; }
+.level-panel h2 { margin: 0; font: 400 clamp(32px, 4.4vw, 52px)/1 "Playfair Display", serif; letter-spacing: -.045em; }
+.level-panel h2 em { color: #f0ce88; }
+.level-lede { margin: 14px 0 0; max-width: 520px; color: #d9dcea; font-size: 16px; line-height: 1.55; }
+.level-note { margin: 18px 0 0; color: #b9bdd0; font-size: 14px; }
+
+.level-grid {
+  list-style: none;
+  margin: 26px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+.level-grid button {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 132px;
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  padding: 16px;
+  text-align: left;
+  border: 1px solid rgba(255, 250, 230, .3);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, .04);
+  color: #fffaf0;
+  font: inherit;
+  cursor: pointer;
+  transition: background .2s ease, border-color .2s ease, transform .2s ease;
+}
+.level-grid button:hover, .level-grid button:focus-visible { background: rgba(240, 206, 136, .14); border-color: #f0ce88; transform: translateY(-2px); outline: none; }
+.level-grid .level-num { color: #f0ce88; font: 500 10px "DM Mono", monospace; letter-spacing: .14em; text-transform: uppercase; }
+.level-grid b { font: 400 21px/1.1 "Playfair Display", serif; letter-spacing: -.02em; }
+.level-grid small { color: #c3c7d8; font-size: 13px; line-height: 1.45; }
+.level-grid em { margin-top: auto; padding-top: 6px; font: normal 10px "DM Mono", monospace; letter-spacing: .12em; text-transform: uppercase; color: #9fe3c4; }
+.level-grid button.is-next { border-color: #f0ce88; box-shadow: 0 0 0 1px #f0ce88 inset; }
+.level-grid button.is-next em { color: #f0ce88; }
+
+.level-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 26px; }
+.level-actions button {
+  min-height: 46px;
+  padding: 10px 15px;
+  border: 1px solid rgba(255, 250, 230, .55);
+  border-radius: 3px;
+  background: rgba(7, 13, 28, .72);
+  color: #fffaf0;
+  font: 500 11px "DM Mono", monospace;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.level-actions button:hover, .level-actions button:focus-visible { background: #f0ce88; border-color: #f0ce88; color: #172033; outline: none; }
+.level-actions .level-primary { background: #f0ce88; border-color: #f0ce88; color: #172033; }
+
+@media (max-width: 620px) {
+  .level-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .level-grid button { min-height: 118px; padding: 13px; }
+  .level-grid b { font-size: 18px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .level-screen, .level-panel { animation: none; }
+  .level-grid button { transition: none; }
+}
