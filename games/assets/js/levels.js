@@ -5,7 +5,7 @@
  *     get a tick and the first unfinished one is marked "Up next".
  *   GameLevels.done({ host, game, level, levels, message, onPick, onLevels, onExit, extra })
  *     records the level as finished and shows "Level N complete" with Next / Again / All levels.
- * Progress is kept in this browser (localStorage), per game.
+ * Progress is kept in this browser (localStorage), per game, and on the account when signed in.
  */
 (() => {
   const STORE = 'reframe.levels';
@@ -14,10 +14,23 @@
     try { return JSON.parse(localStorage.getItem(STORE) || '{}') || {}; } catch (_) { return {}; }
   }
   function finished(game) { return new Set(load()[game] || []); }
+  function saveAll(all) {
+    try { localStorage.setItem(STORE, JSON.stringify(all)); } catch (_) { /* storage unavailable */ }
+  }
   function complete(game, index) {
     const all = load();
     all[game] = [...new Set([...(all[game] || []), index])];
-    try { localStorage.setItem(STORE, JSON.stringify(all)); } catch (_) { /* storage unavailable */ }
+    saveAll(all);
+    if (window.Account && Account.auth) Account.auth.recordLevel(game, index);
+  }
+  // Signed in: bring in levels finished on other devices.
+  if (window.Account && Account.auth) {
+    Account.auth.levels().then((remote) => {
+      if (!remote) return;
+      const all = load();
+      for (const [game, done] of Object.entries(remote)) all[game] = [...new Set([...(all[game] || []), ...done])];
+      saveAll(all);
+    });
   }
   function upNext(game, count) {
     const done = finished(game);

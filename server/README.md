@@ -10,7 +10,11 @@ A small Node server that serves the Reframe website and the account API, deploye
 | POST | `/api/auth/login` | `{ email, password }` → signs in |
 | POST | `/api/auth/logout` | Ends this session |
 | GET | `/api/auth/me` | The signed-in person, or 401 |
-| DELETE | `/api/auth/me` | Deletes the account and all its sessions |
+| DELETE | `/api/auth/me` | Deletes the account, its sessions and its profile |
+| GET | `/api/profile` | The signed-in person's questionnaire answers, recommender model and level progress |
+| PUT | `/api/profile` | `{ profile }` → replaces them (unknown fields dropped, play history capped at 300, 48 KB max) |
+| POST | `/api/profile/play` | `{ game }` → logs a play for the recommender |
+| POST | `/api/profile/level` | `{ game, level }` → records a finished level |
 | GET | `/api/health` | Checks the database connection (Railway health check) |
 
 ## Security built in
@@ -37,5 +41,4 @@ A small Node server that serves the Reframe website and the account API, deploye
 
 - Email verification and "forgot password" (both need an email service).
 - The rest of the pre-launch security list (rate limits on every route, monitoring, backups and so on).
-- Questionnaire answers still live in the browser; moving them to the database is a separate decision because they're health information.
 - The sign-in limits are kept in memory, which is fine for one Railway instance. With several replicas, move them to Postgres or Redis.

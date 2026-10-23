@@ -2,6 +2,7 @@
 const path = require('path');
 const express = require('express');
 const { authRouter } = require('./auth');
+const { profileRouter } = require('./profile');
 
 const ROOT = path.join(__dirname, '..');
 const SITE_FOLDERS = ['home', 'account', 'forum', 'games']; // never serve server/, node_modules/, .git/, .env
@@ -22,6 +23,7 @@ function createApp({ db, isProd = false, allowedOrigins = [], limits } = {}) {
     res.status(403).json({ error: 'This request came from another website and was blocked.' });
   });
 
+  app.use('/api/profile', express.json({ limit: '64kb' })); // answers + play history are bigger than a sign-in
   app.use('/api', express.json({ limit: '10kb' }));
 
   app.get('/api/health', async (req, res) => {
@@ -33,6 +35,7 @@ function createApp({ db, isProd = false, allowedOrigins = [], limits } = {}) {
     }
   });
   app.use('/api/auth', authRouter({ db, isProd, limits }));
+  app.use('/api/profile', profileRouter({ db, isProd }));
   app.use('/api', (req, res) => res.status(404).json({ error: 'Not found.' }));
 
   for (const folder of SITE_FOLDERS) {

@@ -2,9 +2,9 @@
  * Accounts. Sign-up, sign-in and sessions go to the account server (/api/auth, see server/).
  * The session lives in an HttpOnly cookie that page scripts can't read.
  *
- * Questionnaire answers and the personal recommender model are still saved only in this
- * browser (localStorage), under the account's id. Moving them to the server is a separate
- * decision, because they include health information.
+ * Questionnaire answers, the personal recommender model and level progress are saved on the
+ * account (/api/profile). Anything an older version saved in this browser is uploaded the first
+ * time that person signs in here, then removed from the browser.
  */
 window.Account = window.Account || {};
 
@@ -29,11 +29,11 @@ Account.auth = (function () {
   const read = (key, fallback) => { try { return JSON.parse(storage.get(key)) || fallback; } catch (_) { return fallback; } };
   const write = (key, value) => storage.set(key, JSON.stringify(value));
 
-  async function api(path, options) {
+  async function request(url, options) {
     const opts = options || {};
     let res;
     try {
-      res = await fetch("/api/auth" + path, {
+      res = await fetch(url, {
         method: opts.method || "GET",
         credentials: "same-origin",
         headers: opts.body ? { "Content-Type": "application/json" } : {},
@@ -50,12 +50,24 @@ Account.auth = (function () {
     }
     return data;
   }
+  const api = (path, options) => request("/api/auth" + path, options);
+  const profileApi = (path, options) => request("/api/profile" + path, options);
+  const EMPTY = () => ({ answers: {}, completedAt: null, useOwnPosts: false, model: null, levels: {} });
+
+  // Fire-and-forget updates from the home page; they never block a game from opening.
+  function notify(path, body) {
+    if (!read(SESSION, null)) return false;
+    fetch("/api/profile" + path, { method: "POST", credentials: "same-origin", keepalive: true, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).catch(() => {});
+    return true;
+  }
 
   let cached; // undefined = not asked yet, null = signed out
+  let profile = null; // last profile loaded or saved, so a save needs one request, not two
   function remember(user) {
     cached = user;
     if (user) write(SESSION, { userId: user.id, at: Date.now() });
     else storage.remove(SESSION);
+    profile = null;
     return user;
   }
 
@@ -87,19 +99,27 @@ Account.auth = (function () {
       }
     },
 
-    // Answers, the personal model and preferences for the signed-in person (this browser only).
+    // Answers, the personal model, preferences and level progress for the signed-in person.
     async getData() {
       const user = await this.currentUser();
       if (!user) throw new Error("Please sign in first.");
-      return read(userKey(user.id), { answers: {}, completedAt: null, useOwnPosts: false, model: null });
+      let remote = (await profileApi("")).profile;
+      const local = read(userKey(user.id), null);
+      if (!remote && local) remote = (await profileApi("", { method: "PUT", body: { profile: local } })).profile;
+      if (local) storage.remove(userKey(user.id));
+      return (profile = Object.assign(EMPTY(), remote || {}));
     },
 
     async saveData(patch) {
-      const user = await this.currentUser();
-      if (!user) throw new Error("Please sign in first.");
-      const next = Object.assign(read(userKey(user.id), {}), patch);
-      write(userKey(user.id), next);
-      return next;
+      const next = Object.assign({}, profile || (await this.getData()), patch);
+      const saved = await profileApi("", { method: "PUT", body: { profile: next } });
+      return (profile = Object.assign(EMPTY(), saved.profile));
+    },
+
+    // Finished levels saved on the account, or null when signed out.
+    async levels() {
+      if (!read(SESSION, null)) return null;
+      try { const { profile } = await profileApi(""); return (profile && profile.levels) || {}; } catch (_) { return null; }
     },
 
     // Deletes the account on the server and everything saved for it in this browser.
@@ -112,18 +132,8 @@ Account.auth = (function () {
       return true;
     },
 
-    // Used by the home page to log plays without loading the whole account app.
-    recordPlay(gameId) {
-      const session = read(SESSION, null);
-      if (!session) return false;
-      const data = read(userKey(session.userId), null);
-      if (!data) return false;
-      data.model = data.model || { version: 1, delta: {}, events: [], dismissed: {} };
-      data.model.events.push({ game: gameId, kind: "play", at: Date.now(), applied: false });
-      if (data.model.dismissed) delete data.model.dismissed[gameId];
-      if (data.model.events.length > 300) data.model.events.splice(0, data.model.events.length - 300);
-      write(userKey(session.userId), data);
-      return true;
-    }
+    // Used by the home page to log plays and finished levels without loading the whole account app.
+    recordPlay(gameId) { return notify("/play", { game: gameId }); },
+    recordLevel(gameId, level) { return notify("/level", { game: gameId, level }); }
   };
 })();

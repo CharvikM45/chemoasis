@@ -3,13 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="A gentle, supportive recovery platform concept for people after chemotherapy." />
+    <meta name="description" content="Calm brain games, a personal questionnaire and a supportive community for people after chemotherapy." />
     <title>Reframe — recovery, at your pace</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&family=Playfair+Display:ital,wght@0,400;0,500;1,400;1,500&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="assets/css/styles.css" />
-    <link rel="stylesheet" href="assets/css/brain.css?v=2" />
+    <link rel="stylesheet" href="assets/css/home.css?v=1" />
     <script type="importmap">{ "imports": { "three": "https://unpkg.com/three@0.161.0/build/three.module.js", "three/addons/": "https://unpkg.com/three@0.161.0/examples/jsm/" } }</script>
     <link rel="stylesheet" href="../games/assets/css/experience.css?v=three-games-2" />
     <link rel="stylesheet" href="../games/assets/css/experience-games.css?v=three-games-2" />
@@ -20,47 +19,138 @@
     <link rel="stylesheet" href="../games/assets/css/new-worlds-3d.css?v=1" />
     <link rel="stylesheet" href="../games/assets/css/levels.css?v=1" />
   </head>
-  <body class="brain-mode">
+  <body>
+    <div class="scene" aria-hidden="true"><canvas id="brain"></canvas></div>
+    <div class="vignette" aria-hidden="true"></div>
+
+    <nav class="nav" aria-label="Primary navigation">
+      <a href="#top" class="brand"><span class="brand-mark"><i></i><i></i><i></i><i></i></span>reframe</a>
+      <div class="nav-links">
+        <a class="nav-link" href="#why">Why it matters</a>
+        <a class="nav-link" href="#approach">Our approach</a>
+        <a class="nav-link" href="../forum/index.html">Community</a>
+        <a class="nav-link nav-cta" href="../account/index.html">Your games <span aria-hidden="true">→</span></a>
+      </div>
+    </nav>
+
     <main>
-      <div class="scene" aria-hidden="true"><canvas id="mosaic"></canvas><canvas id="brain"></canvas></div>
-      <div class="scene-glow" aria-hidden="true"></div>
-      <div class="vignette" aria-hidden="true"></div>
-      <div class="content-scrim" aria-hidden="true"></div>
-      <nav class="nav" id="nav" aria-label="Primary navigation">
-        <a href="#top" class="brand"><span class="brand-mark"><i></i><i></i><i></i><i></i></span>reframe</a>
-        <span class="nav-note">A recovery companion</span>
-        <a class="nav-link" href="#approach">Our approach <span aria-hidden="true">↗</span></a>
-        <a class="nav-link" href="../forum/index.html">Community <span aria-hidden="true">↗</span></a>
-        <a class="nav-link" href="../account/index.html">Your games <span aria-hidden="true">↗</span></a>
-      </nav>
       <section class="hero" id="top" aria-labelledby="hero-title">
-        <div class="hero-copy"><p class="eyebrow">Post-chemotherapy support</p><h1 id="hero-title">Make room for<br /><em>your way back.</em></h1><p class="hero-summary">A calmer way to discover reviewed activities for attention, memory, coordination, and the small daily wins that matter.</p></div>
-        <div class="scroll-cue" id="scrollCue"><span>Scroll to begin</span><b></b></div>
-      </section>
-      <section class="intro-scroll" id="mosaic-intro" aria-hidden="true"></section>
-      <section class="landing" id="approach">
-        <div class="landing-top"><p class="eyebrow">Recovery is not one-size-fits-all</p><h2>Start with what feels<br /><em>possible today.</em></h2><p>Reframe is a supportive digital space for trying short, adaptable activities that fit your energy, preferences, and goals. You remain in control of the pace.</p></div>
-        <div class="stat-grid" aria-label="Chemotherapy recovery context">
-          <article class="stat-card"><span class="stat-number">68.1%</span><p>of people in a meta-analysis reported chemotherapy-induced peripheral neuropathy in the first month after treatment.</p><a href="https://www.cancer.gov/about-nci/organization/ccct/steering-committees/ncorp/symptom-management/cipn-ctpm-execsum-jnci2019.pdf" target="_blank" rel="noreferrer">NCI evidence summary <span>↗</span></a></article>
-          <article class="stat-card stat-card-dark"><span class="stat-number">30%</span><p>reported peripheral-neuropathy symptoms six months or more after chemotherapy in that review.</p><a href="https://www.cancer.gov/about-nci/organization/ccct/steering-committees/ncorp/symptom-management/cipn-ctpm-execsum-jnci2019.pdf" target="_blank" rel="noreferrer">NCI evidence summary <span>↗</span></a></article>
-          <article class="stat-card stat-card-soft"><span class="stat-word">Many</span><p>people experience changes in memory or concentration during or after cancer treatment; experiences and causes vary.</p><a href="https://www.cancer.gov/about-cancer/treatment/side-effects/memory" target="_blank" rel="noreferrer">NCI patient guidance <span>↗</span></a></article>
+        <div class="copy">
+          <p class="eyebrow">Post-chemotherapy support</p>
+          <h1 id="hero-title">Make room for<br /><em>your way back.</em></h1>
+          <p class="lede">Calm brain games, a short questionnaire that picks where to start, and a community that gets it, for the months after chemotherapy.</p>
+          <div class="actions">
+            <a class="button primary" href="../account/index.html">Get your starting games <span aria-hidden="true">→</span></a>
+            <button class="button" type="button" data-open-worlds>Explore six worlds</button>
+          </div>
         </div>
-        <div class="promise"><div><p class="eyebrow">Designed with care</p><h3>Guidance that respects<br />the whole person.</h3></div><ul><li><span>01</span> Personalized by your preferences, never assumptions</li><li><span>02</span> Clear, adjustable activities for variable-energy days</li><li><span>03</span> Supportive by design—not medical advice or treatment</li></ul></div>
-        <p class="disclaimer">Reframe is a proposed supportive platform, not a diagnostic tool or replacement for oncology, rehabilitation, or other clinical care. New, severe, or worsening symptoms should be discussed with a healthcare professional.</p>
+        <p class="scroll-cue" aria-hidden="true"><span>Scroll</span><b></b></p>
+      </section>
+
+      <section class="band" id="why" aria-labelledby="why-title">
+        <div class="copy">
+          <p class="eyebrow">The side effect nobody sees</p>
+          <h2 id="why-title">Depression is one of the most common effects of cancer care, <em>and one of the least treated.</em></h2>
+          <div class="stats">
+            <article class="stat">
+              <span class="stat-number">Up to 25%</span>
+              <p>of people with cancer experience depression, well above the rate in the general population.</p>
+              <a href="https://www.cancer.gov/about-cancer/coping/feelings/depression-hp-pdq" target="_blank" rel="noreferrer">National Cancer Institute <span aria-hidden="true">↗</span></a>
+            </article>
+            <article class="stat">
+              <span class="stat-number">27%</span>
+              <p>reported symptoms of depression during treatment, across 211 studies.</p>
+              <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC4282549/" target="_blank" rel="noreferrer">Krebber et al., Psycho-Oncology 2014 <span aria-hidden="true">↗</span></a>
+            </article>
+            <article class="stat">
+              <span class="stat-number">15%</span>
+              <p>still reported depression a year or more after their diagnosis.</p>
+              <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC4282549/" target="_blank" rel="noreferrer">Krebber et al., Psycho-Oncology 2014 <span aria-hidden="true">↗</span></a>
+            </article>
+            <article class="stat stat-accent">
+              <span class="stat-number">Only 5%</span>
+              <p>of people with cancer see a mental health professional.</p>
+              <a href="https://www.cancer.gov/about-cancer/coping/feelings/depression-hp-pdq" target="_blank" rel="noreferrer">National Cancer Institute <span aria-hidden="true">↗</span></a>
+            </article>
+          </div>
+          <div class="panel">
+            <p class="panel-kicker">It rarely comes alone</p>
+            <p>Up to <strong>75%</strong> of people notice changes in memory or focus during treatment, and up to <strong>35%</strong> still do years later. Brain fog, fatigue and low mood feed each other: when thinking feels slow, it's harder to stay hopeful, and harder to reach out.</p>
+            <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC4084673/" target="_blank" rel="noreferrer">Janelsins et al., International Review of Psychiatry 2014 <span aria-hidden="true">↗</span></a>
+          </div>
+        </div>
+      </section>
+
+      <section class="band" id="approach" aria-labelledby="approach-title">
+        <div class="copy">
+          <p class="eyebrow">Our approach</p>
+          <h2 id="approach-title">Small steps that are easy to start <em>and kind to keep.</em></h2>
+          <p class="lede">Low mood makes big goals feel impossible. Reframe turns recovery into short activities you can finish today, picked for how you're actually feeling.</p>
+          <ol class="steps">
+            <li><span>01</span><div><b>Tell us how you're doing</b><p>Ten short questions about your treatment, your energy and what feels hardest right now. Skip any of them.</p></div></li>
+            <li><span>02</span><div><b>Get three games to start with</b><p>Ranked for you, each with the reasons it was picked, so nothing is a black box.</p></div></li>
+            <li><span>03</span><div><b>Play at your own pace</b><p>Choose your level, with no timers unless you want one. Pause or stop whenever you like.</p></div></li>
+            <li><span>04</span><div><b>It learns with you</b><p>Every game you play, or set aside, tunes your next suggestions. Your progress is saved to your account.</p></div></li>
+          </ol>
+          <div class="panel">
+            <p class="panel-kicker">Why this helps</p>
+            <p>Finishing something small gives a real sense of progress, and gentle practice of attention and memory targets the brain fog that often comes with low mood. The community is there for the part games can't do: talking to people who've been through it.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="band" id="features" aria-labelledby="features-title">
+        <div class="copy">
+          <p class="eyebrow">What's inside</p>
+          <h2 id="features-title">Everything in one <em>calm place.</em></h2>
+          <div class="features">
+            <article><i aria-hidden="true">?</i><b>Personal questionnaire</b><p>Ten questions, adjusted to your age and treatment. Every one can be skipped.</p></article>
+            <article><i aria-hidden="true">✦</i><b>Recommendations that explain themselves</b><p>A small learning model ranks six games for you and tells you why.</p></article>
+            <article><i aria-hidden="true">◈</i><b>Six game worlds</b><p>Memory, focus, planning, language, hand coordination and thinking speed, each with four levels.</p></article>
+            <article><i aria-hidden="true">↻</i><b>Saved to your account</b><p>Your answers, suggestions and level progress follow you to any device.</p></article>
+            <article><i aria-hidden="true">☷</i><b>Community forum</b><p>Talk with people who've been there, with moderators and anonymous posting.</p></article>
+            <article><i aria-hidden="true">○</i><b>Private and gentle</b><p>No leaderboards and no health scores. Delete your account and everything in it at any time.</p></article>
+          </div>
+        </div>
+      </section>
+
+      <section class="band closing" id="start" aria-labelledby="start-title">
+        <div class="copy">
+          <p class="eyebrow">Ready when you are</p>
+          <h2 id="start-title">Start with what feels <em>possible today.</em></h2>
+          <p class="lede">Create an account, answer a few questions and get three games picked for you. It takes about three minutes.</p>
+          <div class="actions">
+            <a class="button primary" href="../account/index.html">Create your account <span aria-hidden="true">→</span></a>
+            <a class="button" href="../forum/index.html">Visit the community</a>
+          </div>
+          <p class="disclaimer">Reframe is a supportive platform, not a diagnostic tool or a replacement for oncology, mental health, rehabilitation or other clinical care. If you're struggling with low mood, please talk to your care team. If you're thinking about harming yourself, call or text 988 in the US, or your local emergency number.</p>
+        </div>
       </section>
     </main>
+
     <script>
-      // If the 3D intro can't start (no WebGL, or the 3D library fails to load), show the original mosaic.
+      // If the 3D brain can't start (no WebGL, or the 3D library fails to load), the page still works without it.
       window.brainFallback = function () {
         if (window.__brainFallen) return;
         window.__brainFallen = true;
-        document.body.classList.remove('brain-mode');
-        var s = document.createElement('script');
-        s.src = 'assets/js/script.js?v=three-games-2';
-        document.body.appendChild(s);
+        document.body.classList.add('no-brain');
       };
       setTimeout(function () { if (!window.__brainStarted) window.brainFallback(); }, 10000);
     </script>
-    <script type="module" src="assets/js/brain/intro.js?v=2" onerror="brainFallback()"></script><script src="../account/assets/js/auth.js"></script><script src="assets/js/account-link.js"></script><script src="../games/assets/js/experience.js?v=six-games-1"></script><script src="../games/assets/js/game-launch.js?v=corner-1"></script><script src="../games/assets/js/levels.js?v=1"></script><script type="module" src="../games/assets/js/lumen-3d.js?v=2"></script><script type="module" src="../games/assets/js/starling-3d.js?v=2"></script><script type="module" src="../games/assets/js/cloudpath-3d.js?v=2"></script><script type="module" src="../games/assets/js/new-worlds-3d.js?v=2"></script>
+    <script type="module" src="assets/js/brain/intro.js?v=3" onerror="brainFallback()"></script>
+    <script src="../account/assets/js/auth.js?v=2"></script>
+    <script src="assets/js/account-link.js"></script>
+    <script src="../games/assets/js/experience.js?v=six-games-1"></script>
+    <script src="../games/assets/js/game-launch.js?v=corner-1"></script>
+    <script>
+      document.querySelectorAll('[data-open-worlds]').forEach(function (b) {
+        b.addEventListener('click', function () { var l = document.querySelector('.launch-experience'); if (l) l.click(); });
+      });
+    </script>
+    <script src="../games/assets/js/levels.js?v=2"></script>
+    <script type="module" src="../games/assets/js/lumen-3d.js?v=2"></script>
+    <script type="module" src="../games/assets/js/starling-3d.js?v=2"></script>
+    <script type="module" src="../games/assets/js/cloudpath-3d.js?v=2"></script>
+    <script type="module" src="../games/assets/js/new-worlds-3d.js?v=2"></script>
   </body>
 </html>

@@ -213,7 +213,13 @@
     note.textContent = 'If you are under 13, please answer these questions with a parent or guardian.';
   }
 
+  let stepping = false; // a double-click on Next shouldn't skip a question while the answer saves
   async function step(delta, skip) {
+    if (stepping) return;
+    stepping = true;
+    try { await move(delta, skip); } finally { stepping = false; }
+  }
+  async function move(delta, skip) {
     const q = QUESTIONS[qIndex];
     if (skip) {
       if (q.type === 'sleepEnergy') { answers.sleep = null; answers.energy = null; }
@@ -366,7 +372,7 @@
     await renderResults('Personalization reset. Suggestions now come from your answers only.');
   });
   $('deleteAccount').addEventListener('click', async () => {
-    if (!window.confirm('Delete your account, answers and play history from this browser? This can’t be undone.')) return;
+    if (!window.confirm('Delete your account, answers and play history? This can’t be undone.')) return;
     await auth.deleteAccount();
     await signOut();
     setMode('create');
