@@ -151,14 +151,14 @@ function hippocampus(x, y, z, side) {
 // impact: 0..1, how consistently brain-imaging research links this part to
 // chemotherapy-related cognitive changes. Illustrative, not a measurement.
 export const PARTS = [
-  { id: 'frontal', name: 'Frontal lobe', role: 'Planning, focus and multitasking', impact: 0.85, label: true },
-  { id: 'hippocampus', name: 'Hippocampus', role: 'Forming new memories', impact: 0.8, label: true },
-  { id: 'callosum', name: 'Corpus callosum', role: 'White matter linking both halves', impact: 0.75, label: true },
-  { id: 'parietal', name: 'Parietal lobe', role: 'Attention, touch and sense of space', impact: 0.55, label: true },
-  { id: 'temporal', name: 'Temporal lobe', role: 'Language, hearing and memory', impact: 0.5, label: true },
-  { id: 'cerebellum', name: 'Cerebellum', role: 'Balance and coordination', impact: 0.35, label: true },
-  { id: 'occipital', name: 'Occipital lobe', role: 'Vision', impact: 0.25, label: true },
-  { id: 'brainstem', name: 'Brainstem', role: 'Breathing, heartbeat and alertness', impact: 0.15, label: true }
+  { id: 'frontal', impact: 0.85 },
+  { id: 'hippocampus', impact: 0.8 },
+  { id: 'callosum', impact: 0.75 },
+  { id: 'parietal', impact: 0.55 },
+  { id: 'temporal', impact: 0.5 },
+  { id: 'cerebellum', impact: 0.35 },
+  { id: 'occipital', impact: 0.25 },
+  { id: 'brainstem', impact: 0.15 }
 ];
 
 // Where each piece flies when the brain comes apart (left side; right side mirrors x).

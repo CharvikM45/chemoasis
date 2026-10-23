@@ -26,8 +26,6 @@ const hero = $('.hero');
 const nav = $('#nav');
 const cue = $('#scrollCue');
 const scrim = $('.content-scrim');
-const labelsLayer = $('#brainLabels');
-const overlay = $('#brainOverlay');
 
 if (window.__brainFallen) throw new Error('Mosaic fallback already showing.');
 
@@ -142,23 +140,6 @@ composer.addPass(new RenderPass(scene, camera));
 const bloom = new UnrealBloomPass(new THREE.Vector2(512, 512), 0.45, 0.6, 0.86);
 composer.addPass(bloom);
 composer.addPass(new OutputPass());
-
-/* ---------- labels ---------- */
-
-const level = (impact) => (impact >= 0.7 ? ['Often affected', 'high'] : impact >= 0.45 ? ['Sometimes affected', 'mid'] : ['Less often affected', 'low']);
-const labels = {};
-for (const part of PARTS) {
-  const el = document.createElement('div');
-  const [text, tier] = level(part.impact);
-  el.className = 'brain-label';
-  el.dataset.tier = tier;
-  el.innerHTML = '<i></i><div><b></b><span></span><em></em></div>';
-  el.querySelector('b').textContent = part.name;
-  el.querySelector('span').textContent = part.role;
-  el.querySelector('em').textContent = text;
-  labelsLayer.appendChild(el);
-  labels[part.id] = el;
-}
 
 /* ---------- brain ---------- */
 
@@ -331,8 +312,6 @@ function schedule() {
   if (!raf) raf = requestAnimationFrame(frame);
 }
 
-const tmp = new THREE.Vector3();
-
 function frame(now) {
   raf = 0;
   const dt = Math.min(0.05, (now - lastTime) / 1000);
@@ -359,8 +338,6 @@ function frame(now) {
   nav.classList.toggle('on-dark', leave < 0.5);
   cue.classList.toggle('hide', p > 0.03);
   scrim.style.opacity = String(leave);
-  overlay.style.opacity = String(reveal * (1 - leave));
-  overlay.classList.toggle('active', reveal > 0.1 && leave < 0.9);
 
   // Lights: dim and moody at first, then the beam lands.
   const breathe = reducedMotion ? 1 : 0.94 + 0.06 * Math.sin(t * 0.7);
@@ -388,10 +365,7 @@ function frame(now) {
 
   const idle = reducedMotion ? 0 : Math.sin(t * 0.18) * 0.14;
   brain.rotation.set(0.06 - explode * 0.02, -Math.PI / 2 + 0.42 + idle * (1 - explode * 0.6) - explode * 0.12, 0);
-  // Make room for the caption: slide right on wide screens, down on narrow ones.
-  const narrow = width < 760;
-  brain.position.x = narrow ? 0 : explode * 0.45;
-  brain.position.y = (reducedMotion ? 0 : Math.sin(t * 0.5) * 0.015) - (narrow ? explode * 0.35 : 0);
+  brain.position.y = reducedMotion ? 0 : Math.sin(t * 0.5) * 0.015;
 
   for (const piece of pieces) {
     piece.mesh.position.copy(piece.home).addScaledVector(piece.away, explode);
@@ -403,34 +377,6 @@ function frame(now) {
     piece.uniforms.uCut.value = smooth(0.05, 0.35, explode);
     piece.material.clearcoat = 0.6 * (1 - dull * 0.85);
     piece.material.roughness = 0.46 + dull * 0.35;
-  }
-
-  // Labels follow whichever copy of each part is nearer the viewer.
-  if (built && reveal > 0.01) {
-    brain.updateMatrixWorld();
-    const best = {};
-    for (const piece of pieces) {
-      tmp.copy(piece.mesh.position);
-      brain.localToWorld(tmp);
-      if (!best[piece.id] || tmp.z > best[piece.id].z) best[piece.id] = tmp.clone();
-    }
-    const placed = Object.entries(best).map(([id, world]) => {
-      const screen = world.clone().project(camera);
-      const x = (screen.x * 0.5 + 0.5) * width;
-      // Labels point away from the middle, unless that would run off the right edge.
-      return { id, x, y: (-screen.y * 0.5 + 0.5) * height, left: x < width / 2 || x > width - 270 };
-    });
-    // Nudge labels on the same side apart so they never overlap.
-    const gap = width < 760 ? 40 : 62;
-    for (const left of [true, false]) {
-      const column = placed.filter((l) => l.left === left).sort((a, b) => a.y - b.y);
-      for (let i = 1; i < column.length; i++) column[i].y = Math.max(column[i].y, column[i - 1].y + gap);
-    }
-    for (const l of placed) {
-      const el = labels[l.id];
-      el.classList.toggle('left', l.left);
-      el.style.transform = `translate(${l.x}px, ${l.y}px)`;
-    }
   }
 
   canvas.style.opacity = String(appear);
