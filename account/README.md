@@ -28,14 +28,14 @@ A small, explainable learning model that runs in the browser:
 | `assets/js/questions.js` | The 10 questions and age rules (data only) |
 | `assets/js/recommender.js` | Features, model, learning, ranking, reasons (no page code) |
 | `assets/js/context.js` | Gathers forum and play context |
-| `assets/js/auth.js` | Talks to the account server (`/api/auth`); keeps answers in this browser |
+| `assets/js/auth.js` | Talks to the account server (`/api/auth`, `/api/profile`); answers, model and levels are saved to the account |
 | `assets/js/app.js` | Page logic |
 | `../home/assets/js/account-link.js` | `?play=<game>` deep links and logging plays from the home page |
 | `tests/recommender.test.js` | `node account/tests/recommender.test.js`, 19 checks, no installs |
 
 ## Before launch
 
-- **Sign-in** now uses the account server (`server/`, Postgres on Railway). Questionnaire answers and the personal model still live in the browser until we decide to store health information on the server.
+- **Sign-in and saved answers** use the account server (`server/`, Postgres on Railway). Questionnaire answers, the personal model and level progress are stored per account in the `profiles` table, so they follow people across devices. They include health information, so review who can access the database and how long data is kept.
 - **Clinical review** of the questions and starting weights. The concept brief says not to ask for detailed treatment history "unless a clear, reviewed need exists"; Part 1 does ask, so it needs that review.
 - **Under-13 users** need a parental-consent plan (for example COPPA in the US) before real accounts.
 - **Linking accounts to the forum.** "Use my own forum posts" reads the forum's current demo account until real accounts connect the two.
