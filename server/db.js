@@ -4,11 +4,16 @@ const path = require('path');
 const { Pool } = require('pg');
 
 function createPool(env = process.env) {
-  if (!env.DATABASE_URL) {
+  const url = (env.DATABASE_URL || '').trim();
+  if (!url) {
     throw new Error('DATABASE_URL is not set. On Railway, add it as a reference to your Postgres service; locally, put it in .env.');
   }
+  // Anything else (a pasted "DATABASE_URL=" prefix, an unresolved ${{...}} reference) makes pg look up a host called "base".
+  if (!/^postgres(ql)?:\/\//.test(url)) {
+    throw new Error('DATABASE_URL must start with postgresql:// (check the variable\'s value has no "DATABASE_URL=" prefix and its ${{...}} reference resolves).');
+  }
   return new Pool({
-    connectionString: env.DATABASE_URL,
+    connectionString: url,
     // Railway's private network doesn't use SSL; its public proxy (handy for local development) can.
     ssl: env.PGSSL === 'true' ? { rejectUnauthorized: false } : undefined,
     max: Number(env.PG_POOL_MAX || 10)
