@@ -1,6 +1,7 @@
 // The Express app: the account API under /api, and the website's folders as static files.
 const path = require('path');
 const express = require('express');
+const compression = require('compression');
 const { authRouter } = require('./auth');
 const { profileRouter } = require('./profile');
 const { forumRouter } = require('./forum');
@@ -16,6 +17,7 @@ function createApp({ db, isProd = false, allowedOrigins = [], moderators = [], d
   app.disable('x-powered-by');
   app.set('trust proxy', 1); // Railway sits in front, so use its X-Forwarded-For / -Proto
   app.use(securityHeaders({ root: ROOT, folders: SITE_FOLDERS, isProd }));
+  app.use(compression()); // the 3D library alone is 675 KB; compressed it's about a quarter of that
 
   // An overall limit on API calls per IP, on top of the stricter sign-in and posting limits.
   const apiLimit = createLimiter({ limit: 600, windowMs: 5 * 60 * 1000, ...(limits && limits.api) });
@@ -39,7 +41,7 @@ function createApp({ db, isProd = false, allowedOrigins = [], moderators = [], d
     res.status(403).json({ error: 'This request came from another website and was blocked.' });
   });
 
-  app.use('/api/profile', express.json({ limit: '64kb', reviver: safeJsonReviver })); // answers + play history are bigger than a sign-in
+  app.use('/api/profile', express.json({ limit: '128kb', reviver: safeJsonReviver })); // answers + play history (up to 96 KB, see profile.js) are bigger than a sign-in
   app.use('/api/forum', express.json({ limit: '32kb', reviver: safeJsonReviver })); // a 5,000-character post in another script can pass 10 KB
   app.use('/api', express.json({ limit: '10kb', reviver: safeJsonReviver }));
 
