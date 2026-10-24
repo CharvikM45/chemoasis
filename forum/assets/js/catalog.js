@@ -31,7 +31,7 @@ Forum.catalog = (function () {
     },
     {
       id: "app-help",
-      name: "Using Reframe",
+      name: "Using Chemoasis",
       blurb: "Questions about finding your way around the app."
     },
     {

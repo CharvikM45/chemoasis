@@ -23,7 +23,7 @@ async function main() {
   const moderators = (process.env.MODERATOR_EMAILS || '').split(',');
   const app = createApp({ db, isProd, allowedOrigins, moderators });
   const port = Number(process.env.PORT || 3000);
-  const server = app.listen(port, () => console.log(`Reframe running on http://localhost:${port}`));
+  const server = app.listen(port, () => console.log(`Chemoasis running on http://localhost:${port}`));
 
   const cleanup = setInterval(() => removeExpired(db).catch((e) => console.error('Session cleanup failed', e)), 60 * 60 * 1000);
   cleanup.unref();

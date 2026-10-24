@@ -163,7 +163,7 @@ Forum.ui = (function () {
     header.innerHTML =
       '<a class="skip-link" href="#main">Skip to main content</a>' +
       '<div class="f-header__inner">' +
-      '<a class="f-brand" href="../home/index.html">✣ reframe</a>' +
+      '<a class="f-brand" href="../home/index.html">✣ chemoasis</a>' +
       '<nav class="f-nav" aria-label="Primary navigation">' +
       '<a href="../home/index.html?games=1">Games</a>' +
       '<a href="../account/index.html">Your games</a>' +
@@ -177,7 +177,7 @@ Forum.ui = (function () {
         ? '<span class="f-demo-switch">Signed in as <b>' + esc(user.displayName) + "</b></span>"
         : '<a class="f-button" href="../account/index.html?next=forum">Sign in to post</a>') +
       "</div>" +
-      '<p class="f-banner">Reframe is supportive and educational. It does not diagnose and does not replace your care team. For new, severe or worsening symptoms, contact your care team, or call 911 in an emergency.</p>' +
+      '<p class="f-banner">Chemoasis is supportive and educational. It does not diagnose and does not replace your care team. For new, severe or worsening symptoms, contact your care team, or call 911 in an emergency.</p>' +
       "";
     return user;
   }

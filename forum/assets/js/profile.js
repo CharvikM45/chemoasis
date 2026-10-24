@@ -14,7 +14,7 @@
     return;
   }
   const { profile, threads } = result;
-  document.title = profile.displayName + " · Reframe community";
+  document.title = profile.displayName + " · Chemoasis community";
 
   const pro = profile.professional;
   box.innerHTML =

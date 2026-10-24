@@ -241,7 +241,7 @@ Forum.store = (function () {
         const name = String(patch.displayName).trim();
         if (name.length < 2 || name.length > 40) return fail("Display names need 2 to 40 characters.");
         // Names that could pass for staff, a badge or an anonymous post would mislead readers.
-        if ((user.type === "member" || user.type === "creator") && /\b(anonymous|moderator|mod|admin|chemoasis|reframe|verified|official|staff|nurse|doctor|dr)\b/i.test(name)) {
+        if ((user.type === "member" || user.type === "creator") && /\b(anonymous|moderator|mod|admin|chemoasis|verified|official|staff|nurse|doctor|dr)\b/i.test(name)) {
           return fail("Please pick a name that doesn't sound like a role, a badge or the app itself.");
         }
         user.displayName = name;

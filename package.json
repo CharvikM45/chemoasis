@@ -1,7 +1,7 @@
 {
   "name": "chemoasis",
   "private": true,
-  "description": "Reframe: the website plus a small account server, deployed together on Railway.",
+  "description": "Chemoasis: the website plus a small account server, deployed together on Railway.",
   "scripts": {
     "start": "node server/index.js",
     "test": "node --test \"server/tests/*.test.js\" && node account/tests/recommender.test.js && node forum/tests/forum.test.js"
