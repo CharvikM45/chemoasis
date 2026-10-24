@@ -26,8 +26,8 @@
 
   function library() {
     view.innerHTML = `<nav class="experience-nav"><b>✣ chemoasis</b><button class="return-home" id="home">← Return home</button></nav>
-      <header class="experience-hero atlas"><div><p class="eyebrow">The Quiet Atlas</p><h2>Six worlds,<br><em>your pace.</em></h2></div><p>Adaptive brain training based on published research with people after cancer treatment. Each game gets harder as you improve.</p></header>
-      <section class="experience-section"><p class="eyebrow">Featured worlds</p><div class="activity-grid">${games.map(([id, name, area, icon]) => `<article class="activity-card atlas-card ${id}"><button data-game="${id}" aria-label="Play ${name}"></button><i class="activity-icon">${icon}</i><span class="activity-area">${area}</span><h4>${name}</h4><p>About 3 minutes · adapts as you play</p></article>`).join('')}</div></section>`;
+      <header class="experience-hero atlas"><div><p class="eyebrow">The Quiet Atlas</p><h2>Six worlds,<br><em>your pace.</em></h2></div><p>Short games inspired by tasks used in research with people after cancer treatment. Start gentle, or switch on a challenge that adapts as you improve. Research results so far are mixed, and these games haven't been studied themselves.</p></header>
+      <section class="experience-section"><p class="eyebrow">Featured worlds</p><div class="activity-grid">${games.map(([id, name, area, icon]) => `<article class="activity-card atlas-card ${id}"><button data-game="${id}" aria-label="Play ${name}"></button><i class="activity-icon">${icon}</i><span class="activity-area">${area}</span><h4>${name}</h4><p>A few minutes · pause any time</p></article>`).join('')}</div></section>`;
     view.querySelector('#home').onclick = close;
   }
 
