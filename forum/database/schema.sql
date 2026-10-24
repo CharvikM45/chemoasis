@@ -358,7 +358,9 @@ create trigger forum_reports_identity before update or delete on forum_reports
 create or replace function forum_needs_review(txt text)
 returns boolean language sql immutable as $$
   select coalesce(txt, '') ~* any (array[
-    '\ycure[sd]?\y',
+    '\y(cured|cures) (my|your|his|her|their|our|the|it|chemo|neuropathy|brain fog|cancer)\y',
+    '\y(will|can|could|would|helps?|this|that) cure\y',
+    '\y(is|was|are|it[''’]?s) (a|the|my) (natural |real )?cure (for|of)\y',
     '\ystop (taking |going to |seeing )?(your |my |the )?(chemo|chemotherapy|medication|meds|treatment|doctor|oncologist)',
     'instead of (chemo|chemotherapy|treatment|your doctor|your oncologist|medication)',
     '\y(guaranteed|proven) to (heal|fix|cure|reverse)',
@@ -383,7 +385,14 @@ returns boolean language sql immutable as $$
     '\ynot worth living\y',
     '\ycan[''’]?t go on\y',
     '\ydon[''’]?t want to (be here|live|wake up)',
-    '\yoverdos(e|ed|ing)\y'
+    '\yoverdos(e|ed|ing)\y',
+    '\ytak(e|ing) my (own )?life\y',
+    '\y(do ?n[''’]?t|do not|no longer) want to (be alive|exist|keep living|live anymore)\y',
+    '\yno (point|reason) (in|to) (living|being alive|life|going on)\y',
+    '\yun-?aliv(e|ing) myself\y',
+    '\ykms\y',
+    '\y(rather|better) be dead\y',
+    '\ywant(ed|ing)? (it all|everything|my life|it) to (all )?end\y'
   ]);
 $$;
 

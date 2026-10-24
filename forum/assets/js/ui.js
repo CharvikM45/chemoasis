@@ -150,6 +150,27 @@ Forum.ui = (function () {
       .join("");
   }
 
+  async function showQueueCount(linkEl) {
+    if (!linkEl) return;
+    let queue;
+    try {
+      queue = await Forum.store.moderationQueue();
+    } catch (error) {
+      return; // the count is a convenience; the queue page still works
+    }
+    if (!queue.length) return;
+    const support = queue.filter((item) => item.support).length;
+    const count = document.createElement("span");
+    count.className = "f-count" + (support ? " f-count--support" : "");
+    count.textContent = String(queue.length);
+    linkEl.append(" ", count);
+    linkEl.setAttribute(
+      "aria-label",
+      "Review queue, " + queue.length + " waiting" + (support ? ", " + support + " from someone who may need support" : "")
+    );
+    if (support) linkEl.title = support === 1 ? "Someone may need support" : support + " people may need support";
+  }
+
   let blocked = false;
 
   // True when the header replaced the page with a sign-in card or an "offline" notice,
@@ -233,6 +254,10 @@ Forum.ui = (function () {
 
     // The demo's account switcher and reset button only belong on the demo.
     if (mode !== "demo") document.querySelectorAll("[data-demo-only]").forEach((el) => el.remove());
+
+    // Moderators see how many posts wait for review, so a post from someone who may need
+    // support doesn't sit unseen until a moderator happens to open the queue.
+    if (user && user.canModerate) showQueueCount(below.querySelector('.f-nav a[href="moderation.html"]'));
 
     const switcher = below.querySelector("#f-demo-user");
     if (switcher) {
