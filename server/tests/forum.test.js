@@ -1,14 +1,18 @@
 // Forum API tests: the shared forum, run as real accounts, against pg-mem. Run: npm test
 const test = require('node:test');
 const assert = require('node:assert');
+const fs = require('fs');
+const path = require('path');
+const vm = require('vm');
 const { newDb } = require('pg-mem');
 const { migrate } = require('../db');
 const { createApp } = require('../app');
 
-async function start() {
+async function start(prepare) {
   const { Pool } = newDb().adapters.createPg();
   const db = new Pool();
   await migrate(db);
+  if (prepare) await prepare(db);
   const app = createApp({ db, isProd: false, moderators: ['mod@example.com'] });
   const server = await new Promise((resolve) => { const s = app.listen(0, () => resolve(s)); });
   const base = `http://127.0.0.1:${server.address().port}`;
@@ -26,15 +30,35 @@ async function start() {
   return { db, call, forum, signUp, close: () => new Promise((r) => server.close(r)) };
 }
 
-test('anyone can read; posting needs an account', async () => {
+// The example forum as an earlier version saved it: no "example" marks, and a made-up verified
+// nurse who wrote one of the replies.
+function olderExampleForum() {
+  const context = vm.createContext({ console, Date, JSON, Math });
+  context.window = context;
+  for (const file of ['catalog', 'seed']) {
+    vm.runInContext(fs.readFileSync(path.join(__dirname, '..', '..', 'forum', 'assets', 'js', file + '.js'), 'utf8'), context);
+  }
+  const state = JSON.parse(JSON.stringify(context.Forum.seed()));
+  state.currentUserId = null;
+  for (const profile of state.profiles) delete profile.example;
+  state.profiles.push({ id: 'u-nurse', displayName: 'Oncology nurse (example)', type: 'professional', bio: '', showBio: true,
+    professional: { verified: true, credential: 'Registered Nurse', specialty: 'Oncology nursing' }, createdAt: new Date().toISOString() });
+  Object.assign(state.replies.find((r) => r.id === 'r-foggy-1'), { authorId: 'u-nurse', label: 'professional' });
+  return state;
+}
+
+test('reading and posting need an account; signed out, the forum only says nobody is signed in', async () => {
   const t = await start();
   try {
-    const list = await t.forum('listThreads', [{}]);
-    assert.strictEqual(list.status, 200);
-    assert.ok(list.json.result.length > 0, 'the example posts are there');
+    assert.strictEqual((await t.forum('listThreads', [{}])).status, 401, 'posts are not public');
+    assert.strictEqual((await t.forum('getProfile', ['u-river'])).status, 401);
     assert.strictEqual((await t.forum('currentUser', [])).json.result, null);
     const post = await t.forum('createThread', [{ categoryId: 'welcome', title: 'Hello there', body: 'Hi all' }]);
     assert.strictEqual(post.status, 401);
+    const maya = await t.signUp('maya@example.com', 'Maya');
+    const list = await t.forum('listThreads', [{}], maya);
+    assert.strictEqual(list.status, 200);
+    assert.ok(list.json.result.length > 0, 'the example posts are there');
     assert.strictEqual((await t.forum('resetDemo', [])).status, 404, 'demo-only methods are not reachable');
     assert.strictEqual((await t.forum('switchDemoUser', ['u-river'])).status, 404);
   } finally { await t.close(); }
@@ -46,7 +70,9 @@ test('a post by one account is seen by another, and anonymous stays anonymous', 
     const maya = await t.signUp('maya@example.com', 'Maya');
     const sam = await t.signUp('sam@example.com', 'Sam');
     const me = (await t.forum('currentUser', [], maya)).json.result;
-    assert.strictEqual(me.displayName, 'Maya');
+    assert.match(me.displayName, /^Member \d{4}$/, "a neutral starting name, never the account's own name");
+    const renamed = await t.forum('updateMyProfile', [{ displayName: 'Maya' }], maya);
+    assert.strictEqual(renamed.json.result.displayName, 'Maya', 'people choose their own forum name');
     const made = await t.forum('createThread', [{ categoryId: 'welcome', title: 'First week back', body: 'Small steps today.', anonymous: true }], maya);
     assert.strictEqual(made.status, 200);
     const seen = (await t.forum('getThread', [made.json.result.id], sam)).json.result;
@@ -87,12 +113,29 @@ test('deleting an account takes its posts down', async () => {
     const maya = await t.signUp('maya@example.com', 'Maya');
     const sam = await t.signUp('sam@example.com', 'Sam');
     const made = await t.forum('createThread', [{ categoryId: 'welcome', title: 'Goodbye post', body: 'Testing deletion' }], maya);
+    await t.forum('report', ['thread', 't-hello', 'other', 'my private note'], maya);
     await t.call('DELETE', '/api/auth/me', { cookie: maya });
     const after = await t.forum('getThread', [made.json.result.id], sam);
     assert.strictEqual(after.status, 400, 'the post is gone');
     const { rows } = await t.db.query('SELECT data FROM forum_state WHERE id = 1');
     const stored = rows[0].data.threads.find((x) => x.id === made.json.result.id);
     assert.strictEqual(stored.body, '', 'its words are erased from the database, not just hidden');
-    assert.ok(!JSON.stringify(rows[0].data).includes('Testing deletion'));
+    const saved = JSON.stringify(rows[0].data);
+    assert.ok(!saved.includes('Testing deletion') && !saved.includes('Goodbye post'), 'the text and title are erased');
+    assert.ok(!saved.includes('my private note'), 'notes on reports they filed are erased');
+  } finally { await t.close(); }
+});
+
+test('example posts saved by an earlier version are updated: no made-up verified nurse', async () => {
+  const t = await start((db) => db.query('INSERT INTO forum_state (id, data) VALUES (1, $1::jsonb)', [JSON.stringify(olderExampleForum())]));
+  try {
+    const maya = await t.signUp('maya@example.com', 'Maya');
+    const thread = (await t.forum('getThread', ['t-foggy'], maya)).json.result;
+    const reply = thread.replies.find((r) => r.id === 'r-foggy-1');
+    assert.strictEqual(reply.label, 'info', 'general information, not professional guidance');
+    assert.strictEqual(reply.author.id, 'u-mod');
+    assert.strictEqual((await t.forum('getProfile', ['u-nurse'], maya)).status, 400, 'the example nurse is gone');
+    const { rows } = await t.db.query('SELECT data FROM forum_state WHERE id = 1');
+    assert.ok(rows[0].data.profiles.filter((p) => p.id.startsWith('u-')).every((p) => p.example), 'example accounts are marked');
   } finally { await t.close(); }
 });

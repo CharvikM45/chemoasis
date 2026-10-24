@@ -2,12 +2,13 @@
 (async function () {
   const { esc, paragraphs, timeAgo, fullDate, badge, authorLink, labelPill, toast } = Forum.ui;
   const user = await Forum.ui.renderHeader();
+  if (Forum.ui.pageBlocked()) return;
   const area = document.getElementById("queue-area");
   const history = document.getElementById("history");
 
   if (!user || !user.canModerate) {
-    area.innerHTML =
-      '<div class="f-notice f-notice--info" role="status">Only moderators can see the review queue.</div>';
+    const demoHint = (await Forum.store.mode()) === "demo" ? ' To try it, switch the demo account (top right) to "Moderator (example)".' : "";
+    area.innerHTML = '<div class="f-notice f-notice--info" role="status">Only moderators can see the review queue.' + esc(demoHint) + "</div>";
     history.closest("section").hidden = true;
     return;
   }
@@ -18,9 +19,13 @@
   function card(item) {
     const post = item.post;
     return (
-      '<li class="f-card f-queue-item">' +
+      '<li class="f-card f-queue-item' + (item.support ? " f-queue-item--support" : "") + '">' +
       '<div class="f-card__meta"><span class="f-eyebrow">' + (item.kind === "thread" ? "Conversation" : "Reply") + "</span>" + labelPill(post.label) +
       '<span class="f-status-tag">' + esc(STATUS_NAMES[post.status] || post.status) + "</span></div>" +
+      (item.support
+        ? '<p class="f-notice f-notice--support">This person may need support. Please check in kindly, reply with the 988 Suicide &amp; Crisis Lifeline (call or text 988 in the US), ' +
+          'and keep the post up unless it breaks the guidelines. If someone seems to be in immediate danger, follow the emergency steps in the forum README.</p>'
+        : "") +
       '<h2 class="f-h3"><a href="thread.html?id=' + encodeURIComponent(item.threadId) + (item.kind === "reply" ? "#" + encodeURIComponent(post.id) : "") + '">' + esc(item.threadTitle) + "</a></h2>" +
       '<p class="f-post__byline">' + authorLink(post.author) + " " + badge(post.author) + ' <span class="f-dot" aria-hidden="true">·</span> <time title="' + esc(fullDate(post.createdAt)) + '">' + timeAgo(post.createdAt) + "</time></p>" +
       '<blockquote class="f-quote">' + paragraphs(post.body) + "</blockquote>" +

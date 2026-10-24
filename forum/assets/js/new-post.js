@@ -2,6 +2,7 @@
 (async function () {
   const { esc } = Forum.ui;
   const user = await Forum.ui.renderHeader();
+  if (Forum.ui.pageBlocked()) return;
   const form = document.getElementById("new-form");
   const hint = document.getElementById("category-hint");
   const submit = document.getElementById("new-submit");

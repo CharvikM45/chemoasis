@@ -171,18 +171,41 @@ Forum.store = (function () {
     };
   }
 
-  function holdForReview(data, item, targetType) {
-    item.status = "pending";
+  const AUTOMATIC_NOTES = {
+    "unsafe-medical": "Held automatically: the safety check flagged a possible unsafe medical claim.",
+    support: "Flagged automatically: this post may come from someone who needs support. It is still visible."
+  };
+
+  // Reports the safety check files by itself have no person behind them (reporterId "system").
+  function fileAutomaticReport(data, item, targetType, reason) {
+    const open = data.reports.some((r) => r.targetId === item.id && r.status === "open" && r.reporterId === "system" && r.reason === reason);
+    if (open) return;
     data.reports.push({
       id: newId("rep"),
       targetType,
       targetId: item.id,
       reporterId: "system",
-      reason: "unsafe-medical",
-      note: "Held automatically: the safety check flagged a possible unsafe medical claim.",
+      reason,
+      note: AUTOMATIC_NOTES[reason],
       status: "open",
       createdAt: new Date().toISOString()
     });
+  }
+
+  // A possible unsafe claim waits for a moderator. Possible crisis language stays up,
+  // because the person may need replies now, and goes to the top of the moderators' queue.
+  function applySafetyChecks(data, item, targetType, review) {
+    if (review.hold) {
+      item.status = "pending";
+      fileAutomaticReport(data, item, targetType, "unsafe-medical");
+    }
+    if (review.alert) fileAutomaticReport(data, item, targetType, "support");
+  }
+
+  // Reports from people that ask a moderator to judge the post. "Someone may need support"
+  // reports never hide or freeze a post: hiding a crisis post would leave that person alone.
+  function isComplaint(report) {
+    return report.reporterId !== "system" && report.reason !== "appeal" && report.reason !== "support";
   }
 
   // ---------- public API ----------
@@ -340,7 +363,7 @@ Forum.store = (function () {
         { id: newId("t"), categoryId: draft.categoryId, authorId: cleaned.author.id, gameIds, status: "visible", createdAt: new Date().toISOString() },
         cleaned.value
       );
-      if (cleaned.review.hold) holdForReview(data, thread, "thread");
+      applySafetyChecks(data, thread, "thread", cleaned.review);
       data.threads.push(thread);
       save();
       return done({ id: thread.id, status: thread.status });
@@ -358,7 +381,7 @@ Forum.store = (function () {
         cleaned.value
       );
       delete reply.title;
-      if (cleaned.review.hold) holdForReview(data, reply, "reply");
+      applySafetyChecks(data, reply, "reply", cleaned.review);
       data.replies.push(reply);
       save();
       return done({ id: reply.id, status: reply.status });
@@ -373,7 +396,7 @@ Forum.store = (function () {
       if (!item || !user || item.authorId !== user.id) return fail("You can only edit your own posts.");
       if (item.status !== "visible" && item.status !== "pending") return fail("This post can't be edited while a moderator has it hidden or removed.");
       // Keeps the text people reported in place until a moderator has seen it.
-      if (data.reports.some((r) => r.targetId === id && r.status === "open" && r.reporterId !== "system" && r.reason !== "appeal")) {
+      if (data.reports.some((r) => r.targetId === id && r.status === "open" && isComplaint(r))) {
         return fail("This post can't be edited while a moderator reviews a report about it.");
       }
 
@@ -393,8 +416,7 @@ Forum.store = (function () {
         if (Array.isArray(draft.gameIds)) item.gameIds = draft.gameIds.filter((g) => Forum.catalog.game(g)).slice(0, 3);
       }
       item.editedAt = new Date().toISOString();
-      const alreadyHeld = data.reports.some((r) => r.targetId === id && r.status === "open" && r.reporterId === "system");
-      if (cleaned.review.hold && !alreadyHeld) holdForReview(data, item, kind);
+      applySafetyChecks(data, item, kind, cleaned.review);
       save();
       return done({ id: item.id, status: item.status });
     },
@@ -510,7 +532,7 @@ Forum.store = (function () {
       });
 
       // Several different people reporting the same post hides it until a moderator decides.
-      const reporters = new Set(data.reports.filter((r) => r.targetId === id && r.status === "open").map((r) => r.reporterId));
+      const reporters = new Set(data.reports.filter((r) => r.targetId === id && r.status === "open" && isComplaint(r)).map((r) => r.reporterId));
       if (reporters.size >= AUTO_HIDE_REPORTS && item.status === "visible") item.status = "hidden";
       save();
       return done(true);
@@ -534,6 +556,7 @@ Forum.store = (function () {
         return {
           targetId,
           kind,
+          support: reports.some((r) => r.reason === "support"),
           post: decorate(data, source, kind),
           threadId: parent ? parent.id : null,
           threadTitle: parent ? parent.title : "",
@@ -546,7 +569,8 @@ Forum.store = (function () {
           }))
         };
       }).filter(Boolean);
-      items.sort((a, b) => b.reports.length - a.reports.length);
+      // Someone who may need support comes first, then the most-reported posts.
+      items.sort((a, b) => b.support - a.support || b.reports.length - a.reports.length);
       return done(items);
     },
 
@@ -610,8 +634,10 @@ Forum.store = (function () {
       const since = new Date(Date.now() - (days || 30) * 24 * 60 * 60 * 1000).toISOString();
       const areas = {};
       const games = {};
+      // The team's "(example)" posts aren't what real members talk about, so they don't count.
+      const examples = new Set(data.profiles.filter((p) => p.example).map((p) => p.id));
       data.threads
-        .filter((t) => t.status === "visible" && t.createdAt >= since)
+        .filter((t) => t.status === "visible" && t.createdAt >= since && !examples.has(t.authorId))
         .forEach((t) => {
           (t.gameIds || []).forEach((gameId) => {
             games[gameId] = (games[gameId] || 0) + 1;

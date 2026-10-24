@@ -2,6 +2,7 @@
 (async function () {
   const { esc, timeAgo, badge, threadCard, toast } = Forum.ui;
   const me = await Forum.ui.renderHeader();
+  if (Forum.ui.pageBlocked()) return;
   const profileId = Forum.ui.param("id") || (me && me.id);
   const box = document.getElementById("profile");
   const list = document.getElementById("profile-threads");
@@ -105,4 +106,12 @@
   });
   await drawMuted();
 
+  const reset = document.getElementById("reset-demo"); // only there in demo mode
+  if (reset) {
+    reset.addEventListener("click", async () => {
+      if (!confirm("Reset all demo posts, reports and settings in this browser?")) return;
+      await Forum.store.resetDemo();
+      location.href = "index.html";
+    });
+  }
 })();
