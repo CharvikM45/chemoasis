@@ -7,13 +7,13 @@
   <title>Your starting games · Chemoasis</title>
   <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono&family=DM+Sans:wght@400;500;600&family=Playfair+Display:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/css/account.css?v=2">
+  <link rel="stylesheet" href="assets/css/account.css?v=3">
 </head>
 <body>
   <div class="backdrop" aria-hidden="true"><i></i><i></i><i></i></div>
 
   <header class="topbar">
-    <a class="brand" href="../home/index.html">✣ chemoasis</a>
+    <a class="brand" href="../home/index.html"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>chemoasis</a>
     <nav class="toplinks" aria-label="Primary navigation">
       <a href="../home/index.html?games=1">Games</a>
       <a href="../forum/index.html">Community</a>
@@ -25,6 +25,19 @@
   </header>
 
   <main id="main">
+    <!-- The account server can't be reached (it's down, or the site was opened as plain files) -->
+    <section class="view" id="offlineView" aria-labelledby="offlineTitle" hidden>
+      <div class="card">
+        <p class="eyebrow">Your account</p>
+        <h1 id="offlineTitle">We can't reach <em>your account</em> right now.</h1>
+        <p class="lede">The account server isn't answering. Check your connection, then try again in a few minutes. Anything you've already saved stays on your account, and the games still work in the meantime.</p>
+        <div class="row">
+          <button class="primary" type="button" id="retryAccount">Try again</button>
+          <a class="ghost" href="../home/index.html?games=1">Play the games</a>
+        </div>
+      </div>
+    </section>
+
     <!-- Sign in / create account -->
     <section class="view" id="signinView" aria-labelledby="signinTitle" hidden>
       <div class="card">
@@ -145,6 +158,7 @@
       </div>
     </section>
   </main>
+  <p class="toast" id="errorToast" role="alert" hidden></p>
 
   <!-- Forum data (for community topics and, if allowed, your own posts) -->
   <script src="../forum/assets/js/catalog.js?v=3"></script>
@@ -155,6 +169,6 @@
   <script src="assets/js/recommender.js?v=3"></script>
   <script src="assets/js/auth.js?v=3"></script>
   <script src="assets/js/context.js"></script>
-  <script src="assets/js/app.js?v=4"></script>
+  <script src="assets/js/app.js?v=5"></script>
 </body>
 </html>

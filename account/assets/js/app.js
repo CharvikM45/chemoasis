@@ -7,7 +7,7 @@
   const R = Account.recommender;
   const auth = Account.auth;
   const TINT = { lumen: '#e9dcf3', starling: '#dce5f2', cloudpath: '#e2ebee', echo: '#f4e3c6', rhythm: '#dfe8d2', signal: '#f0dff6' };
-  const VIEWS = ['signinView', 'introView', 'questionView', 'resultsView'];
+  const VIEWS = ['offlineView', 'signinView', 'introView', 'questionView', 'resultsView'];
 
   let user = null;
   let data = null;
@@ -444,9 +444,26 @@
 
   /* ---------- Start ---------- */
 
+  // Anything that fails after the page has loaded (a save, a delete) says so instead of failing silently.
+  let toastTimer;
+  window.addEventListener('unhandledrejection', (event) => {
+    const toast = $('errorToast');
+    toast.textContent = (event.reason && event.reason.message) || 'Something went wrong. Please try again.';
+    toast.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { toast.hidden = true; }, 7000);
+  });
+
+  $('retryAccount').addEventListener('click', () => location.reload());
+
   (async () => {
-    user = await auth.currentUser();
-    if (user) await afterSignIn();
-    else { setMode('create'); show('signinView'); }
+    try {
+      user = await auth.currentUser();
+      if (user) await afterSignIn();
+      else { setMode('create'); show('signinView'); }
+    } catch (_) {
+      // No account server (for example, the site opened as plain files), or it isn't answering.
+      show('offlineView');
+    }
   })();
 })();
