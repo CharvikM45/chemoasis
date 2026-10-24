@@ -135,7 +135,10 @@ const uniforms = {
   uWall: { value: new THREE.Vector4(0.1, WALL_DISTANCE, 18, 12) }, // tile size, distance, columns, rows
   uBlocks: { value: new THREE.Vector2(3, 2) }, // how the cube's six faces are laid out on the wall
   uView: { value: new THREE.Vector2(1, 1) }, // half the view's width and height at the wall
-  uWallColor: { value: WALL_COLOR }
+  uWallColor: { value: WALL_COLOR },
+  // Where pieces fade into the background, in canvas pixels: right edge of the text column, the
+  // top bar's lower edge (counted from the bottom), and the width of the soft edge.
+  uFade: { value: new THREE.Vector3(-1e5, 1e5, 60) }
 };
 const brain = new THREE.Group();
 stage.add(brain);
@@ -307,7 +310,7 @@ function addMesh(m) {
           gl_Position = projectionMatrix * mvPosition;
         }`);
     shader.fragmentShader = `varying float vLoose; varying float vSnap; varying vec3 vRest; varying float vShard; varying float vAO; varying float vWall;
-      uniform float uSeams; uniform vec3 uWallColor;
+      uniform float uSeams; uniform vec3 uWallColor; uniform vec3 uFade;
       ${PUZZLE_SPACE}
       ${PUZZLE_GLSL}
       ${FACE_GLSL}
@@ -347,7 +350,13 @@ function addMesh(m) {
         reflectedLight.directSpecular *= mix(0.25, 1.0, vAO);`)
       .replace('#include <dithering_fragment>', `#include <dithering_fragment>
         // Pieces still in the wall are its plain colour, with the seams drawn in once they show.
-        gl_FragColor.rgb = mix(gl_FragColor.rgb, uWallColor * (1.0 - 0.3 * line * uSeams), inWall);`);
+        gl_FragColor.rgb = mix(gl_FragColor.rgb, uWallColor * (1.0 - 0.3 * line * uSeams), inWall);
+        // Loose pieces (off the wall, not yet in the brain) fade into the background while they pass
+        // behind the text column or the top bar, so the words stay easy to read.
+        float hide = max(1.0 - smoothstep(uFade.x - uFade.z * 0.4, uFade.x + uFade.z, gl_FragCoord.x),
+                         smoothstep(uFade.y - uFade.z * 0.3, uFade.y, gl_FragCoord.y));
+        hide *= (1.0 - inWall) * smoothstep(0.0, 0.25, vLoose);
+        gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(0.027, 0.024, 0.035), 0.9 * hide);`);
   };
   const mesh = new THREE.Mesh(geo, material);
   mesh.frustumCulled = false; // pieces move in the shader, so the box three.js knows about is wrong
@@ -409,12 +418,20 @@ function resize() {
   // Size the brain to the free space right of the text (at most 40% of the screen's width and 70%
   // of its height), with the camera looking straight ahead, and centre it in that space.
   const copy = document.querySelector('.hero .copy');
-  const textRight = copy ? copy.getBoundingClientRect().right / width : 0.5;
+  const copyRight = copy ? copy.getBoundingClientRect().right : width / 2;
+  const textRight = copyRight / width;
   const free = Math.max(0.3, 1 - textRight);
   const share = Math.min(0.4, free * 0.8);
   const tanHalf = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
   place.distance = Math.max(BRAIN_LENGTH / (share * 2 * tanHalf * camera.aspect), BRAIN_HEIGHT / (0.7 * 2 * tanHalf));
   place.x = (1 - free * 0.54 - 0.5) * 2 * place.distance * tanHalf * camera.aspect;
+
+  // Flying pieces fade behind the text on wide screens (on narrow ones the brain sits behind the
+  // text boxes, which have their own backing) and behind the top bar everywhere.
+  const pr = renderer.getPixelRatio();
+  const nav = document.querySelector('.nav');
+  const navBottom = nav ? nav.getBoundingClientRect().bottom : 0;
+  uniforms.uFade.value.set(width >= 900 ? (copyRight + 16) * pr : -1e5, (height - navBottom) * pr, 60 * pr);
 }
 
 // How assembled the brain is (0 = every piece loose, 1 = whole) at scroll position p (0 to 1):
