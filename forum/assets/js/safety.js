@@ -5,9 +5,8 @@
  * top of the moderators' queue, so a person checks on it.
  * No page code here, so this file can move to the React Native app unchanged.
  *
- * The database repeats the "hold" and "crisis" lists (forum_needs_review and
- * forum_needs_support in forum/database/migrations). Change both together; the
- * Postgres test checks that they agree.
+ * forum/tests/forum.test.js has phrases each list must catch, and everyday sentences it
+ * must leave alone. Add to both when you change a list.
  * These phrase lists are a starting point, not a clinical tool. A qualified person
  * should review them before the forum opens to the public.
  */
@@ -33,7 +32,14 @@ Forum.safety = (function () {
         /\bnot worth living\b/i,
         /\bcan['’]?t go on\b/i,
         /\bdon['’]?t want to (be here|live|wake up)/i,
-        /\boverdos(e|ed|ing)\b/i
+        /\boverdos(e|ed|ing)\b/i,
+        /\btak(e|ing) my (own )?life\b/i,
+        /\b(do ?n['’]?t|do not|no longer) want to (be alive|exist|keep living|live anymore)\b/i,
+        /\bno (point|reason) (in|to) (living|being alive|life|going on)\b/i,
+        /\bun-?aliv(e|ing) myself\b/i,
+        /\bkms\b/i,
+        /\b(rather|better) be dead\b/i,
+        /\bwant(ed|ing)? (it all|everything|my life|it) to (all )?end\b/i
       ],
       level: "support",
       alert: true,
@@ -59,7 +65,10 @@ Forum.safety = (function () {
     {
       id: "unsafe-medical",
       patterns: [
-        /\bcure[sd]?\b/i,
+        // A claim that something cures, not every mention of a cure ("I hope they find a cure").
+        /\b(cured|cures) (my|your|his|her|their|our|the|it|chemo|neuropathy|brain fog|cancer)\b/i,
+        /\b(will|can|could|would|helps?|this|that) cure\b/i,
+        /\b(is|was|are|it['’]?s) (a|the|my) (natural |real )?cure (for|of)\b/i,
         /\bstop (taking |going to |seeing )?(your |my |the )?(chemo|chemotherapy|medication|meds|treatment|doctor|oncologist)/i,
         /instead of (chemo|chemotherapy|treatment|your doctor|your oncologist|medication)/i,
         /\b(guaranteed|proven) to (heal|fix|cure|reverse)/i,

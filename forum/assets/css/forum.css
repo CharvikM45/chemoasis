@@ -583,6 +583,24 @@ html {
   box-shadow: 0 0 0 2px var(--f-accent);
 }
 
+/* Number of posts waiting in the review queue (moderators only). */
+.f-count {
+  display: inline-block;
+  min-width: 1.5em;
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  background: var(--f-line-strong);
+  color: var(--f-ink);
+  font: 10px "DM Mono", ui-monospace, monospace;
+  letter-spacing: 0;
+  text-align: center;
+}
+
+.f-count--support {
+  background: var(--f-support);
+  color: var(--f-bg);
+}
+
 /* ---------- labels, badges, chips ---------- */
 
 .f-label,

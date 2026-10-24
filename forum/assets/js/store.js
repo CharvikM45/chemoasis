@@ -12,6 +12,9 @@ window.Forum = window.Forum || {};
 Forum.store = (function () {
   const STORAGE_KEY = "chemoasis-forum-demo-v1";
   const AUTO_HIDE_REPORTS = 3;
+  // Reports from accounts younger than this still reach moderators but don't count toward
+  // hiding a post, so one person can't make a few new accounts and hide what they dislike.
+  const REPORTER_MIN_AGE_DAYS = 2;
   let memoryCopy = null;
   let persistent = true; // false when the browser blocks localStorage
 
@@ -208,6 +211,20 @@ Forum.store = (function () {
     return report.reporterId !== "system" && report.reason !== "appeal" && report.reason !== "support";
   }
 
+  function oldEnoughToHide(data, reporterId) {
+    const profile = data.profiles.find((p) => p.id === reporterId);
+    if (!profile || !profile.createdAt) return false;
+    return Date.now() - Date.parse(profile.createdAt) >= REPORTER_MIN_AGE_DAYS * 24 * 60 * 60 * 1000;
+  }
+
+  // Posts are either conversations ("thread") or replies. Anything else is refused, so a
+  // made-up type can't end up in the review queue.
+  const KINDS = ["thread", "reply"];
+  function listFor(data, kind) {
+    if (!KINDS.includes(kind)) return null;
+    return kind === "thread" ? data.threads : data.replies;
+  }
+
   // ---------- public API ----------
 
   return {
@@ -391,8 +408,8 @@ Forum.store = (function () {
     editMyPost(kind, id, draft) {
       const data = load();
       const user = me(data);
-      const list = kind === "thread" ? data.threads : data.replies;
-      const item = list.find((x) => x.id === id);
+      const list = listFor(data, kind);
+      const item = list && list.find((x) => x.id === id);
       if (!item || !user || item.authorId !== user.id) return fail("You can only edit your own posts.");
       if (item.status !== "visible" && item.status !== "pending") return fail("This post can't be edited while a moderator has it hidden or removed.");
       // Keeps the text people reported in place until a moderator has seen it.
@@ -425,8 +442,8 @@ Forum.store = (function () {
     requestAnotherReview(kind, id, note) {
       const data = load();
       const user = me(data);
-      const list = kind === "thread" ? data.threads : data.replies;
-      const item = list.find((x) => x.id === id);
+      const list = listFor(data, kind);
+      const item = list && list.find((x) => x.id === id);
       if (!item || !user || item.authorId !== user.id) return fail("You can only ask about your own posts.");
       if (item.status !== "hidden" && item.status !== "removed") return fail("Only hidden or removed posts can be sent for another review.");
       if (data.reports.some((r) => r.targetId === id && r.reason === "appeal")) return fail("You've already asked for another review of this post.");
@@ -475,8 +492,8 @@ Forum.store = (function () {
     deleteMyPost(kind, id) {
       const data = load();
       const user = me(data);
-      const list = kind === "thread" ? data.threads : data.replies;
-      const item = list.find((x) => x.id === id);
+      const list = listFor(data, kind);
+      const item = list && list.find((x) => x.id === id);
       if (!item || !user || item.authorId !== user.id) return fail("You can only delete your own posts.");
       // A moderator's decision stands: deleting would quietly close the reports on a hidden post.
       if (item.status !== "visible" && item.status !== "pending") return fail("This post can't be deleted while a moderator has it hidden or removed.");
@@ -513,8 +530,8 @@ Forum.store = (function () {
       const user = me(data);
       if (!user) return fail("Please sign in first.");
       if (!Forum.catalog.reportReason(reason)) return fail("Please choose a reason.");
-      const list = kind === "thread" ? data.threads : data.replies;
-      const item = list.find((x) => x.id === id);
+      const list = listFor(data, kind);
+      const item = list && list.find((x) => x.id === id);
       if (!item || item.status !== "visible") return fail("That post no longer exists.");
       if (item.authorId === user.id) return fail("You can't report your own post. You can edit or delete it instead.");
       if (data.reports.some((r) => r.targetId === id && r.reporterId === user.id && r.status === "open")) {
@@ -532,7 +549,7 @@ Forum.store = (function () {
       });
 
       // Several different people reporting the same post hides it until a moderator decides.
-      const reporters = new Set(data.reports.filter((r) => r.targetId === id && r.status === "open" && isComplaint(r)).map((r) => r.reporterId));
+      const reporters = new Set(data.reports.filter((r) => r.targetId === id && r.status === "open" && isComplaint(r) && oldEnoughToHide(data, r.reporterId)).map((r) => r.reporterId));
       if (reporters.size >= AUTO_HIDE_REPORTS && item.status === "visible") item.status = "hidden";
       save();
       return done(true);
