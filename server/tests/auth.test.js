@@ -14,7 +14,7 @@ async function start({ isProd = false, limits } = {}) {
   const server = await new Promise((resolve) => { const s = app.listen(0, () => resolve(s)); });
   const base = `http://127.0.0.1:${server.address().port}`;
   const call = async (method, path, { body, cookie, origin, raw } = {}) => {
-    const headers = {};
+    const headers = { 'X-Forwarded-Proto': 'https' }; // as Railway's proxy sends
     if (body !== undefined) headers['Content-Type'] = 'application/json';
     if (cookie) headers.Cookie = cookie;
     if (origin) headers.Origin = origin;
@@ -125,7 +125,7 @@ test('requests from other websites are blocked', async () => {
   try {
     const res = await t.call('POST', '/api/auth/signup', { body: maya, origin: 'https://evil.example' });
     assert.strictEqual(res.status, 403);
-    const own = await t.call('POST', '/api/auth/signup', { body: maya, origin: t.base });
+    const own = await t.call('POST', '/api/auth/signup', { body: maya, origin: t.base.replace(/^http:/, 'https:') }); // Railway serves the site over HTTPS
     assert.strictEqual(own.status, 201);
   } finally { await t.close(); }
 });

@@ -12,12 +12,27 @@ const MAX_BYTES = 48 * 1024;
 
 const isObject = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
 
+// Questionnaire answers are short choices: text ids, numbers, or short lists of ids.
+function cleanAnswers(answers) {
+  const out = {};
+  for (const [key, value] of Object.entries(answers)) {
+    if (!/^[A-Za-z0-9_-]{1,40}$/.test(key)) throw new InputError('That answer could not be read.');
+    const ok = (v) => v === null || typeof v === 'boolean' || (typeof v === 'number' && Number.isFinite(v)) || (typeof v === 'string' && v.length <= 100);
+    if (Array.isArray(value)) {
+      if (value.length > 30 || !value.every((v) => typeof v === 'string' && v.length <= 100)) throw new InputError('That answer could not be read.');
+    } else if (!ok(value)) throw new InputError('That answer could not be read.');
+    out[key] = value;
+  }
+  return out;
+}
+
 // Keeps only known fields, caps the play history, and refuses anything oversized.
 function cleanProfile(input) {
   if (!isObject(input)) throw new InputError('That profile could not be read.');
   const out = {};
   for (const key of FIELDS) if (input[key] !== undefined) out[key] = input[key];
   if (out.answers !== undefined && !isObject(out.answers)) throw new InputError('Answers must be an object.');
+  if (out.answers !== undefined) out.answers = cleanAnswers(out.answers);
   if (out.levels !== undefined && !isObject(out.levels)) throw new InputError('Levels must be an object.');
   if (out.results !== undefined && !Array.isArray(out.results)) throw new InputError('Results must be a list.');
   if (Array.isArray(out.results) && out.results.length > MAX_RESULTS) out.results = out.results.slice(-MAX_RESULTS);

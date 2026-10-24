@@ -116,7 +116,7 @@ test('the play history is capped and oversized profiles are refused', async () =
     assert.strictEqual(put.json.profile.model.events.length, 300);
     assert.strictEqual(put.json.profile.model.events[0].at, 100, 'keeps the newest');
 
-    const huge = await t.call('PUT', '/api/profile', { cookie, body: { profile: { answers: { note: 'x'.repeat(50000) } } } });
+    const huge = await t.call('PUT', '/api/profile', { cookie, body: { profile: { model: { version: 1, delta: { big: 'x'.repeat(50000) }, events: [], dismissed: {} } } } });
     assert.strictEqual(huge.status, 413);
   } finally { await t.close(); }
 });
@@ -143,5 +143,17 @@ test('with a data key, answers are encrypted in the database and still come back
     assert.ok(rows[0].data.enc && rows[0].data.enc.tag);
     const back = await t.call('GET', '/api/profile', { cookie });
     assert.strictEqual(back.json.profile.answers.cancer, 'breast-cancer-secret');
+  } finally { await t.close(); }
+});
+
+test('answers must be short choices, not arbitrary data', async () => {
+  const t = await start();
+  try {
+    const cookie = await t.signUp('sam@example.com');
+    const ok = await t.call('PUT', '/api/profile', { cookie, body: { profile: { answers: { age: '18to44', energy: 3, rankCog: ['memory', 'focus'], status: null } } } });
+    assert.strictEqual(ok.status, 200);
+    for (const answers of [{ note: 'x'.repeat(500) }, { age: { nested: true } }, { 'bad key!': 'x' }, { rankCog: Array(40).fill('memory') }]) {
+      assert.strictEqual((await t.call('PUT', '/api/profile', { cookie, body: { profile: { answers } } })).status, 400);
+    }
   } finally { await t.close(); }
 });

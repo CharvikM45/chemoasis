@@ -14,7 +14,11 @@ const SITE_FOLDERS = ['home', 'account', 'forum', 'games']; // never serve serve
 function createApp({ db, isProd = false, allowedOrigins = [], moderators = [], dataKey, limits } = {}) {
   const app = express();
   app.disable('x-powered-by');
+  app.set('env', isProd ? 'production' : 'development'); // no debug output from Express in production
   app.set('trust proxy', 1); // Railway sits in front, so use its X-Forwarded-For / -Proto
+  // HTTPS only. Railway already redirects at its edge; this covers any other way in. The health
+  // check is exempt: Railway calls it directly over its private network, without HTTPS.
+  if (isProd) app.use((req, res, next) => (req.secure || req.path === '/api/health' ? next() : res.redirect(301, `https://${req.get('host')}${req.originalUrl}`)));
   app.use(securityHeaders({ root: ROOT, folders: SITE_FOLDERS, isProd }));
 
   // An overall limit on API calls per IP, on top of the stricter sign-in and posting limits.
@@ -28,10 +32,15 @@ function createApp({ db, isProd = false, allowedOrigins = [], moderators = [], d
   });
 
   // Reject state-changing API calls sent from other websites (cross-site request forgery).
-  // Browsers always send Origin on these requests; tools like curl don't, and can't ride on a user's cookie.
+  // Browsers always send Origin on these requests, and modern ones also say "cross-site" in
+  // Sec-Fetch-Site; tools like curl send neither, and can't ride on a user's cookie.
   app.use('/api', (req, res, next) => {
     if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') return next();
     const origin = req.get('origin');
+    if (!origin && req.get('sec-fetch-site') === 'cross-site') {
+      audit(db, req, 'cross_site_blocked', { detail: { path: req.path, origin: null } });
+      return res.status(403).json({ error: 'This request came from another website and was blocked.' });
+    }
     if (!origin) return next();
     const own = `${req.protocol}://${req.get('host')}`;
     if (origin === own || allowedOrigins.includes(origin)) return next();
@@ -67,7 +76,8 @@ function createApp({ db, isProd = false, allowedOrigins = [], moderators = [], d
     if (error.type === 'entity.too.large') return res.status(413).json({ error: 'That request is too large.' });
     if (error.type === 'entity.parse.failed') return res.status(400).json({ error: 'That request could not be read.' });
     if (error.status && error.status < 500) return res.status(error.status).json({ error: error.message });
-    console.error(error);
+    // Details go to the server log only; the browser never sees stack traces or internals.
+    console.error(JSON.stringify({ type: 'error', level: 'error', at: new Date().toISOString(), path: req.path, message: error.message, stack: error.stack }));
     res.status(500).json({ error: 'Something went wrong on our side. Please try again.' });
   });
 
