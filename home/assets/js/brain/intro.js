@@ -1,7 +1,9 @@
 /*
  * Home page brain: a soft, glossy brain made of jigsaw pieces.
- * Scroll story: whole at the top, it bursts into puzzle pieces on the first scroll, then the pieces fly
- * back into place as you read down the page, until it is whole again at the bottom.
+ * Scroll story ("your way back"): at the top it is nearly finished, with a few pieces still settling,
+ * and the rest click into place as you read down the page, until it is whole at the bottom. It never
+ * bursts apart, which would be a heavy first image for people living with "chemo brain". Once a
+ * piece is in place its seam fades away, so the finished brain reads as one thing.
  * The mesh is built in a worker (build-worker.js) and all shard motion runs on the GPU, so the
  * page only updates a few numbers per frame.
  */
@@ -222,11 +224,11 @@ function addMesh(m) {
         float line = 1.0 - smoothstep(0.0, 0.025 + fwidth(seam) * 1.5, seam);`)
       .replace('#include <color_fragment>', `#include <color_fragment>
         if (!gl_FrontFacing) diffuseColor.rgb *= 0.4; // the inside of a piece is darker
-        diffuseColor.rgb *= 1.0 - 0.45 * line * (1.0 - vLoose); // faint seams once it's whole`)
+        diffuseColor.rgb *= 1.0 - 0.45 * line * vLoose; // seams show only while a piece is loose`)
       .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
-        // Blue edges while the pieces are loose, and a flash as each one locks into place.
+        // Blue edges while the pieces are loose, a flash as each one locks into place, then nothing.
         vec3 glow = vec3(0.3, 0.78, 1.0);
-        totalEmissiveRadiance += glow * line * (0.25 + 2.2 * vLoose + 2.5 * vSnap) + glow * 0.35 * vSnap;`);
+        totalEmissiveRadiance += glow * line * (2.2 * vLoose + 2.5 * vSnap) + glow * 0.35 * vSnap;`);
   };
   const mesh = new THREE.Mesh(geo, material);
   mesh.frustumCulled = false; // shards move in the shader, so the box three.js knows about is wrong
@@ -273,9 +275,9 @@ function resize() {
 }
 
 // Whole at the top, apart after the first screen, whole again at the very bottom.
+// How assembled the brain is (0 = every piece loose, 1 = whole) at scroll position p (0 to 1).
 function assembleAt(p) {
-  if (p < 0.07) return 1 - smooth(0, 0.07, p);
-  return smooth(0.1, 0.96, p);
+  return lerp(0.72, 1, smooth(0, 0.9, p));
 }
 
 const pointer = { x: 0, y: 0, tx: 0, ty: 0 };
