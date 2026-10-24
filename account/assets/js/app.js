@@ -264,7 +264,7 @@
     const answered = answeredCount();
     const lede = document.querySelector('.results-head .lede');
     lede.textContent = answered
-      ? 'In order of priority, based on your answers and how you use Reframe. Start with the first, or whichever feels right today.'
+      ? 'In order of priority, based on your answers and how you use Chemoasis. Start with the first, or whichever feels right today.'
       : 'You skipped the questions, so these are gentle starters for anyone. Answer them any time for suggestions that fit you better.';
 
     const heard = $('heard');

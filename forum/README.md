@@ -1,15 +1,15 @@
-# Reframe community forum
+# Chemoasis community forum
 
 The moderated community forum. Plain HTML, CSS and JavaScript like the rest of the site.
 
-It is **live and shared**: everyone signed in to Reframe uses the same forum, and posts are saved in Postgres. Anyone can read; posting needs an account. The starter conversations come from accounts marked "(example)", written by the team to show how the community works.
+It is **live and shared**: everyone signed in to Chemoasis uses the same forum, and posts are saved in Postgres. Anyone can read; posting needs an account. The starter conversations come from accounts marked "(example)", written by the team to show how the community works.
 
 ## How it works
 
 - `assets/js/store.js` holds all the forum's rules (below). The server runs this same file against the shared forum, acting as the signed-in person (`server/forum.js`, `/api/forum`), so only what a person is allowed to see ever leaves the server.
 - Pages call `Forum.store` from `assets/js/api-store.js`, which forwards each call to the server.
 - Moderators are the accounts whose emails are listed in the `MODERATOR_EMAILS` environment variable (comma-separated). They see the review queue.
-- Deleting a Reframe account takes that person's posts down.
+- Deleting a Chemoasis account takes that person's posts down.
 
 ## What it does
 
@@ -53,7 +53,7 @@ It is **live and shared**: everyone signed in to Reframe uses the same forum, an
 
 - **Games:** `assets/js/catalog.js` lists the six games with the same ids as the games and the recommender, so posts can be tagged and filtered by game.
 - **Recommendations (Sahas):** `Forum.store.topicSignals(days)` returns how often each training area and game comes up in public conversations. It returns counts only: no user IDs and no post text. That matches the brief's rule that forum signals come from clear categories, not from reading people's posts.
-- **Accounts:** the forum uses Reframe accounts (`server/`). Your forum name starts as your account name and can be changed on your profile.
+- **Accounts:** the forum uses Chemoasis accounts (`server/`). Your forum name starts as your account name and can be changed on your profile.
 - **Moving to `database/schema.sql` later:** the server would swap its one shared document for those tables; pages and `api-store.js` wouldn't change.
 
 ## Testing

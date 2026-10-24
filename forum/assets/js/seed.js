@@ -80,7 +80,7 @@ Forum.seed = function () {
       categoryId: "welcome",
       authorId: "u-alex",
       title: "Hi from a new member",
-      body: "Hi everyone. I just found Reframe and wanted to say hello. I'm mostly looking for short activities for low-energy days.",
+      body: "Hi everyone. I just found Chemoasis and wanted to say hello. I'm mostly looking for short activities for low-energy days.",
       label: "experience",
       gameIds: [],
       createdAt: daysAgo(3)

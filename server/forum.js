@@ -49,8 +49,15 @@ function forumRouter({ db, isProd, moderators = [], limits = {} }) {
     if (state) return;
     loading = loading || (async () => {
       const { rows } = await db.query('SELECT data FROM forum_state WHERE id = 1');
-      if (rows[0]) state = rows[0].data;
-      else {
+      if (rows[0]) {
+        state = rows[0].data;
+        // The app is called Chemoasis: fix example posts saved under its earlier working name.
+        // Example accounts have ids like "u-river"; real accounts have UUIDs and are never touched.
+        for (const item of [...state.threads, ...state.replies]) {
+          if (String(item.authorId).startsWith('u-') && /Reframe/.test(item.body)) { item.body = item.body.replace(/Reframe/g, 'Chemoasis'); dirty = true; }
+        }
+        if (dirty) await persist();
+      } else {
         state = Forum.seed();
         state.currentUserId = null;
         await persist();

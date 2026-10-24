@@ -1,6 +1,6 @@
 # Account server
 
-A small Node server that serves the Reframe website and the account API, deployed as one Railway service next to the Postgres database. Same address for both, so the sign-in cookie is a normal first-party cookie.
+A small Node server that serves the Chemoasis website and the account API, deployed as one Railway service next to the Postgres database. Same address for both, so the sign-in cookie is a normal first-party cookie.
 
 ## API
 
