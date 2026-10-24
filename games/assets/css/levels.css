@@ -31,6 +31,9 @@
 .level-panel h2 em { color: #f0ce88; }
 .level-lede { margin: 14px 0 0; max-width: 520px; color: #d9dcea; font-size: 16px; line-height: 1.55; }
 .level-note { margin: 18px 0 0; color: #b9bdd0; font-size: 14px; }
+.level-about { margin: 16px 0 0; padding: 12px 14px; max-width: 620px; border-left: 2px solid #f0ce88; background: rgba(240, 206, 136, .07); color: #d9dcea; font-size: 14px; line-height: 1.55; }
+.level-about a { color: #f0ce88; }
+.level-about small { display: block; margin-top: 6px; color: #9fa4ba; font-size: 12px; }
 
 .level-grid {
   list-style: none;

@@ -21,12 +21,12 @@ window.Account = window.Account || {};
 
 Account.recommender = (function () {
   const GAMES = [
-    { id: "lumen", name: "Lumen Garden", area: "Memory & recall", areas: ["memory"], blurb: "Recall a gentle sequence of glowing plants.", icon: "✿" },
-    { id: "starling", name: "Starling Observatory", area: "Visual search", areas: ["focus"], blurb: "Find a requested constellation in a quiet night sky.", icon: "✧" },
-    { id: "cloudpath", name: "Cloudpath Cartographer", area: "Planning", areas: ["planning"], blurb: "Plan a calm route, one step at a time.", icon: "⌁" },
-    { id: "echo", name: "Story Echo", area: "Words & language", areas: ["words", "memory"], blurb: "Read a short story, then recall it.", icon: "☷" },
-    { id: "rhythm", name: "Finger Rhythm", area: "Hand coordination", areas: ["hand"], blurb: "Tap glowing pads at your own pace.", icon: "◉" },
-    { id: "signal", name: "Signal Match", area: "Thinking speed & focus", areas: ["speed", "focus"], blurb: "Match symbols, with or without a timer.", icon: "◇" }
+    { id: "lumen", name: "Lumen Garden", area: "Working memory", areas: ["memory"], blurb: "Repeat a growing path of lights, forwards and then backwards.", icon: "✿" },
+    { id: "starling", name: "Starling Observatory", area: "Processing speed", areas: ["focus"], blurb: "Catch what flashes in the centre and at the edges, faster each time.", icon: "✧" },
+    { id: "cloudpath", name: "Cloudpath Cartographer", area: "Planning", areas: ["planning"], blurb: "Plan the fewest moves to match a goal, Tower of London style.", icon: "⌁" },
+    { id: "echo", name: "Story Echo", area: "Verbal memory", areas: ["words", "memory"], blurb: "Learn word lists with memory strategies; lists grow as you improve.", icon: "☷" },
+    { id: "rhythm", name: "Finger Rhythm", area: "Hand coordination", areas: ["hand"], blurb: "Tap pads in time as the pace speeds up and a hidden pattern repeats.", icon: "◉" },
+    { id: "signal", name: "Signal Match", area: "Mental flexibility", areas: ["speed", "focus"], blurb: "Sort by shape or colour as the rule keeps switching.", icon: "◇" }
   ];
 
   const AREA_NAMES = {

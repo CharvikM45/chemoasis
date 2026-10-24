@@ -1,8 +1,9 @@
 /*
  * Shared level screens for the six home-page games.
- *   GameLevels.pick({ host, game, title, kicker, levels, onPick, onExit })
+ *   GameLevels.pick({ host, game, title, kicker, levels, about, onPick, onExit })
  *     shows "Choose a level"; levels are [{ name, desc }]. Every level is open; finished ones
- *     get a tick and the first unfinished one is marked "Up next".
+ *     get a tick and the first unfinished one is marked "Up next". `about` ({ text, cite, href })
+ *     says what the exercise trains and which research it is based on.
  *   GameLevels.done({ host, game, level, levels, message, onPick, onLevels, onExit, extra })
  *     records the level as finished and shows "Level N complete" with Next / Again / All levels.
  * Progress is kept in this browser (localStorage), per game, and on the account when signed in.
@@ -57,12 +58,13 @@
   }
   function close(host) { host.querySelector(':scope > .level-screen')?.remove(); }
 
-  function pick({ host, game, title, kicker, levels, onPick, onExit }) {
+  function pick({ host, game, title, kicker, levels, about, onPick, onExit }) {
     const done = finished(game);
     const next = upNext(game, levels.length);
     const el = overlay(host, `<p class="level-kicker">${escape(kicker)}</p>
       <h2>${escape(title)}</h2>
-      <p class="level-lede">Choose a level. Start anywhere, and switch whenever you like.</p>
+      <p class="level-lede">Choose a level. It adjusts as you play: harder when you're doing well, easier when you're not.</p>
+      ${about ? `<p class="level-about">${escape(about.text)} <a href="${escape(about.href)}" target="_blank" rel="noreferrer">${escape(about.cite)} ↗</a><small>Based on published research. Not yet clinically reviewed, and not a treatment.</small></p>` : ''}
       <ol class="level-grid">${levels.map((level, i) => `<li><button data-level="${i}" class="${done.has(i) ? 'is-done' : ''} ${i === next ? 'is-next' : ''}">
         <span class="level-num">Level ${i + 1}</span><b>${escape(level.name)}</b><small>${escape(level.desc)}</small>
         <em>${done.has(i) ? '✓ Completed' : i === next ? 'Up next' : ''}</em></button></li>`).join('')}</ol>

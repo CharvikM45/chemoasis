@@ -3,5 +3,5 @@ import { buildBrainMesh } from './mesh.js';
 
 self.onmessage = (e) => {
   const mesh = buildBrainMesh(e.data || {});
-  self.postMessage(mesh, [mesh.position.buffer, mesh.normal.buffer, mesh.shard.buffer, mesh.index.buffer, mesh.centre.buffer, mesh.out.buffer, mesh.faces.buffer, mesh.neighbours.buffer]);
+  self.postMessage(mesh, [mesh.position.buffer, mesh.normal.buffer, mesh.shard.buffer, mesh.index.buffer, mesh.centre.buffer, mesh.out.buffer]);
 };
