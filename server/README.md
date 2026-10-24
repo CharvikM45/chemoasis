@@ -26,6 +26,7 @@ A small Node server that serves the Chemoasis website and the account API, deplo
 - Requests that change things are refused if they come from another website (Origin check).
 - Sign-in attempts are limited per account and per IP; sign-ups per IP.
 - A wrong email and a wrong password get the same message and take the same time.
+- Every response has security headers: a content security policy that allows only this site and Google Fonts, no framing by other sites (stops clickjacking), `nosniff`, a referrer policy, and HTTPS-only (HSTS) in production. The 3D library (three.js) is served from `home/assets/vendor/`, not from an outside server.
 - Request bodies are capped at 10 KB. Only the site folders are served, never `server/`, `node_modules/`, `.git/` or `.env`.
 - Tables are created by migrations in `migrations/`, which run on startup.
 

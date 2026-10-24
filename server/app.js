@@ -13,6 +13,35 @@ function createApp({ db, isProd = false, allowedOrigins = [], moderators = [], l
   app.disable('x-powered-by');
   app.set('trust proxy', 1); // Railway sits in front, so use its X-Forwarded-For / -Proto
 
+  // Security headers on every response. The policy lists only what the pages really load: this
+  // site, Google Fonts, and inline scripts and styles (the pages and games use some). Other sites
+  // can't show these pages in a frame, so nobody can hide a "Delete my account" button under a
+  // fake page (clickjacking).
+  const policy = [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline'",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com",
+    "img-src 'self' data: blob:",
+    "connect-src 'self'",
+    "worker-src 'self'",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'"
+  ].join('; ');
+  app.use((req, res, next) => {
+    res.set({
+      'Content-Security-Policy': policy,
+      'X-Frame-Options': 'DENY',
+      'X-Content-Type-Options': 'nosniff',
+      'Referrer-Policy': 'strict-origin-when-cross-origin',
+      'Permissions-Policy': 'camera=(), microphone=(), geolocation=()'
+    });
+    if (isProd) res.set('Strict-Transport-Security', 'max-age=15552000; includeSubDomains');
+    next();
+  });
+
   // Reject state-changing API calls sent from other websites (cross-site request forgery).
   // Browsers always send Origin on these requests; tools like curl don't, and can't ride on a user's cookie.
   app.use('/api', (req, res, next) => {

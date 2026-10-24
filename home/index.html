@@ -9,7 +9,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&family=Playfair+Display:ital,wght@0,400;0,500;1,400;1,500&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="assets/css/home.css?v=4" />
-    <script type="importmap">{ "imports": { "three": "https://unpkg.com/three@0.161.0/build/three.module.js", "three/addons/": "https://unpkg.com/three@0.161.0/examples/jsm/" } }</script>
+    <!-- three.js 0.161.0 (MIT, see assets/vendor/three/LICENSE), served from this site so no outside server sees visitors -->
+    <script type="importmap">{ "imports": { "three": "./assets/vendor/three/three.module.min.js" } }</script>
     <link rel="stylesheet" href="../games/assets/css/experience.css?v=three-games-2" />
     <link rel="stylesheet" href="../games/assets/css/experience-games.css?v=three-games-2" />
     <link rel="stylesheet" href="../games/assets/css/game-launch.css?v=corner-2" />
@@ -88,12 +89,12 @@
           <ol class="steps">
             <li><span>01</span><div><b>Tell us how you're doing</b><p>Ten short questions about your treatment, your energy and what feels hardest right now. Skip any of them.</p></div></li>
             <li><span>02</span><div><b>Get three games to start with</b><p>Ranked for you, each with the reasons it was picked, so nothing is a black box.</p></div></li>
-            <li><span>03</span><div><b>Train, a few minutes at a time</b><p>Each game is based on exercises tested with people after cancer treatment, and adapts as you play: harder when you're doing well, easier when you're not.</p></div></li>
+            <li><span>03</span><div><b>Train, a few minutes at a time</b><p>Each game is inspired by exercises studied with people after cancer treatment (our versions haven't been tested themselves), and adapts as you play: harder when you're doing well, easier when you're not.</p></div></li>
             <li><span>04</span><div><b>It learns with you</b><p>Every game you play, or set aside, tunes your next suggestions. Your progress is saved to your account.</p></div></li>
           </ol>
           <div class="panel">
             <p class="panel-kicker">Why this helps</p>
-            <p>Finishing something small gives a real sense of progress, and gentle practice of attention and memory targets the brain fog that often comes with low mood. The community is there for the part games can't do: talking to people who've been through it.</p>
+            <p>Finishing something small gives a real sense of progress, and gentle attention and memory practice is a low-pressure way to keep working on the brain fog that often comes with low mood. The community is there for the part games can't do: talking to people who've been through it.</p>
           </div>
         </div>
       </section>
@@ -105,7 +106,7 @@
           <div class="features">
             <article><i aria-hidden="true">?</i><b>Personal questionnaire</b><p>Ten questions, adjusted to your age and treatment. Every one can be skipped.</p></article>
             <article><i aria-hidden="true">✦</i><b>Recommendations that explain themselves</b><p>A small learning model ranks six games for you and tells you why.</p></article>
-            <article><i aria-hidden="true">◈</i><b>Six adaptive brain games</b><p>Working memory, processing speed, planning, verbal memory, mental flexibility and hand coordination, each based on published research.</p></article>
+            <article><i aria-hidden="true">◈</i><b>Six adaptive brain games</b><p>Working memory, processing speed, planning, verbal memory, mental flexibility and hand coordination, each inspired by tasks used in published research.</p></article>
             <article><i aria-hidden="true">↻</i><b>Saved to your account</b><p>Your answers, suggestions and level progress follow you to any device.</p></article>
             <article><i aria-hidden="true">☷</i><b>Community forum</b><p>Talk with people who've been there, with moderators and anonymous posting.</p></article>
             <article><i aria-hidden="true">○</i><b>Private and gentle</b><p>No leaderboards and no health scores. Delete your account and everything in it at any time.</p></article>
