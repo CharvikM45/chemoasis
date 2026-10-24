@@ -90,5 +90,9 @@ test('deleting an account takes its posts down', async () => {
     await t.call('DELETE', '/api/auth/me', { cookie: maya });
     const after = await t.forum('getThread', [made.json.result.id], sam);
     assert.strictEqual(after.status, 400, 'the post is gone');
+    const { rows } = await t.db.query('SELECT data FROM forum_state WHERE id = 1');
+    const stored = rows[0].data.threads.find((x) => x.id === made.json.result.id);
+    assert.strictEqual(stored.body, '', 'its words are erased from the database, not just hidden');
+    assert.ok(!JSON.stringify(rows[0].data).includes('Testing deletion'));
   } finally { await t.close(); }
 });

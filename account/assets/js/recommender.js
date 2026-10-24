@@ -25,8 +25,8 @@ Account.recommender = (function () {
     { id: "starling", name: "Starling Observatory", area: "Processing speed", areas: ["focus"], blurb: "Catch what flashes in the centre and at the edges, faster each time.", icon: "✧" },
     { id: "cloudpath", name: "Cloudpath Cartographer", area: "Planning", areas: ["planning"], blurb: "Plan the fewest moves to match a goal, Tower of London style.", icon: "⌁" },
     { id: "echo", name: "Story Echo", area: "Verbal memory", areas: ["words", "memory"], blurb: "Learn word lists with memory strategies; lists grow as you improve.", icon: "☷" },
-    { id: "rhythm", name: "Finger Rhythm", area: "Hand coordination", areas: ["hand"], blurb: "Tap pads in time as the pace speeds up and a hidden pattern repeats.", icon: "◉" },
-    { id: "signal", name: "Signal Match", area: "Mental flexibility", areas: ["speed", "focus"], blurb: "Sort by shape or colour as the rule keeps switching.", icon: "◇" }
+    { id: "rhythm", name: "Finger Rhythm", area: "Hand coordination", areas: ["hand"], blurb: "Tap glowing pads at your own pace while a hidden pattern repeats. Challenge mode speeds up.", icon: "◉" },
+    { id: "signal", name: "Signal Match", area: "Mental flexibility", areas: ["speed", "focus"], blurb: "Sort by shape or by fill as the rule keeps switching.", icon: "◇" }
   ];
 
   const AREA_NAMES = {
@@ -87,13 +87,13 @@ Account.recommender = (function () {
     taxane: "You listed taxanes, which are often linked to numbness in the hands and feet",
     vinca: "You listed vincristine, which is often linked to numbness in the hands and feet",
     methotrexate: "You listed methotrexate; some people notice thinking changes after it",
-    anthracycline: "You listed anthracyclines; some people notice memory changes after this kind of treatment"
+    anthracycline: "You listed anthracyclines; many people notice memory changes after chemotherapy"
   };
   const DX_TEXT = {
     neuropathy: "A doctor has told you about peripheral neuropathy",
     anemia: "You mentioned anemia, which can affect energy",
     thyroid: "You mentioned thyroid issues, which can affect energy and focus",
-    b12d: "You mentioned low B12 or vitamin D, which can affect memory and focus",
+    b12d: "You mentioned low B12 or vitamin D; low B12 is known to affect memory, so it's worth raising with your care team",
     hormone: "You mentioned hormone changes, which can affect memory and focus"
   };
 
@@ -288,7 +288,7 @@ Account.recommender = (function () {
   function globalNotes(answers, features) {
     const a = answers || {};
     const notes = [];
-    if ((features.x.gentle || 0) >= 0.6) notes.push("Your energy may be low right now. Try one session at Level 1. Every game eases off when you miss, and you can stop at any time.");
+    if ((features.x.gentle || 0) >= 0.6) notes.push("Your energy may be low right now. Try one session at Level 1. Story Echo, Finger Rhythm and Signal Match start in Gentle mode, with no timer, and you can pause any game or stop at any time.");
     if ((a.rankPhys || []).slice(0, 2).includes("balance")) {
       notes.push("There isn't a balance activity in the library yet. Your care team or a physical therapist can suggest safe balance exercises.");
     }

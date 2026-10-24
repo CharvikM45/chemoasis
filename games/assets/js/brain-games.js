@@ -1,31 +1,38 @@
 /*
- * The six brain games. Each one is an adaptive version of a task used in cognitive training
- * research with people after cancer treatment: it gets harder after you succeed and easier after
- * you miss, so it stays challenging. Sessions are a few minutes long.
+ * The six brain games. Each one is inspired by a task used in cognitive training research with
+ * people after cancer treatment. Most adapt as you play: harder after you succeed and easier
+ * after you miss. Sessions are a few minutes long.
  *
  *   lumen      Lumen Garden            spatial working memory span (forward, then backward)
  *   starling   Starling Observatory    speed of processing (brief flashes, centre + periphery)
  *   cloudpath  Cloudpath Cartographer  planning (Tower of London puzzles)
- *   echo       Story Echo              verbal memory (word lists, grouping strategy)
- *   rhythm     Finger Rhythm           paced finger tapping with a hidden repeating sequence
+ *   echo       Story Echo              verbal memory (word lists, linking strategy)
+ *   rhythm     Finger Rhythm           finger tapping with a hidden repeating sequence
  *   signal     Signal Match            mental flexibility (switching between two sorting rules)
+ *
+ * Story Echo, Finger Rhythm and Signal Match have two modes. Gentle (the default) has no timer:
+ * the game waits for you and shows no speed numbers. Challenge keeps the adaptive pace, with
+ * safe limits, and keeps speed numbers behind "Show details". Every game can be paused.
  *
  * Opening a game: a click on any [data-game] element (the library cards, ?play= links).
  * Levels set where a session starts; results and personal bests are shown at the end.
+ * three.js only draws the backdrop, so it is loaded on demand: if it can't download (offline,
+ * a blocked network), the games still open on their plain background.
  */
 // three.js is loaded only when a game opens with 3D on (not in calm mode).
 let THREE = null;
-const loadThree = () => import('three').then((m) => { THREE = m; });
+const loadThree = () => (THREE ? Promise.resolve(THREE) : import('three').then((m) => (THREE = m), () => null));
 
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
-const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const shuffle = (a) => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
-const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+const mean = (a) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0);
+const median = (a) => { if (!a.length) return 0; const s = a.slice().sort((x, y) => x - y); return s[Math.floor(s.length / 2)]; };
 
-/* ---------- personal bests (this browser) ---------- */
+/* ---------- personal bests and Gentle / Challenge choice (this browser) ---------- */
 
+// Storage keys keep the old "reframe" prefix so nobody loses their saved progress.
 const BEST = 'reframe.best';
 function bests() { try { return JSON.parse(localStorage.getItem(BEST) || '{}') || {}; } catch (_) { return {}; } }
 // Saves `value` if it beats the old best (higher is better unless lowerIsBetter). Returns { best, isNew }.
@@ -36,6 +43,11 @@ function recordBest(game, value, lowerIsBetter) {
   if (isNew) { all[game] = value; try { localStorage.setItem(BEST, JSON.stringify(all)); } catch (_) { /* storage unavailable */ } }
   return { best: isNew ? value : old, isNew };
 }
+
+const MODE = 'chemoasis.mode';
+function modes() { try { return JSON.parse(localStorage.getItem(MODE) || '{}') || {}; } catch (_) { return {}; } }
+const savedMode = (game) => (modes()[game] === 'challenge' ? 'challenge' : 'gentle');
+function saveMode(game, mode) { const all = modes(); all[game] = mode; try { localStorage.setItem(MODE, JSON.stringify(all)); } catch (_) { /* storage unavailable */ } }
 
 /* ---------- the world around each game: a calm 3D backdrop and a panel ---------- */
 
@@ -51,41 +63,50 @@ class World {
     document.body.append(this.host);
     this.raf = 0;
     this.run = 0; // bumped on close, so a session that's still running stops
+    this.playing = false; // a session is under way (shows the Pause button)
+    this.paused = false;
+    this.pausedAt = 0;
+    this.pausedTotal = 0; // time spent paused, left out of world.now()
   }
   render(body) {
-    this.host.innerHTML = `<div class="world-panel"><header class="world-top"><div><p class="world-kicker">${esc(this.game.kicker)}</p><h2>${esc(this.game.title)}</h2></div><button data-action="exit">Exit game</button></header>${body}</div>`;
+    this.host.innerHTML = `<div class="world-panel"><header class="world-top"><div><p class="world-kicker">${esc(this.game.kicker)}</p><h2>${esc(this.game.title)}</h2></div><div class="world-actions">${this.playing ? '<button data-action="pause">Pause</button>' : ''}<button data-action="exit">Exit game</button></div></header>${body}</div>`;
     this.host.querySelector('[data-action="exit"]').onclick = () => this.close();
+    const pause = this.host.querySelector('[data-action="pause"]');
+    if (pause) pause.onclick = () => this.pause();
     if (this.renderer) this.host.prepend(this.renderer.domElement);
+    if (this.paused) this.showPause();
     return this.host.querySelector('.world-panel');
   }
-  scene() {
-    if (this.renderer || window.reframeCalm) return; // calm mode: plain background, no 3D
-    if (!THREE) { loadThree().then(() => { if (!this.host.hidden && !this.renderer) { this.scene(); this.resize(); cancelAnimationFrame(this.raf); this.tick(); } }).catch(() => {}); return; }
+  async scene() {
+    if (this.renderer || this.sceneTried || window.reframeCalm) return; // calm mode: plain background, no 3D
+    this.sceneTried = true;
+    const T = await loadThree();
+    if (!T) return; // no 3D: the game still works on its plain background
     try {
-      this.renderer = new THREE.WebGLRenderer({ antialias: !reduceMotion, alpha: true, powerPreference: 'high-performance' });
-    } catch (_) { return; } // no 3D: the game still works on its plain background
+      this.renderer = new T.WebGLRenderer({ antialias: !reduceMotion, alpha: true, powerPreference: 'high-performance' });
+    } catch (_) { return; }
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
-    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+    this.renderer.outputColorSpace = T.SRGBColorSpace;
     this.host.prepend(this.renderer.domElement);
-    this.scene3 = new THREE.Scene();
-    this.camera = new THREE.PerspectiveCamera(55, 1, 0.1, 100);
+    this.scene3 = new T.Scene();
+    this.camera = new T.PerspectiveCamera(55, 1, 0.1, 100);
     this.camera.position.set(0, 1.2, 10);
-    this.scene3.add(new THREE.HemisphereLight('#c9e9ff', '#101522', 1.7));
-    const key = new THREE.PointLight(this.game.tone, 4, 28);
+    this.scene3.add(new T.HemisphereLight('#c9e9ff', '#101522', 1.7));
+    const key = new T.PointLight(this.game.tone, 4, 28);
     key.position.set(0, 5, 3);
     this.scene3.add(key);
-    this.group = new THREE.Group();
+    this.group = new T.Group();
     this.scene3.add(this.group);
     const geometry = {
-      lumen: () => new THREE.IcosahedronGeometry(1.1, 0),
-      starling: () => new THREE.OctahedronGeometry(1.1),
-      cloudpath: () => new THREE.DodecahedronGeometry(1.1),
-      echo: () => new THREE.TorusGeometry(0.9, 0.28, 12, 32),
-      rhythm: () => new THREE.CylinderGeometry(0.8, 0.8, 0.18, 32),
-      signal: () => new THREE.TetrahedronGeometry(1.2)
+      lumen: () => new T.IcosahedronGeometry(1.1, 0),
+      starling: () => new T.OctahedronGeometry(1.1),
+      cloudpath: () => new T.DodecahedronGeometry(1.1),
+      echo: () => new T.TorusGeometry(0.9, 0.28, 12, 32),
+      rhythm: () => new T.CylinderGeometry(0.8, 0.8, 0.18, 32),
+      signal: () => new T.TetrahedronGeometry(1.2)
     }[this.game.id]();
     for (let i = 0; i < 6; i++) {
-      const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ color: this.game.tone, emissive: this.game.tone, emissiveIntensity: 0.3, roughness: 0.35, metalness: 0.2, transparent: true, opacity: 0.4, flatShading: true }));
+      const mesh = new T.Mesh(geometry, new T.MeshStandardMaterial({ color: this.game.tone, emissive: this.game.tone, emissiveIntensity: 0.3, roughness: 0.35, metalness: 0.2, transparent: true, opacity: 0.4, flatShading: true }));
       const a = (i / 6) * Math.PI * 2;
       mesh.position.set(Math.cos(a) * 6, Math.sin(a * 1.7) * 2 + 1, -4 - (i % 2) * 2);
       mesh.rotation.set(a, a * 0.7, 0);
@@ -101,23 +122,80 @@ class World {
     this.camera.updateProjectionMatrix();
   }
   open() {
-    this.scene();
     this.host.hidden = false;
     document.body.style.overflow = 'hidden';
-    this.resize();
-    this.tick();
+    // Keep Tab inside the game: everything else on the page is inert while it's open.
+    this.inerted = [...document.body.children].filter((el) => el !== this.host && !el.inert);
+    this.inerted.forEach((el) => { el.inert = true; });
+    // The game opens straight away; the backdrop joins in once three.js has loaded.
+    this.scene().then(() => {
+      if (this.host.hidden || !this.renderer) return;
+      this.resize();
+      cancelAnimationFrame(this.raf);
+      this.tick();
+    });
   }
   tick() {
-    if (!this.renderer) return;
+    if (!this.renderer || this.host.hidden) return;
     this.raf = requestAnimationFrame(() => this.tick());
     if (!reduceMotion) { this.group.rotation.y += 0.0015; this.group.children.forEach((m, i) => { m.rotation.x += 0.002 + i * 0.0003; }); }
     this.renderer.render(this.scene3, this.camera);
   }
+  // A clock that stops while the game is paused. Use it for anything timed.
+  now() { return performance.now() - this.pausedTotal - (this.paused ? performance.now() - this.pausedAt : 0); }
+  // Waits `ms` of unpaused time. Resolves early if the game is closed.
+  sleep(ms) {
+    const end = this.now() + ms;
+    return new Promise((resolve) => {
+      const step = () => {
+        if (this.host.hidden) return resolve();
+        const left = end - this.now();
+        if (left <= 0) return resolve();
+        setTimeout(step, this.paused ? 150 : Math.min(left, 150));
+      };
+      step();
+    });
+  }
+  pause() {
+    if (this.paused || !this.playing || this.host.hidden) return;
+    this.paused = true;
+    this.pausedAt = performance.now();
+    // Freeze anything animating, such as Signal Match's timer bar.
+    this.frozen = (this.host.getAnimations ? this.host.getAnimations({ subtree: true }) : []);
+    this.frozen.forEach((a) => a.pause());
+    this.showPause();
+  }
+  showPause() {
+    this.host.querySelector(':scope > .bg-pause')?.remove();
+    const el = document.createElement('div');
+    el.className = 'bg-pause';
+    el.setAttribute('role', 'dialog');
+    el.setAttribute('aria-modal', 'true');
+    el.setAttribute('aria-label', 'Paused');
+    el.innerHTML = `<div class="bg-pause-card"><h3>Paused</h3><p>Take as long as you need. The game will wait for you.</p>
+      <div class="world-controls"><button data-resume class="bg-primary">Resume</button><button data-exit>Exit game</button></div></div>`;
+    el.querySelector('[data-resume]').onclick = () => this.resume();
+    el.querySelector('[data-exit]').onclick = () => this.close();
+    this.host.append(el);
+    el.querySelector('[data-resume]').focus({ preventScroll: true });
+  }
+  resume() {
+    if (!this.paused) return;
+    this.pausedTotal += performance.now() - this.pausedAt;
+    this.paused = false;
+    (this.frozen || []).forEach((a) => { try { a.play(); } catch (_) { /* animation already gone */ } });
+    this.frozen = null;
+    this.host.querySelector(':scope > .bg-pause')?.remove();
+  }
   close() {
     this.run++;
+    this.resume();
+    this.playing = false;
     cancelAnimationFrame(this.raf);
     GameLevels.close(this.host);
     this.host.hidden = true;
+    (this.inerted || []).forEach((el) => { el.inert = false; });
+    this.inerted = null;
     // Back to the games library if it's open underneath, otherwise back to the page.
     document.body.style.overflow = document.querySelector('#experience-view:not([hidden])') ? 'hidden' : '';
     window.speechSynthesis && speechSynthesis.cancel();
@@ -126,28 +204,42 @@ class World {
 
 /* ---------- shared screens ---------- */
 
-// "How it works" card before a session. Resolves when the player presses Start.
-function intro(world, level, lines, safety) {
+// "How it works" card before a session, with the Gentle / Challenge choice for games that have
+// one. Resolves { go, mode }: go is true for Start, false for All levels.
+function intro(world, game, level) {
+  let mode = game.modes ? savedMode(game.id) : null;
   const panel = world.render(`<main class="world-card bg-card">
     <p class="world-note">Level ${level.index + 1} · ${esc(level.name)}</p>
-    <ul class="bg-how">${lines.map((l) => `<li>${l}</li>`).join('')}</ul>
-    ${safety ? `<p class="bg-safety">${safety}</p>` : ''}
+    ${game.modes ? `<div class="bg-modes" role="group" aria-label="Mode">
+      <button data-mode="gentle">Gentle<small>No timer. The game waits for you.</small></button>
+      <button data-mode="challenge">Challenge<small>${esc(game.challengeNote)}</small></button>
+    </div>` : ''}
+    <ul class="bg-how" data-how></ul>
+    ${game.safety ? `<p class="bg-safety">${game.safety}</p>` : ''}
     <div class="world-controls"><button data-go class="bg-primary">Start</button><button data-levels>All levels</button></div>
   </main>`);
+  const show = () => {
+    panel.querySelector('[data-how]').innerHTML = game.how(level, mode).map((l) => `<li>${l}</li>`).join('');
+    panel.querySelectorAll('[data-mode]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.mode === mode)));
+  };
+  panel.querySelectorAll('[data-mode]').forEach((b) => { b.onclick = () => { mode = b.dataset.mode; saveMode(game.id, mode); show(); }; });
+  show();
   return new Promise((resolve) => {
-    panel.querySelector('[data-go]').onclick = () => resolve(true);
-    panel.querySelector('[data-levels]').onclick = () => resolve(false);
+    panel.querySelector('[data-go]').onclick = () => resolve({ go: true, mode });
+    panel.querySelector('[data-levels]').onclick = () => resolve({ go: false });
     panel.querySelector('[data-go]').focus();
   });
 }
 
-// The level-complete screen, with this session's results and the personal best. `score` (if
-// there is one) is saved to the account for the progress chart on the Your games page.
-function finish(world, game, level, lines, bestText, score) {
+// The level-complete screen. `lines` are the friendly results; `details` (speed numbers and
+// the like) sit behind "Show details". `score` (if there is one) is saved to the account for
+// the progress chart on the Your games page.
+function finish(world, game, level, lines, bestText = '', details = [], score = null) {
   if (score !== null && score !== undefined && window.Account && Account.auth) Account.auth.recordResult(game.id, level.index, score);
   GameLevels.done({
     host: world.host, game: game.id, level: level.index, levels: game.levels,
-    message: `${lines.join(' ')} ${bestText} These scores track your practice, not your health.`,
+    message: [...lines, bestText, 'These scores track your practice, not your health.'].filter(Boolean).join(' '),
+    details: details.filter(Boolean),
     onPick: (n) => start(game, n), onLevels: () => levelsFor(game), onExit: () => world.close()
   });
 }
@@ -163,10 +255,15 @@ async function start(game, n) {
   const run = ++world.run;
   const level = { ...game.levels[n], index: n };
   const alive = () => world.run === run && !world.host.hidden;
-  const go = await intro(world, level, game.how(level), game.safety);
+  const { go, mode } = await intro(world, game, level);
   if (!alive()) return;
   if (!go) return levelsFor(game);
-  await game.play(world, level, alive);
+  world.playing = true;
+  try {
+    await game.play(world, level, alive, mode);
+  } finally {
+    if (world.run === run) { world.playing = false; world.host.querySelector('[data-action="pause"]')?.remove(); }
+  }
 }
 
 /* ======================================================================
@@ -175,7 +272,7 @@ async function start(game, n) {
 
 const lumen = {
   id: 'lumen', title: 'Lumen Garden', kicker: 'Working memory', tone: '#c58cff',
-  about: { text: 'Trains working memory: holding a sequence in mind and replaying it. Adaptive working-memory training improved visual working memory in a randomized pilot with childhood cancer survivors.', cite: 'Hardy et al., Psycho-Oncology 2013', href: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC4820841/' },
+  about: { text: 'Practises working memory: holding a short sequence in mind and replaying it. Inspired by span tasks used in research. A small pilot with childhood cancer survivors found gains on similar tasks; results in adults after cancer are early and mixed, and this game itself hasn’t been studied.', cite: 'Hardy et al., Psycho-Oncology 2013', href: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC4820841/' },
   levels: [
     { name: 'Forward paths', desc: '3 × 3 garden. Sequences start at 3 lights.', size: 3, span: 3, on: 650, backward: false },
     { name: 'Longer paths', desc: '3 × 3 garden. Starts at 4 lights, a little faster.', size: 3, span: 4, on: 520, backward: false },
@@ -203,13 +300,13 @@ const lumen = {
       while (seq.length < span) { const c = Math.floor(Math.random() * cells); if (c !== seq[seq.length - 1]) seq.push(c); }
       buttons.forEach((b) => { b.disabled = true; b.className = ''; });
       status('Watch…');
-      await wait(700);
+      await world.sleep(700);
       for (const c of seq) {
         if (!alive()) return;
         buttons[c].classList.add('lit');
-        await wait(level.on);
+        await world.sleep(level.on);
         buttons[c].classList.remove('lit');
-        await wait(220);
+        await world.sleep(220);
       }
       const want = level.backward ? seq.slice().reverse() : seq;
       status(level.backward ? 'Your turn: tap them in reverse order.' : 'Your turn: tap them in the same order.');
@@ -228,11 +325,11 @@ const lumen = {
       buttons.forEach((b) => { b.disabled = true; b.onclick = null; });
       if (ok) { correct++; longest = Math.max(longest, span); status(`Yes, ${span} in a row.`); span = Math.min(9, span + 1); }
       else { status('Not quite. The next path is a little shorter.'); span = Math.max(2, span - 1); }
-      await wait(1000);
+      await world.sleep(1000);
     }
     if (!alive()) return;
     const { best, isNew } = recordBest('lumen', longest);
-    finish(world, lumen, level, [`Longest path you got right: ${longest} flowers${level.backward ? ' backwards' : ''}. Paths correct: ${correct} of ${TRIALS}.`], isNew ? 'That is a new personal best!' : `Personal best: ${best}.`, longest);
+    finish(world, lumen, level, [`Longest path you got right: ${longest} flowers${level.backward ? ' backwards' : ''}. Paths correct: ${correct} of ${TRIALS}.`], isNew ? 'That is a new personal best!' : `Personal best: ${best}.`, [], longest || null);
   }
 };
 
@@ -242,7 +339,11 @@ const lumen = {
 
 const starling = {
   id: 'starling', title: 'Starling Observatory', kicker: 'Processing speed', tone: '#7fb8ff',
-  about: { text: 'Trains how quickly you take in what you see, in the centre and at the edges of your vision. Speed-of-processing training improved processing speed, with benefits for memory, in a randomized trial with breast cancer survivors.', cite: 'Von Ah et al., Breast Cancer Research and Treatment 2012', href: 'https://scholarworks.indianapolis.iu.edu/items/6103443c-9611-461c-adc1-1e42f0215fb2' },
+  about: {
+    text: 'Practises taking in quick glimpses, in the centre and at the edges of your vision. Inspired by speed-of-processing training used in research. An early trial with breast cancer survivors found gains compared with a waiting list, but a stricter later trial by the same team found no clear difference on thinking tests. This game itself hasn’t been studied.',
+    cite: 'Von Ah et al., Breast Cancer Research and Treatment 2012', href: 'https://scholarworks.indianapolis.iu.edu/items/6103443c-9611-461c-adc1-1e42f0215fb2',
+    more: [{ cite: 'Von Ah et al., Supportive Care in Cancer 2022', href: 'https://scholarworks.indianapolis.iu.edu/items/cc28c83f-bff2-4250-a944-e640a19b5526' }]
+  },
   levels: [
     { name: 'Centre', desc: 'Name the symbol that flashes in the centre.', ring: false, clutter: false, start: 400 },
     { name: 'Centre and edge', desc: 'Name the centre symbol and find the comet at the edge.', ring: true, clutter: false, start: 450 },
@@ -270,13 +371,13 @@ const starling = {
     const status = (t) => { $('[data-status]').textContent = t; };
     const frame = () => new Promise((r) => requestAnimationFrame(r));
     for (let trial = 0; trial < TRIALS && alive(); trial++) {
-      $('[data-info]').textContent = `Flash ${trial + 1} of ${TRIALS} · ${Math.round(shown)} ms`;
+      $('[data-info]').textContent = `Flash ${trial + 1} of ${TRIALS}`;
       const sym = Math.floor(Math.random() * 2), slot = Math.floor(Math.random() * 8);
       slots.forEach((s) => { s.textContent = ''; s.disabled = true; s.className = 'sky-slot'; });
       $('[data-centre]').textContent = '+';
       $('[data-clutter]').innerHTML = '';
       status('Eyes on the +');
-      await wait(700 + Math.random() * 500);
+      await world.sleep(700 + Math.random() * 500);
       if (!alive()) return;
       // Show the picture for `shown` ms, timed to screen refreshes.
       $('[data-centre]').textContent = SYMBOLS[sym][0];
@@ -294,7 +395,7 @@ const starling = {
       $('[data-centre]').textContent = '▩';
       slots.forEach((s) => { s.textContent = '▩'; });
       $('[data-clutter]').innerHTML = Array.from({ length: 16 }, () => `<i style="left:${Math.random() * 90}%;top:${Math.random() * 90}%">▩</i>`).join('');
-      await wait(250);
+      await world.sleep(250);
       $('[data-centre]').textContent = '?';
       slots.forEach((s) => { s.textContent = ''; });
       $('[data-clutter]').innerHTML = '';
@@ -319,12 +420,15 @@ const starling = {
       history.push(shown);
       if (ok) { right++; status('Right.'); if (++streak >= 2) { streak = 0; shown = Math.max(17, shown * 0.8); } }
       else { streak = 0; status(!symOk ? `It was ${SYMBOLS[sym][0]} ${SYMBOLS[sym][1]}.` : 'The comet was here.'); shown = Math.min(800, shown * 1.25); }
-      await wait(ok ? 500 : 1100);
+      await world.sleep(ok ? 500 : 1100);
     }
     if (!alive()) return;
     const threshold = Math.round(history.slice(-6).reduce((a, b) => a + b, 0) / Math.min(6, history.length));
     const { best, isNew } = recordBest('starling', threshold, true);
-    finish(world, starling, level, [`Your flash speed settled around ${threshold} ms (shorter is faster). Right: ${right} of ${TRIALS}.`], isNew ? 'That is a new personal best!' : `Personal best: ${best} ms.`, threshold);
+    finish(world, starling, level, [
+      `You got ${right} of ${TRIALS} right.`,
+      threshold < level.start ? 'The flashes got shorter as you went: you were taking in more at a glance.' : 'The flashes stayed about the same length. That’s fine; it often takes a few sessions.'
+    ], '', [`Flash length it settled at: about ${threshold} ms (shorter means quicker).`, isNew ? 'That is a new personal best.' : `Personal best: ${best} ms.`], threshold);
   }
 };
 
@@ -365,7 +469,7 @@ const COLORS = { R: '#ff8a78', G: '#8fe3a4', B: '#7fb8ff' };
 
 const cloudpath = {
   id: 'cloudpath', title: 'Cloudpath Cartographer', kicker: 'Planning', tone: '#f6d184',
-  about: { text: 'Trains planning ahead: working out a whole sequence of moves before you make them. Home-based executive-function training improved mental flexibility and processing speed in a randomized trial with breast cancer survivors.', cite: 'Kesler et al., Clinical Breast Cancer 2013', href: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC3726272/' },
+  about: { text: 'Practises planning ahead: working out a whole sequence of moves before you make them. Inspired by Tower of London puzzles used in research. A small trial with breast cancer survivors found gains on some thinking tests from home-based online training compared with a waiting list; results across studies are mixed, and this game itself hasn’t been studied.', cite: 'Kesler et al., Clinical Breast Cancer 2013', href: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC3726272/' },
   levels: [
     { name: 'Short routes', desc: 'Puzzles that take 2 to 3 moves.', target: 3 },
     { name: 'Four moves', desc: 'Puzzles that take 4 moves.', target: 4 },
@@ -388,13 +492,13 @@ const cloudpath = {
       while (!goals.length) goals = [...d].filter(([, v]) => v === --need);
       const goal = pick(goals)[0];
       let state = parse(startKey), held = null, count = 0, firstMove = 0;
-      const t0 = performance.now();
+      const t0 = world.now();
       const panel = world.render(`<main class="world-card bg-card">
         <p class="world-note">Puzzle ${n + 1} of ${PUZZLES} · fewest possible: ${need} moves</p>
         <div class="tol-goal"><small>Goal</small><div class="tol" data-goal></div></div>
         <div class="tol tol-play" data-play></div>
         <p class="game-status" data-status>Plan your route, then start moving.</p>
-        <div class="world-controls"><button data-reset>Start over</button></div>
+        <div class="world-controls"><button data-reset>Start over</button><button data-skip>Skip this puzzle</button></div>
       </main>`);
       const draw = (el, s, live) => {
         el.innerHTML = s.map((peg, i) => `<${live ? 'button' : 'div'} class="tol-peg" data-peg="${i}" style="--cap:${CAP[i]}" ${live ? `aria-label="Cloud ${i + 1}"` : ''}>${peg.map((b, j) => `<i style="background:${COLORS[b]}" class="${live && held === i && j === peg.length - 1 ? 'held' : ''}"></i>`).join('')}</${live ? 'button' : 'div'}>`).join('');
@@ -411,7 +515,7 @@ const cloudpath = {
               else if (state[i].length < CAP[i]) {
                 state[i].push(state[held].pop());
                 held = null;
-                if (!count++) firstMove = performance.now() - t0;
+                if (!count++) firstMove = world.now() - t0;
                 panel.querySelector('[data-status]').textContent = `Moves: ${count}`;
                 if (key(state) === goal) { redraw(); resolve(true); return; }
               }
@@ -420,25 +524,27 @@ const cloudpath = {
           });
         };
         panel.querySelector('[data-reset]').onclick = () => { state = parse(startKey); held = null; panel.querySelector('[data-status]').textContent = `Back to the start. Moves so far: ${count}`; redraw(); };
+        panel.querySelector('[data-skip]').onclick = () => resolve(false);
         redraw();
       });
       if (!alive()) return;
       const isPerfect = solved && count === need;
       if (isPerfect) { perfect++; hardest = Math.max(hardest, need); target = Math.min(8, need + 1); }
-      else if (count > need + 2) target = Math.max(2, need - 1);
+      else if (!solved || count > need + 2) target = Math.max(2, need - 1);
       panel.querySelector('[data-status]').textContent = isPerfect
         ? `Perfect: ${count} moves${firstMove > 4000 ? `, after ${Math.round(firstMove / 1000)} s of planning` : ''}.`
+        : !solved ? 'Skipped. The next puzzle is a little shorter.'
         : `Solved in ${count} moves (fewest possible: ${need}). Try planning the whole route before the first move.`;
-      await wait(1600);
+      await world.sleep(1600);
     }
     if (!alive()) return;
     const { best, isNew } = recordBest('cloudpath', hardest);
-    finish(world, cloudpath, level, [`Perfect solutions: ${perfect} of ${PUZZLES}. Longest route solved perfectly: ${hardest || 'none yet'}${hardest ? ' moves' : ''}.`], isNew && hardest ? 'That is a new personal best!' : `Personal best: ${best} moves.`, hardest);
+    finish(world, cloudpath, level, [`Perfect solutions: ${perfect} of ${PUZZLES}. Longest route solved perfectly: ${hardest || 'none yet'}${hardest ? ' moves' : ''}.`], isNew && hardest ? 'That is a new personal best!' : best ? `Personal best: ${best} moves.` : '', [], hardest || null);
   }
 };
 
 /* ======================================================================
- * 4. Story Echo: verbal memory (word lists, with a grouping strategy)
+ * 4. Story Echo: verbal memory (word lists, with a linking strategy)
  * ==================================================================== */
 
 const WORDS = {
@@ -451,24 +557,33 @@ const WORDS = {
   music: ['violin', 'drum', 'flute', 'piano', 'harp', 'trumpet', 'guitar', 'cello', 'banjo', 'organ'],
   kitchen: ['kettle', 'spoon', 'ladle', 'oven', 'plate', 'whisk', 'teapot', 'bowl', 'grater', 'skillet']
 };
+// Gentle lists stop growing at 12 words so the recall screen stays short.
+const echoMax = (mode) => (mode === 'challenge' ? 16 : 12);
 
 const echo = {
   id: 'echo', title: 'Story Echo', kicker: 'Verbal memory', tone: '#e7b574',
-  about: { text: 'Trains remembering what you read, using memory strategies like grouping. Memory training improved memory at two months in a randomized trial with breast cancer survivors.', cite: 'Von Ah et al., Breast Cancer Research and Treatment 2012', href: 'https://scholarworks.indianapolis.iu.edu/items/6103443c-9611-461c-adc1-1e42f0215fb2' },
+  modes: true, challengeNote: 'Each word shows for a set time, quicker on the last level.',
+  about: {
+    text: 'Practises remembering words, using strategies like linking them into a story. Inspired by memory training used in research. An early trial with breast cancer survivors found memory gains compared with a waiting list, but its authors called it preliminary, and a stricter later trial of brain training by the same team found no clear difference on thinking tests. This game itself hasn’t been studied.',
+    cite: 'Von Ah et al., Breast Cancer Research and Treatment 2012', href: 'https://scholarworks.indianapolis.iu.edu/items/6103443c-9611-461c-adc1-1e42f0215fb2',
+    more: [{ cite: 'Von Ah et al., Supportive Care in Cancer 2022', href: 'https://scholarworks.indianapolis.iu.edu/items/cc28c83f-bff2-4250-a944-e640a19b5526' }]
+  },
   levels: [
     { name: 'Short lists', desc: 'Lists start at 6 words.', words: 6, pace: 1700 },
     { name: 'Longer lists', desc: 'Lists start at 8 words.', words: 8, pace: 1600 },
     { name: 'Long lists', desc: 'Lists start at 10 words.', words: 10, pace: 1500 },
-    { name: 'Long and quick', desc: 'Lists start at 12 words, shown faster.', words: 12, pace: 1150 }
+    { name: 'Long and quick', desc: 'Lists start at 12 words. In Challenge, words show faster.', words: 12, pace: 1150 }
   ],
-  how: (l) => [
-    `Words appear one at a time. Then pick out every word you saw from a mix of old and new.`,
-    '<b>Strategy:</b> the words come in pairs from the same group (fruit, tools…). Notice the groups, or link the words into one silly picture.',
-    `Remember at least 85% and the next list is 2 words longer. 5 lists, starting at ${l.words} words.`
+  how: (l, mode) => [
+    mode === 'challenge'
+      ? `Words appear one at a time, for about ${(l.pace / 1000).toFixed(1)} seconds each. Then pick out every word you saw from a mix of old and new.`
+      : 'Words appear one at a time. Press <b>Next word</b> (or Space) whenever you’re ready. Then pick out every word you saw from a mix of old and new.',
+    '<b>Strategy:</b> make up a tiny story that links the words, like “the horse ate a lemon on the bridge.” The words also come in pairs from the same group, which helps.',
+    `Remember at least 85% and the next list is 2 words longer. 5 lists, starting at ${Math.min(l.words, echoMax(mode))} words.`
   ],
-  async play(world, level, alive) {
-    const LISTS = 5;
-    let n = level.words, bestLen = 0, totalHits = 0, totalShown = 0;
+  async play(world, level, alive, mode) {
+    const LISTS = 5, gentle = mode !== 'challenge', max = echoMax(mode);
+    let n = Math.min(level.words, max), bestLen = 0, totalHits = 0, totalShown = 0;
     let speak = false;
     for (let list = 0; list < LISTS && alive(); list++) {
       const groups = shuffle(Object.keys(WORDS)).slice(0, Math.ceil(n / 2));
@@ -477,19 +592,35 @@ const echo = {
       const list_ = shuffle(chosen.slice(0, n));
       const foils = shuffle(lures).slice(0, n);
       const panel = world.render(`<main class="world-card bg-card">
-        <p class="world-note">List ${list + 1} of ${LISTS} · ${n} words</p>
+        <p class="world-note" data-info>List ${list + 1} of ${LISTS} · ${n} words</p>
         <p class="word-show" data-word aria-live="polite">Ready…</p>
-        <div class="world-controls"><button data-speak aria-pressed="${speak}">Read words aloud</button></div>
+        <div class="world-controls">${gentle ? '<button data-next class="bg-primary" hidden>Next word</button>' : ''}<button data-speak aria-pressed="${speak}">Read words aloud</button></div>
       </main>`);
       panel.querySelector('[data-speak]').onclick = (e) => { speak = !speak; e.currentTarget.setAttribute('aria-pressed', String(speak)); };
-      await wait(1200);
-      for (const w of list_) {
+      const next = panel.querySelector('[data-next]');
+      await world.sleep(gentle ? 800 : 1200);
+      for (let i = 0; i < list_.length; i++) {
         if (!alive()) return;
-        panel.querySelector('[data-word]').textContent = w;
-        if (speak && window.speechSynthesis) speechSynthesis.speak(new SpeechSynthesisUtterance(w));
-        await wait(level.pace);
+        panel.querySelector('[data-info]').textContent = `List ${list + 1} of ${LISTS} · word ${i + 1} of ${n}`;
+        panel.querySelector('[data-word]').textContent = list_[i];
+        if (speak && window.speechSynthesis) speechSynthesis.speak(new SpeechSynthesisUtterance(list_[i]));
+        if (gentle) {
+          next.hidden = false;
+          next.textContent = i + 1 < n ? 'Next word' : 'Pick the words';
+          if (i === 0) next.focus({ preventScroll: true });
+          await new Promise((resolve) => {
+            next.onclick = resolve;
+            // Space or Enter anywhere; a focused button already handles those keys itself.
+            world.keyHandler = (e) => {
+              if (e.repeat || (e.key !== ' ' && e.key !== 'Enter') || e.target.closest?.('button')) return;
+              e.preventDefault();
+              resolve();
+            };
+          });
+          world.keyHandler = null;
+        } else await world.sleep(level.pace);
         panel.querySelector('[data-word]').textContent = '';
-        await wait(250);
+        await world.sleep(gentle ? 150 : 250);
       }
       if (!alive()) return;
       const options = shuffle([...list_, ...foils]);
@@ -513,98 +644,155 @@ const echo = {
       const falseAlarms = [...chosenSet].filter((w) => !list_.includes(w)).length;
       const score = Math.max(0, (hits - falseAlarms) / n);
       totalHits += hits; totalShown += n;
-      recall.querySelectorAll('[data-w]').forEach((b) => { b.disabled = true; if (list_.includes(b.dataset.w)) b.classList.add(chosenSet.has(b.dataset.w) ? 'hit' : 'missed'); else if (chosenSet.has(b.dataset.w)) b.classList.add('wrong'); });
-      recall.querySelector('[data-status]').textContent = `${hits} of ${n} found${falseAlarms ? `, ${falseAlarms} not on the list` : ''}.`;
-      if (score >= 0.85) { bestLen = Math.max(bestLen, n); n = Math.min(16, n + 2); }
+      // Marks use a symbol as well as a colour: ✓ found, ○ missed, ✗ not on the list.
+      recall.querySelectorAll('[data-w]').forEach((b) => {
+        const w = b.dataset.w;
+        b.disabled = true;
+        const mark = list_.includes(w) ? (chosenSet.has(w) ? ['hit', '✓', 'found'] : ['missed', '○', 'missed']) : chosenSet.has(w) ? ['wrong', '✗', 'not on the list'] : null;
+        if (!mark) return;
+        b.classList.add(mark[0]);
+        b.textContent = `${mark[1]} ${w}`;
+        b.setAttribute('aria-label', `${w}: ${mark[2]}`);
+      });
+      recall.querySelector('[data-status]').textContent = `You found ${hits} of ${n}${falseAlarms ? `, and picked ${falseAlarms} that ${falseAlarms === 1 ? 'wasn’t' : 'weren’t'} on the list` : ''}. ✓ found · ○ missed · ✗ not on the list`;
+      if (score >= 0.85) { bestLen = Math.max(bestLen, n); n = Math.min(max, n + 2); }
       else if (score < 0.6) n = Math.max(4, n - 2);
       await new Promise((r) => { const b = recall.querySelector('[data-done]'); b.textContent = list + 1 < LISTS ? 'Next list' : 'See results'; b.onclick = r; });
     }
     if (!alive()) return;
     const { best, isNew } = recordBest('echo', bestLen);
-    finish(world, echo, level, [`Words remembered: ${totalHits} of ${totalShown}. Longest list at 85% or better: ${bestLen || 'not yet'}${bestLen ? ' words' : ''}.`], isNew && bestLen ? 'That is a new personal best!' : `Personal best: ${best} words.`, bestLen);
+    finish(world, echo, level, [`You remembered ${totalHits} of ${totalShown} words. Longest list at 85% or better: ${bestLen || 'not yet'}${bestLen ? ' words' : ''}.`], isNew && bestLen ? 'That is a new personal best!' : best ? `Personal best: ${best} words.` : '', [], bestLen || null);
   }
 };
 
 /* ======================================================================
- * 5. Finger Rhythm: paced tapping with a hidden repeating sequence
+ * 5. Finger Rhythm: tapping with a hidden repeating sequence
  * ==================================================================== */
 
 const PADS = [['D', '☾'], ['F', '⌁'], ['J', '✦'], ['K', '◉']];
+const PAD_SETS = { 2: [1, 2], 3: [0, 1, 2], 4: [0, 1, 2, 3] }; // which pads each level uses
+const RHYTHM_FASTEST = 600; // Challenge never asks for more than one light every 0.6 s
+// 8 steps across n pads: no pad twice in a row (with 2 pads, never three in a row).
+function tapPattern(n) {
+  const seq = [];
+  while (seq.length < 8) {
+    const v = Math.floor(Math.random() * n), last = seq[seq.length - 1];
+    if (n > 2 ? v === last : v === last && v === seq[seq.length - 2]) continue;
+    seq.push(v);
+  }
+  return seq;
+}
+
 const rhythm = {
   id: 'rhythm', title: 'Finger Rhythm', kicker: 'Hand coordination', tone: '#8ed9c3',
-  about: { text: 'Practises quick, accurate finger movements and picking up a pattern. Fine-motor and sensorimotor training are being studied for hand symptoms after chemotherapy; the evidence is still early.', cite: 'Feasibility trial, Supportive Care in Cancer 2025', href: 'https://link.springer.com/article/10.1007/s00520-025-09712-2' },
+  modes: true, challengeNote: 'Catch each light before the next one. The pace adapts, never faster than one every 0.6 seconds.',
+  about: { text: 'Practises gentle, accurate finger movements and picking up a pattern. Fine-motor and sensorimotor training are being studied for hand symptoms after chemotherapy; the evidence is still early, and this game itself hasn’t been studied.', cite: 'Feasibility trial, Supportive Care in Cancer 2025', href: 'https://link.springer.com/article/10.1007/s00520-025-09712-2' },
   safety: 'Rest your hands comfortably and tap lightly. Stop if you feel pain, cramping, or more numbness or tingling than usual, and tell your care team about new or worse symptoms.',
   levels: [
-    { name: 'Steady', desc: 'A new light every 1.1 seconds.', interval: 1100 },
-    { name: 'Brisk', desc: 'Starts at a light every 0.85 seconds.', interval: 850 },
-    { name: 'Quick', desc: 'Starts at a light every 0.65 seconds.', interval: 650 },
-    { name: 'Rapid', desc: 'Starts at a light every 0.5 seconds.', interval: 500 }
+    { name: 'Two pads', desc: 'Two big pads: F and J.', pads: 2, interval: 1100 },
+    { name: 'Three pads', desc: 'Three pads: D, F and J.', pads: 3, interval: 950 },
+    { name: 'Four pads', desc: 'All four pads: D, F, J and K.', pads: 4, interval: 800 },
+    { name: 'Four pads, brisk', desc: 'All four pads. Challenge starts a little quicker.', pads: 4, interval: 650 }
   ],
-  how: () => [
-    'Four pads light up one at a time. Tap the lit pad (or press <b>D F J K</b>) before the next one lights.',
-    'There is a hidden pattern. You don’t need to look for it; your hands will start to learn it.',
-    'Hit almost every light in a round and the pace speeds up. 8 rounds of 8 lights.'
-  ],
-  async play(world, level, alive) {
-    const SEQ = shuffle([0, 1, 2, 3, 0, 1, 2, 3]).filter((v, i, a) => i === 0 || v !== a[i - 1]);
-    while (SEQ.length < 8) SEQ.push((SEQ[SEQ.length - 1] + 2) % 4);
-    const ROUNDS = 8, RANDOM_ROUND = 6; // round 7 is random, to see what the pattern taught your hands
-    let interval = level.interval, fastest = Infinity;
+  how: (l, mode) => {
+    const keys = PAD_SETS[l.pads].map((i) => PADS[i][0]);
+    return [
+      mode === 'challenge'
+        ? `${l.pads} pads light up one at a time. Tap the lit pad (or press <b>${keys.join(' ')}</b>) before the next one lights.`
+        : `${l.pads} pads light up one at a time. Tap the lit pad (or press <b>${keys.join(' ')}</b>). It waits for you, and a wrong tap doesn’t count against you.`,
+      'There is a hidden pattern. You don’t need to look for it; your hands may start to learn it.',
+      mode === 'challenge'
+        ? 'Catch almost every light in a round and the pace speeds up a little; miss a few and it slows down. 8 rounds of 8 lights.'
+        : 'No timer and no speed scores. 8 short rounds of 8 lights.'
+    ];
+  },
+  async play(world, level, alive, mode) {
+    const gentle = mode !== 'challenge';
+    const pads_ = PAD_SETS[level.pads].map((i) => PADS[i]);
+    const SEQ = tapPattern(pads_.length);
+    const ROUNDS = 8, RANDOM_ROUND = 6; // round 7 is mixed up, to see what the pattern taught your hands
+    let interval = Math.max(RHYTHM_FASTEST, level.interval), fastest = Infinity, hitsAll = 0;
     const rts = { pattern: [], random: [] };
-    let hitsAll = 0;
     const panel = world.render(`<main class="world-card bg-card">
       <p class="world-note" data-info></p>
-      <div class="rhythm-row">${PADS.map(([k, icon], i) => `<button class="pad" data-pad="${i}" aria-label="Pad ${k}">${icon}<small>${k}</small></button>`).join('')}</div>
+      <div class="rhythm-row" data-count="${pads_.length}">${pads_.map(([k, icon], i) => `<button class="pad" data-pad="${i}" aria-label="Pad ${k}">${icon}<small>${k}</small></button>`).join('')}</div>
       <p class="game-status" data-status></p>
     </main>`);
     const pads = [...panel.querySelectorAll('[data-pad]')];
-    let tap = null;
-    pads.forEach((p, i) => { p.onpointerdown = (e) => { e.preventDefault(); tap && tap(i); }; });
-    world.keyHandler = (e) => { const i = 'dfjk'.indexOf(e.key.toLowerCase()); if (i >= 0) { e.preventDefault(); tap && tap(i); } };
+    const status = (t) => { panel.querySelector('[data-status]').textContent = t; };
+    // Taps closer together than 150 ms count once, so a shaky double tap isn't a mistake.
+    let tap = null, lastTap = -Infinity;
+    const press = (i) => { const t = world.now(); if (t - lastTap < 150) return; lastTap = t; tap && tap(i); };
+    pads.forEach((p, i) => { p.onpointerdown = (e) => { e.preventDefault(); press(i); }; });
+    world.keyHandler = (e) => {
+      if (e.repeat) return;
+      const i = pads_.findIndex(([k]) => k.toLowerCase() === e.key.toLowerCase());
+      if (i >= 0) { e.preventDefault(); press(i); }
+    };
+    const clear = () => pads.forEach((p) => p.classList.remove('active', 'good', 'bad'));
     for (let round = 0; round < ROUNDS && alive(); round++) {
-      const seq = round === RANDOM_ROUND ? SEQ.map(() => Math.floor(Math.random() * 4)) : SEQ;
-      panel.querySelector('[data-info]').textContent = `Round ${round + 1} of ${ROUNDS} · ${Math.round(60000 / interval)} lights a minute`;
-      panel.querySelector('[data-status]').textContent = 'Get ready…';
-      await wait(900);
+      const seq = round === RANDOM_ROUND ? tapPattern(pads_.length) : SEQ;
+      panel.querySelector('[data-info]').textContent = `Round ${round + 1} of ${ROUNDS}${gentle ? '' : ' · Challenge'}`;
+      status('Get ready…');
+      await world.sleep(900);
+      status(gentle ? 'Tap the glowing pad whenever you’re ready.' : 'Tap the glowing pad before the next one lights.');
       let hits = 0;
       for (const target of seq) {
         if (!alive()) return;
-        pads.forEach((p) => p.classList.remove('active', 'good', 'bad'));
+        clear();
         pads[target].classList.add('active');
-        const shownAt = performance.now();
+        const shownAt = world.now();
+        if (gentle) {
+          // The light waits for the right pad. Other taps are simply ignored.
+          const rt = await new Promise((resolve) => { tap = (i) => { if (i === target) resolve(world.now() - shownAt); }; });
+          tap = null;
+          hits++;
+          pads[target].classList.add('good');
+          (round === RANDOM_ROUND ? rts.random : rts.pattern).push(rt);
+          await world.sleep(350);
+          continue;
+        }
         const result = await new Promise((resolve) => {
-          const timer = setTimeout(() => resolve(null), interval);
-          tap = (i) => { clearTimeout(timer); resolve({ i, rt: performance.now() - shownAt }); };
+          let over = false;
+          const end = (v) => { if (!over) { over = true; resolve(v); } };
+          tap = (i) => end({ i, rt: world.now() - shownAt });
+          world.sleep(interval).then(() => end(null));
         });
         tap = null;
         if (result && result.i === target) {
           hits++;
           pads[target].classList.add('good');
           (round === RANDOM_ROUND ? rts.random : rts.pattern).push(result.rt);
-          await wait(Math.max(0, interval - result.rt) * 0.35);
+          await world.sleep(Math.max(0, interval - result.rt) * 0.35);
         } else {
           pads[target].classList.add('bad');
-          if (result) await wait(Math.max(0, interval - result.rt) * 0.35);
+          await world.sleep(result ? Math.max(0, interval - result.rt) * 0.35 : 250);
         }
       }
-      pads.forEach((p) => p.classList.remove('active', 'good', 'bad'));
+      clear();
       hitsAll += hits;
-      if (hits >= 7) { fastest = Math.min(fastest, interval); interval = Math.max(300, interval * 0.9); panel.querySelector('[data-status]').textContent = `${hits} of 8. Speeding up.`; }
-      else if (hits <= 5) { interval = Math.min(1400, interval * 1.12); panel.querySelector('[data-status]').textContent = `${hits} of 8. Slowing down a little.`; }
-      else panel.querySelector('[data-status]').textContent = `${hits} of 8. Same pace.`;
-      await wait(1100);
+      if (gentle) status(round + 1 < ROUNDS ? pick(['Nice and steady.', 'Round done. Rest your hands for a moment if you like.', 'Good. Keep it light.']) : 'All done.');
+      else if (hits >= 7) { fastest = Math.min(fastest, interval); interval = Math.max(RHYTHM_FASTEST, interval * 0.9); status(`${hits} of 8. A little quicker next round.`); }
+      else if (hits <= 5) { interval = Math.min(1400, interval * 1.12); status(`${hits} of 8. A little slower next round.`); }
+      else status(`${hits} of 8. Same pace.`);
+      await world.sleep(gentle ? 1400 : 1100);
     }
     world.keyHandler = null;
     if (!alive()) return;
-    const mean = (a) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0);
-    const learned = Math.round(mean(rts.random) - mean(rts.pattern.slice(-16)));
+    // Medians, so a rest in the middle of a round doesn't skew the comparison.
+    const learned = Math.round(median(rts.random) - median(rts.pattern.slice(-16)));
+    const patternLine = learned > 30
+      ? 'Your hands seemed to pick up the hidden pattern: you were a little quicker on it than on the mixed-up round.'
+      : 'Hands often pick up the hidden pattern over a few sessions.';
+    if (gentle) return finish(world, rhythm, level, [`You tapped all ${ROUNDS * 8} lights at your own pace.`, patternLine]);
     const perMinute = fastest === Infinity ? 0 : Math.round(60000 / fastest);
-    const { best, isNew } = recordBest('rhythm', perMinute);
-    finish(world, rhythm, level, [
-      `Hits: ${hitsAll} of ${ROUNDS * 8}. Average reaction: ${Math.round(mean([...rts.pattern, ...rts.random]))} ms.`,
-      perMinute ? `Fastest pace you kept up with: ${perMinute} lights a minute.` : '',
-      learned > 20 ? `Your hands learned the hidden pattern: you were ${learned} ms quicker on it than on the random round.` : ''
-    ].filter(Boolean), isNew && perMinute ? 'That is a new personal best!' : `Personal best: ${best} a minute.`, perMinute);
+    const record = perMinute ? recordBest('rhythm-challenge', perMinute) : null;
+    finish(world, rhythm, level, [`You caught ${hitsAll} of ${ROUNDS * 8} lights in time.`, patternLine], '', [
+      `Average reaction: ${Math.round(mean([...rts.pattern, ...rts.random]))} ms.`,
+      perMinute ? `Quickest pace you kept up with: ${perMinute} lights a minute.` : 'No round was quick enough to count toward a personal best yet.',
+      learned > 30 ? `On the hidden pattern you were about ${learned} ms quicker than on the mixed-up round.` : '',
+      record ? (record.isNew ? 'That is a new Challenge personal best.' : `Challenge personal best: ${record.best} a minute.`) : ''
+    ], perMinute || null);
   }
 };
 
@@ -612,78 +800,90 @@ const rhythm = {
  * 6. Signal Match: mental flexibility (task switching)
  * ==================================================================== */
 
+// Colour is only decoration: both rules (shape and fill) can be seen without it.
+const SIGNAL_TONES = ['#ff9a62', '#5fa8ff', '#8fe3a4', '#f6d184', '#d8a4f0'];
+const SIGNAL_FASTEST = 1000; // Challenge always leaves at least 1 second to answer
+
 const signal = {
   id: 'signal', title: 'Signal Match', kicker: 'Mental flexibility', tone: '#d8a4f0',
-  about: { text: 'Trains switching between rules quickly, a core part of mental flexibility. Online executive-function training improved cognitive flexibility, verbal fluency and processing speed in a randomized trial with breast cancer survivors.', cite: 'Kesler et al., Clinical Breast Cancer 2013', href: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC3726272/' },
+  modes: true, challengeNote: 'A timer bar. Answer well and the time shrinks, never below 1 second.',
+  about: { text: 'Practises switching between two rules, a part of mental flexibility. Inspired by task-switching exercises used in research. A small trial with breast cancer survivors found gains on flexibility tests from online training compared with a waiting list; results across studies are mixed, and this game itself hasn’t been studied.', cite: 'Kesler et al., Clinical Breast Cancer 2013', href: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC3726272/' },
   levels: [
     { name: 'One rule at a time', desc: 'The rule changes every 10 signals.', switchEvery: 10, p: 0, deadline: 3000 },
     { name: 'Some switches', desc: 'The rule changes about 1 time in 3.', p: 0.3, deadline: 2500 },
     { name: 'Frequent switches', desc: 'The rule changes about half the time.', p: 0.5, deadline: 2000 },
-    { name: 'Fast switching', desc: 'Half the time, with much less time to answer.', p: 0.5, deadline: 1300 }
+    { name: 'Fast switching', desc: 'Half the time. In Challenge, with less time to answer.', p: 0.5, deadline: 1300 }
   ],
-  how: () => [
-    'Each signal has a shape and a colour. The word on top tells you which to sort by.',
-    '<b>SHAPE</b>: round → left, pointed → right. <b>COLOUR</b>: warm → left, cool → right. Use the buttons or <b>F</b> and <b>J</b>.',
-    'Answer correctly and you get a little less time; miss and you get more. 40 signals.'
+  how: (l, mode) => [
+    'Each signal is a shape that is either <b>solid</b> or just an <b>outline</b>. The word on top tells you which to sort by.',
+    '<b>SHAPE</b>: round → left, pointed → right. <b>FILL</b>: solid → left, outline → right. Use the buttons or <b>F</b> and <b>J</b>.',
+    mode === 'challenge'
+      ? 'A bar shows your time. Get one right and you get a little less time; miss and you get more. 40 signals.'
+      : 'No timer: each signal waits for your answer. 40 signals.'
   ],
-  async play(world, level, alive) {
-    const TRIALS = 40;
-    const SHAPES = [['●', 'round'], ['▲', 'pointed'], ['◆', 'pointed'], ['⬤', 'round']];
-    const TONES = [['#ff9a62', 'warm'], ['#5fa8ff', 'cool']];
-    let deadline = level.deadline, rule = Math.random() < 0.5 ? 'shape' : 'colour';
+  async play(world, level, alive, mode) {
+    const TRIALS = 40, challenge = mode === 'challenge';
+    let deadline = Math.max(SIGNAL_FASTEST, level.deadline), rule = Math.random() < 0.5 ? 'shape' : 'fill';
     let correct = 0;
     const rt = { switch: [], stay: [] };
     const panel = world.render(`<main class="world-card bg-card">
       <p class="world-note" data-info></p>
       <p class="switch-rule" data-rule></p>
       <div class="switch-card" data-card></div>
-      <div class="switch-bar"><i data-bar></i></div>
-      <div class="world-controls bg-choices"><button data-side="0">F · Round / Warm</button><button data-side="1">J · Pointed / Cool</button></div>
-      <p class="game-status" data-status></p>
+      ${challenge ? '<div class="switch-bar"><i data-bar></i></div>' : ''}
+      <div class="world-controls bg-choices"><button data-side="0">F · Round / Solid</button><button data-side="1">J · Pointed / Outline</button></div>
+      <p class="game-status" data-status aria-live="polite"></p>
     </main>`);
     const $ = (s) => panel.querySelector(s);
     let answer = null;
     panel.querySelectorAll('[data-side]').forEach((b) => { b.onclick = () => answer && answer(+b.dataset.side); });
-    world.keyHandler = (e) => { const k = e.key.toLowerCase(); if (k === 'f' || k === 'j') { e.preventDefault(); answer && answer(k === 'f' ? 0 : 1); } };
+    world.keyHandler = (e) => { const k = e.key.toLowerCase(); if (!e.repeat && (k === 'f' || k === 'j')) { e.preventDefault(); answer && answer(k === 'f' ? 0 : 1); } };
     for (let t = 0; t < TRIALS && alive(); t++) {
       const switched = t > 0 && (level.switchEvery ? t % level.switchEvery === 0 : Math.random() < level.p);
-      if (switched) rule = rule === 'shape' ? 'colour' : 'shape';
-      const [shape, shapeKind] = pick(SHAPES), [tone, toneKind] = pick(TONES);
-      const want = rule === 'shape' ? (shapeKind === 'round' ? 0 : 1) : (toneKind === 'warm' ? 0 : 1);
-      $('[data-info]').textContent = `Signal ${t + 1} of ${TRIALS} · ${(deadline / 1000).toFixed(1)} s to answer`;
+      if (switched) rule = rule === 'shape' ? 'fill' : 'shape';
+      const kind = pick(['round', 'pointed']), fill = pick(['solid', 'outline']);
+      const glyph = kind === 'round' ? (fill === 'solid' ? '●' : '○') : pick(fill === 'solid' ? ['▲', '◆'] : ['△', '◇']);
+      const want = rule === 'shape' ? (kind === 'round' ? 0 : 1) : (fill === 'solid' ? 0 : 1);
+      $('[data-info]').textContent = `Signal ${t + 1} of ${TRIALS}${challenge ? ' · Challenge' : ''}`;
       $('[data-rule]').textContent = rule.toUpperCase();
       $('[data-rule]').className = `switch-rule rule-${rule}`;
-      $('[data-card]').innerHTML = `<span style="color:${tone}">${shape}</span>`;
+      $('[data-card]').innerHTML = `<span style="color:${pick(SIGNAL_TONES)}" role="img" aria-label="${fill} ${kind} shape">${glyph}</span>`;
       $('[data-status]').textContent = '';
-      const bar = $('[data-bar]');
-      bar.style.transition = 'none'; bar.style.width = '100%';
-      bar.getBoundingClientRect();
-      bar.style.transition = `width ${deadline}ms linear`; bar.style.width = '0%';
-      const shownAt = performance.now();
+      if (challenge) {
+        const bar = $('[data-bar]');
+        bar.style.transition = 'none'; bar.style.width = '100%';
+        bar.getBoundingClientRect();
+        bar.style.transition = `width ${deadline}ms linear`; bar.style.width = '0%';
+      }
+      const shownAt = world.now();
       const got = await new Promise((resolve) => {
-        const timer = setTimeout(() => resolve(null), deadline);
-        answer = (side) => { clearTimeout(timer); resolve({ side, time: performance.now() - shownAt }); };
+        let over = false;
+        const end = (v) => { if (!over) { over = true; resolve(v); } };
+        answer = (side) => end({ side, time: world.now() - shownAt });
+        if (challenge) world.sleep(deadline).then(() => end(null));
       });
       answer = null;
       const ok = got && got.side === want;
-      if (ok) { correct++; (switched ? rt.switch : rt.stay).push(got.time); deadline = Math.max(600, deadline * 0.95); }
-      else deadline = Math.min(4000, deadline * 1.1);
-      $('[data-status]').textContent = ok ? '✓' : got ? `Sorting by ${rule}: that one was ${rule === 'shape' ? shapeKind : toneKind}.` : 'Too slow. You get a little more time now.';
+      if (ok) { correct++; (switched ? rt.switch : rt.stay).push(got.time); if (challenge) deadline = Math.max(SIGNAL_FASTEST, deadline * 0.95); }
+      else if (challenge) deadline = Math.min(4000, deadline * 1.1);
+      const explain = `sorting by ${rule}, that one is ${rule === 'shape' ? kind : fill}, so it goes ${want ? 'right' : 'left'}.`;
+      $('[data-status]').textContent = ok ? '✓ Right.' : got ? `✗ Not quite: ${explain}` : `No rush. Here’s the answer: ${explain}`;
       $('[data-card]').innerHTML = '';
-      await wait(ok ? 350 : 1000);
+      await world.sleep(ok ? 350 : 1600);
     }
     world.keyHandler = null;
     if (!alive()) return;
-    const mean = (a) => (a.length ? Math.round(a.reduce((x, y) => x + y, 0) / a.length) : 0);
-    const all = mean([...rt.switch, ...rt.stay]);
-    const cost = rt.switch.length && rt.stay.length ? mean(rt.switch) - mean(rt.stay) : null;
     const accuracy = Math.round((correct / TRIALS) * 100);
-    const score = accuracy >= 85 ? all : 9999; // personal best: fastest average with 85% right
-    const { best, isNew } = recordBest('signal', score, true);
-    finish(world, signal, level, [
-      `Right: ${accuracy}%. Average answer: ${all} ms.`,
-      cost === null ? '' : cost > 15 ? `Switching rules slowed you by ${cost} ms (this shrinks with practice).` : 'No slowdown when the rule switched. Nicely done.'
-    ].filter(Boolean), isNew && score < 9999 ? 'That is a new personal best!' : best < 9999 ? `Personal best: ${best} ms with 85% or more right.` : 'Aim for 85% right to set a personal best.', score < 9999 ? score : null);
+    const lines = [`You sorted ${correct} of ${TRIALS} correctly.`, accuracy >= 85 ? 'Nicely done: you kept track of the rule as it changed.' : 'Switching rules is tricky for everyone, and it usually gets easier with practice.'];
+    if (!challenge) return finish(world, signal, level, lines);
+    const all = Math.round(mean([...rt.switch, ...rt.stay]));
+    const cost = rt.switch.length && rt.stay.length ? Math.round(mean(rt.switch) - mean(rt.stay)) : null;
+    const record = accuracy >= 85 ? recordBest('signal-challenge', all, true) : null; // best: fastest average with 85% right
+    finish(world, signal, level, lines, '', [
+      `Average answer: ${all} ms.`,
+      cost === null ? '' : cost > 15 ? `Switching rules slowed you by ${cost} ms (this often shrinks with practice).` : 'No slowdown when the rule switched.',
+      record ? (record.isNew ? 'That is a new Challenge personal best.' : `Challenge personal best: ${record.best} ms with 85% or more right.`) : 'Get 85% right to set a Challenge personal best.'
+    ], record ? all : null);
   }
 };
 
@@ -703,9 +903,17 @@ addEventListener('click', (event) => {
   levelsFor(game);
 }, true);
 
+// Listens in the capture phase so an Escape used to leave a game stops here, instead of also
+// closing the games library underneath.
 addEventListener('keydown', (event) => {
   const world = Object.values(worlds).find((w) => !w.host.hidden);
   if (!world) return;
-  if (event.key === 'Escape') { world.close(); return; }
+  if (event.key === 'Escape') { event.stopImmediatePropagation(); world.close(); return; }
+  if (world.paused) return;
   if (world.keyHandler) world.keyHandler(event);
+}, true);
+
+// Switching to another tab or app pauses a game that's under way.
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) Object.values(worlds).forEach((w) => w.pause());
 });

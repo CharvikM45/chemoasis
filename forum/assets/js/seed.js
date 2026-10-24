@@ -120,7 +120,7 @@ Forum.seed = function () {
       categoryId: "games",
       authorId: "u-river",
       title: "Signal Match feels fast for me",
-      body: "Signal Match speeds up when I get answers right, and some days it moves faster than I'm comfortable with. Is that normal?",
+      body: "I tried Challenge mode in Signal Match. It speeds up when I get answers right, and some days that's faster than I'm comfortable with. Is that normal?",
       label: "experience",
       gameIds: ["signal"],
       createdAt: hoursAgo(20)
@@ -205,7 +205,7 @@ Forum.seed = function () {
       id: "r-quick-tap-1",
       threadId: "t-quick-tap",
       authorId: "u-sam",
-      body: "Yes, that's how it adapts: it speeds up when you're doing well and slows down after a miss. Starting at Level 1 gives you the most time to answer, and you can stop whenever you like.",
+      body: "Yes, that's how Challenge adapts: it speeds up when you're doing well and slows down after a miss. Gentle mode has no timer at all, so it waits for you, and you can pause or stop whenever you like.",
       label: "experience",
       createdAt: hoursAgo(15)
     },
