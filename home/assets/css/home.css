@@ -190,9 +190,9 @@ h1 em, h2 em { color: var(--accent); }
 @media (max-width: 640px) {
   .nav { padding: 16px 16px; }
   .nav-links { gap: 14px; }
-  .nav-links .nav-calm { display: none; }
+  .nav-long { display: none; } /* "Calm mode" becomes "Calm", so the switch stays on phones */
 }
-/* Small phones: the logo and all three links still fit on one line. */
+/* Small phones: smaller links, and they wrap to a second row rather than spill off the screen. */
 @media (max-width: 480px) {
   .nav { gap: 12px; }
   .brand { font-size: 18px; }
