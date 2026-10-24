@@ -46,34 +46,34 @@ Use the **Demo account** menu (top right) to switch between made-up people:
 | File | What it is |
 | --- | --- |
 | `index.html`, `thread.html`, `new.html`, `profile.html`, `moderation.html`, `guidelines.html` | The pages |
-| `forum.css` | Forum styles. It loads `../styles.css` first and reuses its colors and fonts. Every class starts with `f-`. |
-| `js/catalog.js` | Categories, labels, training areas, **placeholder game IDs**, report reasons |
-| `js/store.js` | All saving and loading. Pages only talk to this file. |
-| `js/safety.js` | The safety check before posting |
-| `js/seed.js` | The made-up demo data |
-| `js/ui.js` | Shared header, badges and the report dialog |
-| `js/home.js`, `thread.js`, `new-post.js`, `profile.js`, `moderation.js`, `guidelines.js` | One script per page |
-| `supabase/schema.sql` | **Draft** database tables for when Supabase is ready (not run anywhere) |
-| `tests/run-tests.js` | Checks the forum's rules (safety, privacy, moderation, edits, appeals, muting). Run `node forum/tests/run-tests.js` from the repo root. Needs only Node. |
+| `assets/css/forum.css` | Forum styles. It loads `../../styles.css` first and reuses its colors and fonts. Every class starts with `f-`. |
+| `assets/js/catalog.js` | Categories, labels, training areas, **placeholder game IDs**, report reasons |
+| `assets/js/store.js` | All saving and loading. Pages only talk to this file. |
+| `assets/js/safety.js` | The safety check before posting |
+| `assets/js/seed.js` | The made-up demo data |
+| `assets/js/ui.js` | Shared header, badges and the report dialog |
+| `assets/js/home.js`, `thread.js`, `new-post.js`, `profile.js`, `moderation.js`, `guidelines.js` | One script per page |
+| `database/schema.sql` | **Draft** database tables and access rules for the Railway (Postgres) backend (not run anywhere yet) |
+| `tests/forum.test.js` | Checks the forum's rules (safety, privacy, moderation, edits, appeals, muting). Run `node forum/tests/forum.test.js` from the repo root. Needs only Node. |
 
-`store.js`, `safety.js`, `catalog.js` and `seed.js` don't touch the page at all, so they can move into the React Native app later as they are.
+`store.js`, `safety.js`, `catalog.js` and `seed.js` (under `assets/js/`) don't touch the page at all, so they can move into the React Native app later as they are.
 
 ## How it connects to the other parts
 
-- **Game library (Charvik):** `js/catalog.js` has placeholder games. Swap in the library's real game IDs and names, and the forum's game tags and filters follow.
+- **Game library (Charvik):** `assets/js/catalog.js` has placeholder games. Real game IDs aren't needed (decided 2026-10-24), so these placeholder tags stay.
 - **Recommendations (Sahas):** `Forum.store.topicSignals(days)` returns how often each training area and game comes up in public conversations. It returns counts only: no user IDs and no post text. That matches the brief's rule that forum signals come from clear categories, not from reading people's posts.
-- **Accounts (Supabase, Sahas):** today the forum uses demo accounts. When sign-in is ready, replace the function bodies in `js/store.js` with Supabase calls. `supabase/schema.sql` is a starting draft of the tables and access rules.
+- **Accounts (Railway, Sahas):** today the forum uses demo accounts. When sign-in is ready, replace the function bodies in `assets/js/store.js` with calls to the Railway backend. `database/schema.sql` is a starting draft of the Postgres tables and access rules, written for plain Postgres (no Supabase): it uses a `forum_app` role and a per-request `forum.current_account` setting instead of Supabase Auth. Its header explains how the API server wires that up.
 
 ## Testing
 
-- `node forum/tests/run-tests.js` runs 31 checks of the forum's rules in a few seconds, with no installs.
+- `node forum/tests/forum.test.js` runs 31 checks of the forum's rules in a few seconds, with no installs.
 - The pages were also tested in a real browser (Chromium) on desktop and phone sizes, including the edit, appeal, mute and draft flows.
-- `supabase/schema.sql` was loaded into a scratch PostgreSQL 16 database and its access rules were tested there (for example: anonymous authors stay hidden, people can only appeal their own hidden posts once, and moderators can't be muted).
-- The database repeats the app's key rules itself, so a modified app can't skip them: the unsafe-claim hold, "professional guidance" for verified professionals only, auto-hide after 3 reports, and only moderators changing whether a post is visible. `forum_needs_review` in `schema.sql` copies the hold patterns from `js/safety.js`, so change both together.
+- `database/schema.sql` was loaded into a scratch PostgreSQL 16 database and its rules were tested there (for example: anonymous authors stay hidden, held posts can't be released by their author, members can't post professional guidance, a post is auto-hidden after 3 different reporters, people can only appeal their own hidden posts once, reporters can't read moderator notes, and moderators can't be muted).
+- The database repeats the app's key rules itself, so a modified app can't skip them: the unsafe-claim hold, "professional guidance" for verified professionals only, auto-hide after 3 reports, and only moderators changing whether a post is visible. `forum_needs_review` in `database/schema.sql` copies the hold patterns from `assets/js/safety.js`, so change both together.
 
 ## Not done yet
 
-- Real sign-in and storage (waiting on Supabase).
+- Real sign-in and storage (waiting on the Railway backend from Sahas).
 - Checking professional credentials for real. Today the badge is demo data.
 - Notifications when someone replies.
 - The brief says the moderation rules should be checked with qualified people before launch.
