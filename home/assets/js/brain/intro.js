@@ -1,11 +1,12 @@
 /*
- * Home page brain: a soft, glossy brain cut into geometric shards.
- * Scroll story: whole at the top, it bursts into shards on the first scroll, then the shards drift
+ * Home page brain: a soft, glossy brain made of jigsaw pieces.
+ * Scroll story: whole at the top, it bursts into puzzle pieces on the first scroll, then the pieces fly
  * back into place as you read down the page, until it is whole again at the bottom.
  * The mesh is built in a worker (build-worker.js) and all shard motion runs on the GPU, so the
  * page only updates a few numbers per frame.
  */
 import * as THREE from 'three';
+import { PUZZLE_N } from './mesh.js';
 
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const smooth = (a, b, v) => { const t = clamp((v - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
@@ -98,6 +99,53 @@ let ready = false;
 
 function seeded(n) { const x = Math.sin(n * 91.7) * 43758.5; return x - Math.floor(x); }
 
+// Which jigsaw piece a point on the brain belongs to (must match puzzleCell in mesh.js), and how
+// far it is from the piece's outline. Each cube face is a PUZZLE_N × PUZZLE_N grid; every inner edge has one
+// round tab, owned by the piece on one side (chosen by a hash), poking into the other.
+const PUZZLE_GLSL = `
+  const float PN = ${PUZZLE_N.toFixed(1)};
+  float edgeHash(vec3 p) { return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) * 43758.5453); }
+  float pieceAt(vec3 p, out float seam) {
+    vec3 q = vec3(p.x / 0.72, (p.y + 0.08) / 0.8, p.z);
+    vec3 a = abs(q);
+    float face; vec2 uv;
+    if (a.x >= a.y && a.x >= a.z) { face = q.x > 0.0 ? 0.0 : 1.0; uv = vec2(q.x > 0.0 ? -q.z : q.z, q.y) / a.x; }
+    else if (a.y >= a.z) { face = q.y > 0.0 ? 2.0 : 3.0; uv = vec2(q.x, q.y > 0.0 ? -q.z : q.z) / a.y; }
+    else { face = q.z > 0.0 ? 4.0 : 5.0; uv = vec2(q.z > 0.0 ? q.x : -q.x, q.y) / a.z; }
+    vec2 st = clamp((uv + 1.0) * 0.5 * PN, 0.0, PN - 1e-4);
+    vec2 cell = floor(st), f = st - cell, piece = cell;
+    const float R = 0.18, C = 0.14, NECK = 0.11; // tab radius, how far its centre sits past the edge, half its neck
+    seam = 9.0;
+    bool tab; float d;
+    if (cell.x < PN - 1.0) { // right edge: tab owned by this piece (true) or the one on the right
+      tab = edgeHash(vec3(face, cell.x + 1.0, cell.y)) < 0.5;
+      d = length(f - vec2(tab ? 1.0 + C : 1.0 - C, 0.5));
+      if (!tab) { if (d < R) piece.x += 1.0; seam = min(seam, abs(d - R)); }
+    }
+    if (cell.x > 0.0) { // left edge: tab owned by the piece on the left (true) or this one
+      tab = edgeHash(vec3(face, cell.x, cell.y)) < 0.5;
+      d = length(f - vec2(tab ? C : -C, 0.5));
+      if (tab) { if (d < R) piece.x -= 1.0; seam = min(seam, abs(d - R)); }
+    }
+    if (cell.y < PN - 1.0) { // top edge
+      tab = edgeHash(vec3(face + 10.0, cell.x, cell.y + 1.0)) < 0.5;
+      d = length(f - vec2(0.5, tab ? 1.0 + C : 1.0 - C));
+      if (!tab) { if (d < R) piece.y += 1.0; seam = min(seam, abs(d - R)); }
+    }
+    if (cell.y > 0.0) { // bottom edge
+      tab = edgeHash(vec3(face + 10.0, cell.x, cell.y)) < 0.5;
+      d = length(f - vec2(0.5, tab ? C : -C));
+      if (tab) { if (d < R) piece.y -= 1.0; seam = min(seam, abs(d - R)); }
+    }
+    // Straight parts of the outline, leaving a gap where each tab's neck crosses.
+    if (abs(f.y - 0.5) > NECK || cell.x >= PN - 1.0) seam = min(seam, 1.0 - f.x);
+    if (abs(f.y - 0.5) > NECK || cell.x <= 0.0) seam = min(seam, f.x);
+    if (abs(f.x - 0.5) > NECK || cell.y >= PN - 1.0) seam = min(seam, 1.0 - f.y);
+    if (abs(f.x - 0.5) > NECK || cell.y <= 0.0) seam = min(seam, f.y);
+    return face * PN * PN + piece.y * PN + piece.x;
+  }
+`;
+
 function addMesh(m) {
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(m.position, 3));
@@ -105,15 +153,13 @@ function addMesh(m) {
   geo.setAttribute('aShard', new THREE.BufferAttribute(m.shard, 1));
   geo.setIndex(new THREE.BufferAttribute(m.index, 1));
 
-  // Per shard, 7 texels: [centre, delay] [scattered position, turn] [turn axis, -]
-  // [its face direction] [the three neighbouring faces' directions], for trimming straight edges.
-  const W = 7;
+  // Per piece, 3 texels: [centre, delay] [scattered position, turn] [turn axis, -].
+  const W = 3;
   const data = new Float32Array(m.shards * W * 4);
-  const face = (f) => [m.faces[f * 3], m.faces[f * 3 + 1], m.faces[f * 3 + 2], 0];
   for (let s = 0; s < m.shards; s++) {
     const cx = m.centre[s * 3], cy = m.centre[s * 3 + 1], cz = m.centre[s * 3 + 2];
     const ox = m.out[s * 3], oy = m.out[s * 3 + 1], oz = m.out[s * 3 + 2];
-    const dist = 0.55 + 1.05 * seeded(s + 1);
+    const dist = 0.6 + 1.3 * seeded(s + 1);
     const swirl = (Math.atan2(cz, cx) + Math.PI) / (Math.PI * 2);
     const ax = seeded(s + 5) - 0.5, ay = seeded(s + 6) - 0.5, az = seeded(s + 7) - 0.5;
     const al = Math.hypot(ax, ay, az) || 1;
@@ -121,8 +167,7 @@ function addMesh(m) {
       cx, cy, cz, (0.65 * swirl + 0.35 * seeded(s + 9)) * SPREAD,
       cx + ox * dist + (seeded(s + 2) - 0.5) * 0.5, cy + oy * dist + (seeded(s + 3) - 0.5) * 0.5, cz + oz * dist + (seeded(s + 4) - 0.5) * 0.5,
       (1.2 + 2.4 * seeded(s + 8)) * (seeded(s + 10) < 0.5 ? -1 : 1),
-      ax / al, ay / al, az / al, 0,
-      ...face(s), ...face(m.neighbours[s * 3]), ...face(m.neighbours[s * 3 + 1]), ...face(m.neighbours[s * 3 + 2])
+      ax / al, ay / al, az / al, 0
     ], s * W * 4);
   }
   const tex = new THREE.DataTexture(data, W, m.shards, THREE.RGBAFormat, THREE.FloatType);
@@ -144,7 +189,7 @@ function addMesh(m) {
     Object.assign(shader.uniforms, uniforms);
     shader.vertexShader = `attribute float aShard;
       uniform float uAssemble; uniform float uTime; uniform sampler2D uShards;
-      varying float vLoose; varying vec3 vRest; varying float vShard;
+      varying float vLoose; varying float vSnap; varying vec3 vRest; varying float vShard;
       vec3 rotAxis(vec3 v, vec3 axis, float a) { float c = cos(a), s = sin(a); return v * c + cross(axis, v) * s + axis * dot(axis, v) * (1.0 - c); }
       ` + shader.vertexShader
       .replace('#include <beginnormal_vertex>', `
@@ -154,6 +199,7 @@ function addMesh(m) {
         vec3 axis = texelFetch(uShards, ivec2(2, row), 0).xyz;
         // How settled this shard is: 0 = flying loose, 1 = in place.
         float k = clamp(uAssemble * (1.0 + ${SPREAD.toFixed(2)}) - sA.w, 0.0, 1.0);
+        vSnap = smoothstep(0.72, 0.96, k) * (1.0 - smoothstep(0.96, 1.0, k)); // flash as it clicks in
         k = k * k * (3.0 - 2.0 * k);
         float turn = (sB.w + uTime * 0.2 * sign(sB.w)) * (1.0 - k);
         vec3 objectNormal = rotAxis(normal, axis, turn);
@@ -161,22 +207,23 @@ function addMesh(m) {
         vRest = position;
         vShard = aShard;`)
       .replace('#include <begin_vertex>', `
-        vec3 local = (position - sA.xyz) * mix(0.9, 1.0, k); // small gaps between loose shards
+        vec3 local = (position - sA.xyz) * mix(0.92, 1.0, k); // small gaps between loose pieces
         vec3 transformed = mix(sB.xyz, sA.xyz, k) + rotAxis(local, axis, turn);`);
-    shader.fragmentShader = `uniform sampler2D uShards; varying float vLoose; varying vec3 vRest; varying float vShard;
+    shader.fragmentShader = `varying float vLoose; varying float vSnap; varying vec3 vRest; varying float vShard;
+      ${PUZZLE_GLSL}
       ` + shader.fragmentShader
       .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>
-        // Keep only the part of this shard's quads that points toward its own face: straight cuts.
-        int row = int(vShard + 0.5);
-        vec3 dir = vec3(vRest.x / 0.72, (vRest.y + 0.08) / 0.8, vRest.z);
-        float own = dot(dir, texelFetch(uShards, ivec2(3, row), 0).xyz);
-        if (dot(dir, texelFetch(uShards, ivec2(4, row), 0).xyz) > own ||
-            dot(dir, texelFetch(uShards, ivec2(5, row), 0).xyz) > own ||
-            dot(dir, texelFetch(uShards, ivec2(6, row), 0).xyz) > own) discard;`)
+        // Keep only the part of this copy that is really inside its piece: exact jigsaw outlines.
+        float seam;
+        if (abs(pieceAt(vRest, seam) - vShard) > 0.5) discard;
+        float line = 1.0 - smoothstep(0.0, 0.025 + fwidth(seam) * 1.5, seam);`)
       .replace('#include <color_fragment>', `#include <color_fragment>
-        if (!gl_FrontFacing) diffuseColor.rgb *= 0.45; // the inside of a shard is darker`)
+        if (!gl_FrontFacing) diffuseColor.rgb *= 0.4; // the inside of a piece is darker
+        diffuseColor.rgb *= 1.0 - 0.45 * line * (1.0 - vLoose); // faint seams once it's whole`)
       .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
-        totalEmissiveRadiance += vec3(0.9, 0.42, 0.32) * 0.12 * vLoose;`);
+        // Blue edges while the pieces are loose, and a flash as each one locks into place.
+        vec3 glow = vec3(0.3, 0.78, 1.0);
+        totalEmissiveRadiance += glow * line * (0.25 + 2.2 * vLoose + 2.5 * vSnap) + glow * 0.35 * vSnap;`);
   };
   const mesh = new THREE.Mesh(geo, material);
   mesh.frustumCulled = false; // shards move in the shader, so the box three.js knows about is wrong
@@ -187,7 +234,7 @@ function addMesh(m) {
 
 function build() {
   try {
-    const worker = new Worker(new URL('./build-worker.js?v=4', import.meta.url), { type: 'module' });
+    const worker = new Worker(new URL('./build-worker.js?v=5', import.meta.url), { type: 'module' });
     worker.onmessage = (e) => { addMesh(e.data); worker.terminate(); };
     worker.onerror = () => { worker.terminate(); buildHere(); };
     worker.postMessage({});

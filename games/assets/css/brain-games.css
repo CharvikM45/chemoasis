@@ -1,0 +1,66 @@
+/* The six brain games (games/assets/js/brain-games.js). Builds on new-worlds-3d.css. */
+
+.brain-game .world-kicker { color: var(--tone); }
+.bg-card { text-align: left; }
+.bg-how { margin: 6px 0 0; padding-left: 20px; display: grid; gap: 10px; font-size: 17px; line-height: 1.55; }
+.bg-how b { color: #fff1c8; }
+.bg-safety { margin: 18px 0 0; padding: 12px 14px; border-left: 2px solid #ff9a7a; background: rgba(255, 154, 122, .08); font-size: 14px !important; color: #ffd9cc; }
+.world-controls .bg-primary { background: var(--tone); border-color: var(--tone); color: #0d1424; }
+.bg-choices { justify-content: center; }
+.bg-choices button { min-width: 160px; min-height: 56px; font-size: 13px; }
+
+/* Lumen Garden: the flower grid */
+.span-grid { display: grid; grid-template-columns: repeat(var(--n), 1fr); gap: 10px; width: min(100%, calc(var(--n) * 96px)); margin: 18px auto 6px; }
+.span-grid button { aspect-ratio: 1; border: 1px solid rgba(255, 250, 230, .3); border-radius: 14px; background: rgba(255, 255, 255, .04); color: rgba(255, 255, 255, .28); font-size: clamp(22px, 5vw, 32px); cursor: pointer; transition: background .12s, color .12s, box-shadow .12s, transform .12s; }
+.span-grid button:disabled { cursor: default; }
+.span-grid button.lit, .span-grid button.tap { background: var(--tone); color: #170c24; box-shadow: 0 0 34px var(--tone); transform: scale(1.06); }
+.span-grid button.hint { outline: 3px solid #fff1c8; outline-offset: 3px; }
+
+/* Starling Observatory: the flash sky */
+.sky { position: relative; width: min(100%, 360px); aspect-ratio: 1; margin: 12px auto; border-radius: 50%; background: radial-gradient(circle, rgba(127, 184, 255, .12), rgba(4, 8, 20, .7) 70%); border: 1px solid rgba(127, 184, 255, .25); }
+.sky-centre { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 64px; height: 64px; display: grid; place-items: center; border: 1px solid rgba(255, 255, 255, .25); border-radius: 12px; background: rgba(0, 0, 0, .35); font-size: 36px; color: #fff; }
+.sky-slot { position: absolute; left: 50%; top: 50%; width: 52px; height: 52px; margin: -26px 0 0 -26px; transform: rotate(var(--a)) translateY(-138%) rotate(calc(-1 * var(--a))); border: 1px solid transparent; border-radius: 50%; background: transparent; color: #fff1c8; font-size: 26px; cursor: pointer; }
+.sky-slot:not(:disabled) { border-color: rgba(255, 255, 255, .35); background: rgba(255, 255, 255, .06); }
+.sky-slot:not(:disabled):hover { background: rgba(127, 184, 255, .3); }
+.sky-slot.answer { border-color: #fff1c8; box-shadow: 0 0 18px #fff1c8; }
+.sky-clutter { position: absolute; inset: 0; pointer-events: none; }
+.sky-clutter i { position: absolute; font-style: normal; color: #fff1c8; font-size: 20px; transform: translate(-50%, -50%); }
+
+/* Cloudpath: Tower of London */
+.tol { display: flex; justify-content: center; align-items: flex-end; gap: 14px; }
+.tol-goal { display: grid; justify-items: center; gap: 6px; margin: 4px 0 18px; padding: 10px; border: 1px dashed rgba(246, 209, 132, .5); border-radius: 10px; }
+.tol-goal small { color: #f6d184; font: 10px "DM Mono", monospace; letter-spacing: .14em; text-transform: uppercase; }
+.tol-goal .tol-peg { width: 52px; height: calc(var(--cap) * 22px + 12px); }
+.tol-goal .tol-peg i { width: 20px; height: 20px; }
+.tol-peg { width: clamp(78px, 22vw, 110px); height: calc(var(--cap) * 44px + 20px); display: flex; flex-direction: column-reverse; align-items: center; justify-content: flex-start; gap: 4px; padding: 6px 0; border: 1px solid rgba(255, 250, 230, .35); border-bottom: 4px solid rgba(246, 209, 132, .7); border-radius: 14px 14px 6px 6px; background: rgba(255, 255, 255, .04); color: inherit; cursor: pointer; }
+button.tol-peg:hover { background: rgba(246, 209, 132, .12); }
+.tol-peg i { width: 38px; height: 38px; border-radius: 50%; box-shadow: inset 0 -4px 8px rgba(0, 0, 0, .25), 0 0 14px rgba(255, 255, 255, .15); transition: transform .15s; }
+.tol-peg i.held { transform: translateY(-14px); box-shadow: 0 0 0 3px #fff1c8, 0 0 22px #fff1c8; }
+
+/* Story Echo: words */
+.word-show { min-height: 110px; display: grid; place-items: center; margin: 20px 0; font: 400 clamp(40px, 8vw, 64px) / 1 "Playfair Display", serif !important; letter-spacing: -.02em; color: #fff1c8; }
+.word-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; margin-top: 14px; }
+.word-grid button { min-height: 46px; border: 1px solid rgba(255, 250, 230, .35); border-radius: 6px; background: rgba(7, 13, 28, .6); color: #fffaf0; font: 15px "DM Sans", sans-serif; cursor: pointer; }
+.word-grid button[aria-pressed="true"] { background: var(--tone); border-color: var(--tone); color: #1c1306; }
+.word-grid button.hit { background: #8fe3a4; border-color: #8fe3a4; color: #0d2414; }
+.word-grid button.missed { border: 2px dashed #8fe3a4; }
+.word-grid button.wrong { background: #ff8a78; border-color: #ff8a78; color: #2a0d08; }
+
+/* Finger Rhythm: four quick pads */
+.brain-game .rhythm-row { gap: clamp(10px, 3vw, 28px); margin: 30px 0; }
+.brain-game .pad { width: clamp(70px, 19vw, 132px); height: clamp(70px, 19vw, 132px); font-size: clamp(26px, 6vw, 38px); transition: transform .08s, background .08s, box-shadow .08s; touch-action: manipulation; }
+.brain-game .pad.good { background: #8fe3a4; color: #0d2414; }
+.brain-game .pad.bad { background: #ff8a78; color: #2a0d08; }
+
+/* Signal Match: rule switching */
+.switch-rule { margin: 10px 0 0; text-align: center; font: 500 22px "DM Mono", monospace !important; letter-spacing: .3em; }
+.switch-rule.rule-shape { color: #fff1c8; }
+.switch-rule.rule-colour { color: #d8a4f0; }
+.switch-card { width: 150px; height: 150px; margin: 16px auto 10px; display: grid; place-items: center; border: 1px solid rgba(255, 255, 255, .3); border-radius: 18px; background: rgba(0, 0, 0, .35); font-size: 84px; line-height: 1; }
+.switch-bar { width: min(100%, 320px); height: 4px; margin: 0 auto 6px; background: rgba(255, 255, 255, .12); border-radius: 4px; overflow: hidden; }
+.switch-bar i { display: block; height: 100%; width: 100%; background: var(--tone); }
+.brain-game .game-status { text-align: center; }
+
+@media (prefers-reduced-motion: reduce) {
+  .span-grid button, .tol-peg i, .brain-game .pad { transition: none; }
+}

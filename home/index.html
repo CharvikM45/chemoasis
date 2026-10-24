@@ -14,10 +14,9 @@
     <link rel="stylesheet" href="../games/assets/css/experience-games.css?v=three-games-2" />
     <link rel="stylesheet" href="../games/assets/css/game-launch.css?v=corner-2" />
     <link rel="stylesheet" href="../games/assets/css/immersive-worlds.css?v=1" />
-    <link rel="stylesheet" href="../games/assets/css/lumen-3d.css?v=1" />
-    <link rel="stylesheet" href="../games/assets/css/other-worlds-3d.css?v=1" />
     <link rel="stylesheet" href="../games/assets/css/new-worlds-3d.css?v=1" />
-    <link rel="stylesheet" href="../games/assets/css/levels.css?v=1" />
+    <link rel="stylesheet" href="../games/assets/css/levels.css?v=2" />
+    <link rel="stylesheet" href="../games/assets/css/brain-games.css?v=1" />
   </head>
   <body>
     <div class="scene" aria-hidden="true"><canvas id="brain"></canvas></div>
@@ -89,7 +88,7 @@
           <ol class="steps">
             <li><span>01</span><div><b>Tell us how you're doing</b><p>Ten short questions about your treatment, your energy and what feels hardest right now. Skip any of them.</p></div></li>
             <li><span>02</span><div><b>Get three games to start with</b><p>Ranked for you, each with the reasons it was picked, so nothing is a black box.</p></div></li>
-            <li><span>03</span><div><b>Play at your own pace</b><p>Choose your level, with no timers unless you want one. Pause or stop whenever you like.</p></div></li>
+            <li><span>03</span><div><b>Train, a few minutes at a time</b><p>Each game is based on exercises tested with people after cancer treatment, and adapts as you play: harder when you're doing well, easier when you're not.</p></div></li>
             <li><span>04</span><div><b>It learns with you</b><p>Every game you play, or set aside, tunes your next suggestions. Your progress is saved to your account.</p></div></li>
           </ol>
           <div class="panel">
@@ -106,7 +105,7 @@
           <div class="features">
             <article><i aria-hidden="true">?</i><b>Personal questionnaire</b><p>Ten questions, adjusted to your age and treatment. Every one can be skipped.</p></article>
             <article><i aria-hidden="true">✦</i><b>Recommendations that explain themselves</b><p>A small learning model ranks six games for you and tells you why.</p></article>
-            <article><i aria-hidden="true">◈</i><b>Six game worlds</b><p>Memory, focus, planning, language, hand coordination and thinking speed, each with four levels.</p></article>
+            <article><i aria-hidden="true">◈</i><b>Six adaptive brain games</b><p>Working memory, processing speed, planning, verbal memory, mental flexibility and hand coordination, each based on published research.</p></article>
             <article><i aria-hidden="true">↻</i><b>Saved to your account</b><p>Your answers, suggestions and level progress follow you to any device.</p></article>
             <article><i aria-hidden="true">☷</i><b>Community forum</b><p>Talk with people who've been there, with moderators and anonymous posting.</p></article>
             <article><i aria-hidden="true">○</i><b>Private and gentle</b><p>No leaderboards and no health scores. Delete your account and everything in it at any time.</p></article>
@@ -137,20 +136,17 @@
       };
       setTimeout(function () { if (!window.__brainStarted) window.brainFallback(); }, 10000);
     </script>
-    <script type="module" src="assets/js/brain/intro.js?v=9" onerror="brainFallback()"></script>
+    <script type="module" src="assets/js/brain/intro.js?v=10" onerror="brainFallback()"></script>
     <script src="../account/assets/js/auth.js?v=2"></script>
     <script src="assets/js/account-link.js"></script>
-    <script src="../games/assets/js/experience.js?v=six-games-1"></script>
+    <script src="../games/assets/js/experience.js?v=research-1"></script>
     <script src="../games/assets/js/game-launch.js?v=corner-1"></script>
     <script>
       document.querySelectorAll('[data-open-worlds]').forEach(function (b) {
         b.addEventListener('click', function () { var l = document.querySelector('.launch-experience'); if (l) l.click(); });
       });
     </script>
-    <script src="../games/assets/js/levels.js?v=2"></script>
-    <script type="module" src="../games/assets/js/lumen-3d.js?v=2"></script>
-    <script type="module" src="../games/assets/js/starling-3d.js?v=2"></script>
-    <script type="module" src="../games/assets/js/cloudpath-3d.js?v=2"></script>
-    <script type="module" src="../games/assets/js/new-worlds-3d.js?v=2"></script>
+    <script src="../games/assets/js/levels.js?v=3"></script>
+    <script type="module" src="../games/assets/js/brain-games.js?v=1"></script>
   </body>
 </html>

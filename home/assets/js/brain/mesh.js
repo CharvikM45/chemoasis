@@ -1,41 +1,30 @@
 /*
  * Turns the brain's distance field (shape.js) into a smooth triangle mesh with surface nets,
- * then cuts the surface into triangular shards, so each shard can
- * fly apart on its own. Runs in a worker (build-worker.js); plain arrays in, typed arrays out.
+ * then cuts the surface into jigsaw pieces, so each piece can fly apart on its own.
+ * Runs in a worker (build-worker.js); plain arrays in, typed arrays out.
+ *
+ * Pieces: the brain is wrapped in a cube (each face a PUZZLE_N × PUZZLE_N grid) and every point
+ * belongs to the grid cell it points toward. Here quads are only sorted roughly (into the cell and
+ * its neighbours); the shader cuts the exact jigsaw outline, tabs and all (see intro.js).
  */
 import { field, BOUNDS } from './shape.js';
 
-// Centres of the faces of an icosahedron split `levels` times (20 · 4^levels faces), as unit vectors.
-function geodesicFaceCentres(levels) {
-  const t = (1 + Math.sqrt(5)) / 2;
-  let verts = [[-1, t, 0], [1, t, 0], [-1, -t, 0], [1, -t, 0], [0, -1, t], [0, 1, t], [0, -1, -t], [0, 1, -t], [t, 0, -1], [t, 0, 1], [-t, 0, -1], [-t, 0, 1]];
-  let tris = [[0, 11, 5], [0, 5, 1], [0, 1, 7], [0, 7, 10], [0, 10, 11], [1, 5, 9], [5, 11, 4], [11, 10, 2], [10, 7, 6], [7, 1, 8], [3, 9, 4], [3, 4, 2], [3, 2, 6], [3, 6, 8], [3, 8, 9], [4, 9, 5], [2, 4, 11], [6, 2, 10], [8, 6, 7], [9, 8, 1]];
-  const unit = (v) => { const l = Math.hypot(v[0], v[1], v[2]); return [v[0] / l, v[1] / l, v[2] / l]; };
-  verts = verts.map(unit);
-  for (let level = 0; level < levels; level++) {
-    const mid = new Map();
-    const midpoint = (a, b) => {
-      const key = a < b ? a + ',' + b : b + ',' + a;
-      if (!mid.has(key)) { mid.set(key, verts.length); verts.push(unit(verts[a].map((c, i) => c + verts[b][i]))); }
-      return mid.get(key);
-    };
-    tris = tris.flatMap(([a, b, c]) => { const ab = midpoint(a, b), bc = midpoint(b, c), ca = midpoint(c, a); return [[a, ab, ca], [b, bc, ab], [c, ca, bc], [ab, bc, ca]]; });
-  }
-  const centres = new Float32Array(tris.length * 3);
-  tris.forEach(([a, b, c], f) => centres.set(unit([0, 1, 2].map((i) => verts[a][i] + verts[b][i] + verts[c][i])), f * 3));
-  // The three faces sharing an edge with each face.
-  const byEdge = new Map();
-  tris.forEach(([a, b, c], f) => [[a, b], [b, c], [c, a]].forEach(([p, q]) => {
-    const key = p < q ? p + ',' + q : q + ',' + p;
-    (byEdge.get(key) || byEdge.set(key, []).get(key)).push(f);
-  }));
-  const neighbours = new Uint16Array(tris.length * 3);
-  tris.forEach(([a, b, c], f) => [[a, b], [b, c], [c, a]].forEach(([p, q], e) => {
-    const key = p < q ? p + ',' + q : q + ',' + p;
-    neighbours[f * 3 + e] = byEdge.get(key).find((g) => g !== f);
-  }));
-  return { centres, neighbours };
+export const PUZZLE_N = 6;
+
+// Which cube face and grid cell a point points toward: [face, column, row, fraction across, fraction up].
+export function puzzleCell(x, y, z) {
+  x /= 0.72; y = (y + 0.08) / 0.8; // stretch to a rounder shape, so pieces come out about the same size
+  const ax = Math.abs(x), ay = Math.abs(y), az = Math.abs(z);
+  let face, u, v;
+  if (ax >= ay && ax >= az) { face = x > 0 ? 0 : 1; u = (x > 0 ? -z : z) / ax; v = y / ax; }
+  else if (ay >= az) { face = y > 0 ? 2 : 3; u = x / ay; v = (y > 0 ? -z : z) / ay; }
+  else { face = z > 0 ? 4 : 5; u = (z > 0 ? x : -x) / az; v = y / az; }
+  const s = Math.min(PUZZLE_N - 1e-4, Math.max(0, (u + 1) * 0.5 * PUZZLE_N));
+  const t = Math.min(PUZZLE_N - 1e-4, Math.max(0, (v + 1) * 0.5 * PUZZLE_N));
+  const i = Math.floor(s), j = Math.floor(t);
+  return [face, i, j, s - i, t - j];
 }
+const pieceId = (face, i, j) => face * PUZZLE_N * PUZZLE_N + j * PUZZLE_N + i;
 
 export function buildBrainMesh({ step = 0.021 } = {}) {
   let shards;
@@ -115,29 +104,26 @@ export function buildBrainMesh({ step = 0.021 } = {}) {
     nor[p * 3] = gx / l; nor[p * 3 + 1] = gy / l; nor[p * 3 + 2] = gz / l;
   }
 
-  // 5. Shards: triangular wedges. A point belongs to the face of a geodesic sphere (around the
-  //    brain's middle) that it points toward. Quads that straddle a cut go into every shard they
-  //    touch; the shader trims each copy to its own straight-edged triangle.
-  const { centres: faces, neighbours } = geodesicFaceCentres(2);
-  shards = faces.length / 3;
-  const faceOf = (x, y, z) => {
-    x /= 0.72; y = (y + 0.08) / 0.8; // stretch to a rounder shape, so the wedges are about the same size
-    let best = 0, bestDot = -Infinity;
-    for (let f = 0; f < shards; f++) {
-      const d = x * faces[f * 3] + y * faces[f * 3 + 1] + z * faces[f * 3 + 2];
-      if (d > bestDot) { bestDot = d; best = f; }
-    }
-    return best;
+  // 5. Pieces. A quad goes into the cell each of its corners (and its middle) points toward, plus
+  //    the neighbouring cell when it's near an edge, where a tab may reach across. The shader keeps
+  //    only the part of each copy that is really inside that piece.
+  shards = 6 * PUZZLE_N * PUZZLE_N;
+  const reach = 0.36; // a tab reaches 0.32 of a piece across an edge (see the shader)
+  const add = (set, x, y, z) => {
+    const [face, i, j, fs, ft] = puzzleCell(x, y, z);
+    set.add(pieceId(face, i, j));
+    if (fs < reach && i > 0) set.add(pieceId(face, i - 1, j));
+    if (fs > 1 - reach && i < PUZZLE_N - 1) set.add(pieceId(face, i + 1, j));
+    if (ft < reach && j > 0) set.add(pieceId(face, i, j - 1));
+    if (ft > 1 - reach && j < PUZZLE_N - 1) set.add(pieceId(face, i, j + 1));
   };
-  const vertFace = new Uint16Array(vcount);
-  for (let p = 0; p < vcount; p++) vertFace[p] = faceOf(pos[p * 3], pos[p * 3 + 1], pos[p * 3 + 2]);
   const quadCount = quads.length / 4;
   const quadShards = [];
   for (let q = 0; q < quadCount; q++) {
     const set = new Set();
     let x = 0, y = 0, z = 0;
-    for (let c = 0; c < 4; c++) { const p = quads[q * 4 + c]; set.add(vertFace[p]); x += pos[p * 3]; y += pos[p * 3 + 1]; z += pos[p * 3 + 2]; }
-    set.add(faceOf(x / 4, y / 4, z / 4));
+    for (let c = 0; c < 4; c++) { const p = quads[q * 4 + c] * 3; add(set, pos[p], pos[p + 1], pos[p + 2]); x += pos[p]; y += pos[p + 1]; z += pos[p + 2]; }
+    add(set, x / 4, y / 4, z / 4);
     quadShards.push([...set]);
   }
 
@@ -182,6 +168,6 @@ export function buildBrainMesh({ step = 0.021 } = {}) {
     normal: new Float32Array(outNor),
     shard: new Float32Array(outShard),
     index: outShard.length > 65535 ? new Uint32Array(index) : new Uint16Array(index),
-    centre, out, shards, faces, neighbours
+    centre, out, shards
   };
 }
