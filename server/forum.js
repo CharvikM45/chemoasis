@@ -55,16 +55,17 @@ function forumRouter({ db, isProd, moderators = [], limits = {} }) {
         state.currentUserId = null;
         await persist();
       }
-    })();
+    })().catch((error) => { loading = null; throw error; }); // a failed first load is retried next time
     await loading;
   }
 
-  // Saves are queued so they reach the database in order.
+  // Saves are queued so they reach the database in order. A failed save doesn't block the ones
+  // after it (each save writes the whole forum, so the next one catches up).
   let saving = Promise.resolve();
   function persist() {
     const snapshot = JSON.stringify({ ...state, currentUserId: null });
     dirty = false;
-    saving = saving.then(() => db.query(
+    saving = saving.catch(() => {}).then(() => db.query(
       `INSERT INTO forum_state (id, data, updated_at) VALUES (1, $1::jsonb, now())
        ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, updated_at = now()`,
       [snapshot]
@@ -121,16 +122,24 @@ function forumRouter({ db, isProd, moderators = [], limits = {} }) {
     }
   });
 
-  // When an account is deleted: its posts are taken down and its profile keeps nothing personal
-  // (it stays as "Former member" so old reports and the moderation history still make sense).
+  // When an account is deleted: its posts are taken down and their words erased, and its profile
+  // keeps nothing personal (it stays as "Former member" so old reports and the moderation history
+  // still make sense).
   async function forgetUser(userId) {
     await ready();
     const profile = state.profiles.find((p) => p.id === userId);
     if (profile) Object.assign(profile, { displayName: 'Former member', bio: '', showBio: false, type: 'member' });
     delete state.settings[userId];
     for (const list of [state.threads, state.replies]) {
-      for (const item of list) if (item.authorId === userId && item.status !== 'removed-by-author') item.status = 'removed-by-author';
+      for (const item of list) {
+        if (item.authorId !== userId) continue;
+        item.status = 'removed-by-author';
+        if (item.title !== undefined) item.title = '';
+        item.body = '';
+        delete item.sourceUrl;
+      }
     }
+    for (const report of state.reports || []) if (report.reporterId === userId) report.note = '';
     await persist();
   }
 

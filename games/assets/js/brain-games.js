@@ -329,7 +329,7 @@ const lumen = {
     }
     if (!alive()) return;
     const { best, isNew } = recordBest('lumen', longest);
-    finish(world, lumen, level, [`Longest path you got right: ${longest} flowers${level.backward ? ' backwards' : ''}. Paths correct: ${correct} of ${TRIALS}.`], isNew ? 'That is a new personal best!' : `Personal best: ${best}.`, [], longest);
+    finish(world, lumen, level, [`Longest path you got right: ${longest} flowers${level.backward ? ' backwards' : ''}. Paths correct: ${correct} of ${TRIALS}.`], isNew ? 'That is a new personal best!' : `Personal best: ${best}.`, [], longest || null);
   }
 };
 
@@ -539,7 +539,7 @@ const cloudpath = {
     }
     if (!alive()) return;
     const { best, isNew } = recordBest('cloudpath', hardest);
-    finish(world, cloudpath, level, [`Perfect solutions: ${perfect} of ${PUZZLES}. Longest route solved perfectly: ${hardest || 'none yet'}${hardest ? ' moves' : ''}.`], isNew && hardest ? 'That is a new personal best!' : best ? `Personal best: ${best} moves.` : '', [], hardest);
+    finish(world, cloudpath, level, [`Perfect solutions: ${perfect} of ${PUZZLES}. Longest route solved perfectly: ${hardest || 'none yet'}${hardest ? ' moves' : ''}.`], isNew && hardest ? 'That is a new personal best!' : best ? `Personal best: ${best} moves.` : '', [], hardest || null);
   }
 };
 
@@ -661,7 +661,7 @@ const echo = {
     }
     if (!alive()) return;
     const { best, isNew } = recordBest('echo', bestLen);
-    finish(world, echo, level, [`You remembered ${totalHits} of ${totalShown} words. Longest list at 85% or better: ${bestLen || 'not yet'}${bestLen ? ' words' : ''}.`], isNew && bestLen ? 'That is a new personal best!' : best ? `Personal best: ${best} words.` : '', [], bestLen);
+    finish(world, echo, level, [`You remembered ${totalHits} of ${totalShown} words. Longest list at 85% or better: ${bestLen || 'not yet'}${bestLen ? ' words' : ''}.`], isNew && bestLen ? 'That is a new personal best!' : best ? `Personal best: ${best} words.` : '', [], bestLen || null);
   }
 };
 
