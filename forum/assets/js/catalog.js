@@ -1,9 +1,9 @@
 /*
  * Shared lists the forum uses: categories, post labels, training areas and games.
  *
- * TRAINING_AREAS follow the goals in the onboarding questionnaire (brief, question 1).
- * GAMES matches the six games in the library (same ids as the games and the recommender).
- * Swap in his list here and every game tag in the forum follows.
+ * GAMES and TRAINING_AREAS match the six games in the library (the GAMES list in
+ * account/assets/js/recommender.js, same ids and areas). If a game is added or renamed
+ * there, change it here too; forum/tests/forum.test.js checks that the two lists agree.
  */
 window.Forum = window.Forum || {};
 
@@ -66,22 +66,22 @@ Forum.catalog = (function () {
     { id: "focus", name: "Focus and attention" },
     { id: "speed", name: "Thinking speed" },
     { id: "planning", name: "Planning and problem-solving" },
-    { id: "hand", name: "Hand coordination" },
-    { id: "movement", name: "Movement and coordination" },
-    { id: "balance", name: "Balance-related activities" }
+    { id: "hand", name: "Hand coordination" }
   ];
 
   // The six games, with the same ids as the games and the recommender.
   const GAMES = [
     { id: "lumen", name: "Lumen Garden", areas: ["memory"] },
-    { id: "starling", name: "Starling Observatory", areas: ["focus", "speed"] },
+    { id: "starling", name: "Starling Observatory", areas: ["focus"] },
     { id: "cloudpath", name: "Cloudpath Cartographer", areas: ["planning"] },
     { id: "echo", name: "Story Echo", areas: ["words", "memory"] },
     { id: "rhythm", name: "Finger Rhythm", areas: ["hand"] },
     { id: "signal", name: "Signal Match", areas: ["speed", "focus"] }
   ];
 
+  // "support" never hides a post. It asks a moderator to check on the person who wrote it.
   const REPORT_REASONS = [
+    { id: "support", name: "Someone may need support" },
     { id: "unsafe-medical", name: "Unsafe medical claim" },
     { id: "misinformation", name: "Misinformation" },
     { id: "harassment", name: "Harassment or unkindness" },

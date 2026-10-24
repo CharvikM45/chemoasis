@@ -150,20 +150,53 @@ Forum.ui = (function () {
       .join("");
   }
 
-  async function renderHeader() {
+  let blocked = false;
+
+  // True when the header replaced the page with a sign-in card or an "offline" notice,
+  // so the page script should stop.
+  function pageBlocked() {
+    return blocked;
+  }
+
+  function blockPage(html) {
+    blocked = true;
+    const main = document.getElementById("main");
+    if (main) main.innerHTML = html;
+  }
+
+  /*
+   * Draws the header. In demo mode it has the demo account switcher; on the live forum it shows
+   * who is signed in. The live forum needs an account to read, except pages drawn with
+   * { public: true } (the guidelines).
+   */
+  async function renderHeader(options) {
     const header = document.querySelector("[data-forum-header]");
     if (!header) return null;
-    const user = await Forum.store.currentUser();
+    const mode = await Forum.store.mode();
+    const user = mode === "offline" ? null : await Forum.store.currentUser();
+    const users = mode === "demo" ? await Forum.store.listDemoUsers() : [];
     const here = location.pathname.split("/").pop() || "index.html";
     const link = (href, text) =>
       '<a href="' + href + '"' + (here === href ? ' aria-current="page"' : "") + ">" + text + "</a>";
 
     document.documentElement.classList.toggle("f-large-text", Boolean(user && user.settings.largeText));
 
+    let account;
+    if (mode === "demo") {
+      account =
+        '<label class="f-demo-switch"><span>Demo account</span><select id="f-demo-user">' +
+        users.map((u) => '<option value="' + esc(u.id) + '"' + (user && u.id === user.id ? " selected" : "") + ">" + esc(u.displayName) + "</option>").join("") +
+        "</select></label>";
+    } else if (user) {
+      account = '<div class="f-account"><span>' + esc(user.displayName) + '</span><a href="../account/index.html">Your account</a></div>';
+    } else {
+      account = '<div class="f-account"><a href="../account/index.html?next=forum">Sign in</a></div>';
+    }
+
     header.innerHTML =
       '<a class="skip-link" href="#main">Skip to main content</a>' +
       '<div class="f-header__inner">' +
-      '<a class="f-brand" href="../home/index.html">✣ chemoasis</a>' +
+      '<a class="f-brand" href="../home/index.html"><span class="f-brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>chemoasis</a>' +
       '<nav class="f-nav" aria-label="Primary navigation">' +
       '<a href="../home/index.html?games=1">Games</a>' +
       '<a href="../account/index.html">Your games</a>' +
@@ -173,12 +206,42 @@ Forum.ui = (function () {
       (user && user.canModerate ? link("moderation.html", "Review queue") : "") +
       (user ? '<a href="profile.html?id=' + encodeURIComponent(user.id) + '"' + (here === "profile.html" && param("id") === user.id ? ' aria-current="page"' : "") + ">My profile</a>" : "") +
       "</nav>" +
-      (user
-        ? '<span class="f-demo-switch">Signed in as <b>' + esc(user.displayName) + "</b></span>"
-        : '<a class="f-button" href="../account/index.html?next=forum">Sign in to post</a>') +
+      account +
       "</div>" +
       '<p class="f-banner">Chemoasis is supportive and educational. It does not diagnose and does not replace your care team. For new, severe or worsening symptoms, contact your care team, or call 911 in an emergency.</p>' +
-      "";
+      (mode === "demo"
+        ? '<p class="f-banner f-banner--demo">Demo: the Chemoasis server isn\'t running, so these are the example posts, and anything you post is saved only in this browser.</p>'
+        : "") +
+      (mode === "demo" && !Forum.store.isPersistent()
+        ? '<p class="f-banner f-banner--warning" role="status">This browser is blocking site storage, so anything you post in this demo disappears when you leave the page.</p>'
+        : "");
+
+    // The demo's account switcher and reset button only belong on the demo.
+    if (mode !== "demo") document.querySelectorAll("[data-demo-only]").forEach((el) => el.remove());
+
+    const switcher = header.querySelector("#f-demo-user");
+    if (switcher) {
+      switcher.addEventListener("change", async (event) => {
+        await Forum.store.switchDemoUser(event.target.value);
+        location.reload();
+      });
+    }
+
+    const isPublic = Boolean(options && options.public);
+    if (mode === "offline" && !isPublic) {
+      blockPage('<div class="f-notice f-notice--warning" role="status">We can\'t reach the community right now. Please try again in a few minutes.</div>');
+    } else if (mode === "live" && !user && !isPublic) {
+      blockPage(
+        '<section class="f-signin" aria-labelledby="signin-heading">' +
+          '<p class="eyebrow">Community</p>' +
+          '<h1 class="f-h1 f-h1--small" id="signin-heading">Sign in to join the conversation</h1>' +
+          '<p class="f-lede">People share health experiences here, so conversations are only open to people with a Chemoasis account. ' +
+          "You choose the name people see, and you can post anonymously.</p>" +
+          '<a class="f-button" href="../account/index.html?next=forum">Sign in or create an account</a>' +
+          '<a href="guidelines.html">Read the community guidelines first</a>' +
+          "</section>"
+      );
+    }
     return user;
   }
 
@@ -427,6 +490,7 @@ Forum.ui = (function () {
     toast,
     safetyNotes,
     renderHeader,
+    pageBlocked,
     openReportDialog
   };
 })();

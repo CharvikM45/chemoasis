@@ -1,8 +1,31 @@
 /*
- * Forum styles. Colors and fonts come from Charvik's styles.css (--ink, --clay, --cream...),
- * which every forum page loads first. Every class here starts with "f-" so nothing
- * collides with the landing page.
+ * Forum styles. The colors and fonts copy the home page (home/assets/css/home.css), so the forum
+ * looks like the rest of the site: near-black background, warm off-white text, a peach accent,
+ * Playfair Display headings, DM Sans text and DM Mono labels. If home.css changes its palette,
+ * change the tokens below to match. Every class here starts with "f-" so nothing collides
+ * with other pages.
  */
+
+:root {
+  --f-bg: #060507;
+  --f-surface: #100c0f;
+  --f-surface-2: #17121a;
+  --f-ink: #f4ebe2;
+  --f-soft: #cdbcae;
+  --f-muted: #a8978a;
+  --f-accent: #e7a782;
+  --f-accent-2: #d9a07d;
+  --f-accent-ink: #1c120d;
+  --f-line: rgba(255, 236, 220, 0.13);
+  --f-line-strong: rgba(255, 236, 220, 0.28);
+  --f-warm-tint: rgba(231, 167, 130, 0.1);
+  --f-info: #9fbf95;
+  --f-support: #9db7d6;
+  --f-support-tint: rgba(157, 183, 214, 0.1);
+  --f-danger: #f08a73;
+  --f-danger-bg: #7d2d16;
+  color-scheme: dark;
+}
 
 /* Class rules like .f-field { display: grid } would otherwise beat the hidden attribute. */
 .f-page [hidden] {
@@ -13,25 +36,67 @@ html.f-large-text {
   font-size: 118%;
 }
 
+html {
+  background: var(--f-bg);
+}
+
 .f-page {
   min-height: 100vh;
-  background: var(--cream);
+  margin: 0;
+  background: var(--f-bg);
+  color: var(--f-ink);
+  font-family: "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   font-size: 1rem;
   line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+.f-page *,
+.f-page *::before,
+.f-page *::after {
+  box-sizing: border-box;
 }
 
 .f-page a {
-  color: var(--espresso);
+  color: var(--f-accent);
   text-underline-offset: 3px;
+}
+
+.f-page a:hover {
+  color: var(--f-ink);
 }
 
 .f-page a:focus-visible,
 .f-page button:focus-visible,
 .f-page input:focus-visible,
 .f-page select:focus-visible,
-.f-page textarea:focus-visible {
-  outline: 3px solid var(--clay);
+.f-page textarea:focus-visible,
+.f-page summary:focus-visible {
+  outline: 3px solid var(--f-accent);
   outline-offset: 2px;
+}
+
+/* Hidden until it gets keyboard focus. */
+.skip-link {
+  position: fixed;
+  left: 16px;
+  top: 16px;
+  z-index: 99;
+  padding: 11px 14px;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  background: var(--f-accent);
+  color: var(--f-accent-ink);
+  font: 500 12px "DM Sans", system-ui, sans-serif;
+  text-decoration: none;
+}
+
+.f-page .skip-link {
+  color: var(--f-accent-ink);
+}
+
+.skip-link:focus {
+  clip-path: none;
 }
 
 /* ---------- type ---------- */
@@ -42,13 +107,15 @@ html.f-large-text {
   font-family: "Playfair Display", Georgia, serif;
   font-weight: 400;
   letter-spacing: -0.03em;
-  color: var(--ink);
+  color: var(--f-ink);
+  text-wrap: balance;
 }
 
 .f-h1 {
   margin: 0 0 1.25rem;
   font-size: clamp(2.6rem, 6vw, 4.6rem);
   line-height: 0.98;
+  letter-spacing: -0.045em;
 }
 
 .f-h1--small {
@@ -70,108 +137,149 @@ html.f-large-text {
 
 .f-lede {
   max-width: 40rem;
-  color: #6f594c;
+  color: var(--f-soft);
   font-size: 1.05rem;
 }
 
 .f-muted {
-  color: var(--muted);
+  color: var(--f-muted);
 }
 
 .f-hint {
   margin: -0.4rem 0 0.4rem;
-  color: var(--muted);
+  color: var(--f-muted);
   font-size: 0.875rem;
 }
 
-.f-eyebrow {
+.f-eyebrow,
+.f-page .eyebrow {
   display: inline-block;
-  color: var(--clay);
-  font: 0.7rem "DM Mono", monospace;
+  margin: 0 0 1rem;
+  color: var(--f-accent-2);
+  font: 0.7rem "DM Mono", ui-monospace, monospace;
   letter-spacing: 0.16em;
   text-transform: uppercase;
   text-decoration: none;
 }
 
-.f-page .eyebrow {
-  font-size: 0.7rem;
+.f-page .f-eyebrow {
+  margin: 0;
+  color: var(--f-accent-2);
+  text-decoration: none;
 }
 
 .f-page em {
-  color: var(--clay);
+  color: var(--f-accent);
 }
 
-/* ---------- header ---------- */
+/* ---------- header (matches the home page nav) ---------- */
 
 .f-header {
   position: sticky;
   top: 0;
   z-index: 30;
-  background: var(--paper);
-  border-bottom: 1px solid var(--line);
+  background: rgba(6, 5, 7, 0.92);
+  border-bottom: 1px solid var(--f-line);
+  backdrop-filter: blur(8px);
 }
 
 .f-header__inner {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.75rem 1.5rem;
+  gap: 0.75rem 1.75rem;
   max-width: 72rem;
   margin: 0 auto;
-  padding: 0.9rem clamp(1rem, 4vw, 2.5rem);
+  padding: 1rem clamp(1rem, 4vw, 2.5rem);
 }
 
 .f-brand {
-  font: 600 1.3rem "DM Sans", sans-serif;
-  letter-spacing: -0.06em;
-  color: var(--espresso);
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font: 600 1.3rem "DM Sans", system-ui, sans-serif;
+  letter-spacing: -0.05em;
+  color: var(--f-ink);
   text-decoration: none;
 }
 
 .f-page .f-brand {
+  color: var(--f-ink);
   text-decoration: none;
 }
+
+/* The four-square mark from the home page logo. */
+.f-brand-mark {
+  display: grid;
+  grid-template-columns: repeat(2, 6px);
+  gap: 2px;
+  transform: rotate(45deg);
+}
+
+.f-brand-mark i {
+  display: block;
+  width: 6px;
+  height: 6px;
+  background: #a86c4e;
+}
+
+.f-brand-mark i:nth-child(2) { background: #d7b391; }
+.f-brand-mark i:nth-child(3) { background: #72503e; }
+.f-brand-mark i:nth-child(4) { background: #ead5c0; }
 
 .f-nav {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.25rem 1.1rem;
+  gap: 0.25rem 1.3rem;
   flex: 1;
 }
 
 .f-nav a {
   padding: 0.35rem 0;
-  font: 0.72rem "DM Mono", monospace;
-  letter-spacing: 0.12em;
+  font: 0.72rem "DM Mono", ui-monospace, monospace;
+  letter-spacing: 0.11em;
   text-transform: uppercase;
-  color: var(--muted);
   text-decoration: none;
   border-bottom: 2px solid transparent;
 }
 
 .f-page .f-nav a {
-  color: var(--muted);
+  color: var(--f-soft);
   text-decoration: none;
 }
 
 .f-page .f-nav a[aria-current="page"],
 .f-page .f-nav a:hover {
-  color: var(--espresso);
-  border-bottom-color: var(--clay);
+  color: var(--f-accent);
+  border-bottom-color: var(--f-accent);
 }
 
-.f-demo-switch {
+.f-demo-switch,
+.f-account {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  font: 0.68rem "DM Mono", monospace;
+  font: 0.68rem "DM Mono", ui-monospace, monospace;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--muted);
+  color: var(--f-muted);
+}
+
+.f-account a {
+  padding: 0.45rem 0.8rem;
+  border: 1px solid rgba(231, 167, 130, 0.55);
+  font: 0.72rem "DM Mono", ui-monospace, monospace;
+  letter-spacing: 0.11em;
+  text-decoration: none;
+}
+
+.f-page .f-account a {
+  color: var(--f-ink);
+  text-decoration: none;
 }
 
 .f-demo-switch select {
-  font: 0.9rem "DM Sans", sans-serif;
+  font: 0.9rem "DM Sans", system-ui, sans-serif;
   text-transform: none;
   letter-spacing: 0;
 }
@@ -179,8 +287,9 @@ html.f-large-text {
 .f-banner {
   margin: 0;
   padding: 0.5rem clamp(1rem, 4vw, 2.5rem);
-  background: var(--espresso);
-  color: #eadbd0;
+  background: var(--f-surface-2);
+  border-top: 1px solid var(--f-line);
+  color: var(--f-soft);
   font-size: 0.8rem;
   text-align: center;
 }
@@ -200,12 +309,12 @@ html.f-large-text {
 .f-hero {
   padding-bottom: 2.5rem;
   margin-bottom: 2.5rem;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--f-line);
 }
 
 .f-layout {
   display: grid;
-  grid-template-columns: 16rem 1fr;
+  grid-template-columns: 16rem minmax(0, 1fr);
   gap: 2.5rem;
   align-items: start;
 }
@@ -222,8 +331,8 @@ html.f-large-text {
 
 .f-footer {
   padding: 2rem clamp(1rem, 4vw, 2.5rem);
-  border-top: 1px solid var(--line);
-  color: var(--muted);
+  border-top: 1px solid var(--f-line);
+  color: var(--f-muted);
   font-size: 0.8rem;
   text-align: center;
 }
@@ -234,11 +343,11 @@ html.f-large-text {
   list-style: none;
   margin: 0;
   padding: 0;
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--f-line);
 }
 
 .f-categories li {
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--f-line);
 }
 
 .f-categories a {
@@ -250,20 +359,25 @@ html.f-large-text {
   font-weight: 500;
 }
 
-.f-categories a[aria-current="true"] .f-categories__name {
-  color: var(--clay);
+.f-page .f-categories a {
+  color: var(--f-ink);
+}
+
+.f-page .f-categories a[aria-current="true"] .f-categories__name,
+.f-page .f-categories a:hover .f-categories__name {
+  color: var(--f-accent);
 }
 
 .f-categories__count {
-  font: 0.8rem "DM Mono", monospace;
-  color: var(--muted);
+  font: 0.8rem "DM Mono", ui-monospace, monospace;
+  color: var(--f-muted);
 }
 
 .f-categories__blurb {
   margin: 0 0 0.7rem;
   font-size: 0.8rem;
   line-height: 1.45;
-  color: var(--muted);
+  color: var(--f-muted);
 }
 
 .f-categories li:first-child a {
@@ -304,18 +418,19 @@ html.f-large-text {
 
 .f-card,
 .f-post {
+  min-width: 0;
   padding: 1.4rem 1.5rem;
-  background: var(--paper);
-  border: 1px solid var(--line);
+  background: var(--f-surface);
+  border: 1px solid var(--f-line);
 }
 
 .f-card {
-  transition: box-shadow 0.2s ease, transform 0.2s ease;
+  transition: border-color 0.2s ease, transform 0.2s ease;
 }
 
 .f-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 10px 22px #4a30251a;
+  border-color: var(--f-line-strong);
 }
 
 .f-card__meta {
@@ -336,24 +451,26 @@ html.f-large-text {
 }
 
 .f-page .f-card__title a {
-  color: var(--ink);
+  color: var(--f-ink);
   text-decoration: none;
 }
 
 .f-page .f-card__title a:hover {
+  color: var(--f-accent);
   text-decoration: underline;
 }
 
 .f-card__excerpt {
   margin: 0 0 0.75rem;
-  color: #6d5648;
+  color: var(--f-soft);
+  overflow-wrap: anywhere;
 }
 
 .f-card__footer,
 .f-post__byline {
   margin: 0;
   font-size: 0.85rem;
-  color: var(--muted);
+  color: var(--f-muted);
 }
 
 .f-post__byline {
@@ -366,7 +483,10 @@ html.f-large-text {
 
 .f-author {
   font-weight: 600;
-  color: var(--espresso);
+}
+
+.f-page .f-author {
+  color: var(--f-ink);
 }
 
 .f-dot {
@@ -381,6 +501,10 @@ html.f-large-text {
   margin-bottom: 0.75rem;
 }
 
+.f-post__body {
+  overflow-wrap: anywhere;
+}
+
 .f-post__body p {
   margin: 0 0 0.9rem;
 }
@@ -392,7 +516,7 @@ html.f-large-text {
   gap: 0.5rem 1.25rem;
   margin-top: 0.75rem;
   padding-top: 0.75rem;
-  border-top: 1px solid #e6d9cb;
+  border-top: 1px solid var(--f-line);
   font-size: 0.85rem;
 }
 
@@ -405,8 +529,8 @@ html.f-large-text {
 .f-empty {
   padding: 2rem;
   text-align: center;
-  color: var(--muted);
-  border: 1px dashed var(--line);
+  color: var(--f-muted);
+  border: 1px dashed var(--f-line-strong);
 }
 
 .f-replies {
@@ -414,8 +538,8 @@ html.f-large-text {
 }
 
 .f-post:target {
-  border-color: var(--clay);
-  box-shadow: 0 0 0 2px var(--clay);
+  border-color: var(--f-accent);
+  box-shadow: 0 0 0 2px var(--f-accent);
 }
 
 /* ---------- labels, badges, chips ---------- */
@@ -426,45 +550,46 @@ html.f-large-text {
   display: inline-block;
   padding: 0.15rem 0.55rem;
   border-radius: 999px;
-  font: 0.68rem "DM Mono", monospace;
+  border: 1px solid transparent;
+  font: 0.68rem "DM Mono", ui-monospace, monospace;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   white-space: nowrap;
 }
 
 .f-label--experience {
-  background: #efe2d3;
-  color: #5d4434;
+  border-color: rgba(231, 167, 130, 0.45);
+  color: var(--f-accent);
 }
 
 .f-label--info {
-  background: #e3e8de;
-  color: #3f4e38;
+  border-color: rgba(159, 191, 149, 0.45);
+  color: var(--f-info);
 }
 
 .f-label--professional {
-  background: var(--espresso);
-  color: var(--cream);
+  background: var(--f-ink);
+  color: var(--f-bg);
 }
 
 .f-badge--pro {
   background: #f0ca9e;
-  color: var(--espresso);
+  color: #2a1a10;
 }
 
 .f-badge--creator {
-  background: #e7d4ea;
-  color: #4d3550;
+  background: #d9c2df;
+  color: #2d1d31;
 }
 
 .f-badge--mod {
-  background: #d8e2ea;
-  color: #2f4250;
+  background: #c5d5e3;
+  color: #1c2a36;
 }
 
 .f-status-tag {
-  background: #f1e3d6;
-  color: #7a4b30;
+  border-color: var(--f-line-strong);
+  color: var(--f-soft);
 }
 
 .f-chips {
@@ -478,23 +603,30 @@ html.f-large-text {
 
 .f-chip {
   padding: 0.2rem 0.65rem;
-  border: 1px solid var(--line);
+  border: 1px solid var(--f-line-strong);
   border-radius: 999px;
-  background: var(--cream);
+  background: transparent;
   font-size: 0.8rem;
   text-decoration: none;
 }
 
 .f-page .f-chip {
+  color: var(--f-soft);
   text-decoration: none;
+}
+
+.f-page .f-chip:hover {
+  border-color: var(--f-accent);
+  color: var(--f-accent);
 }
 
 .f-status {
   margin: 0 0 0.75rem;
   padding: 0.5rem 0.75rem;
   font-size: 0.85rem;
-  border-left: 3px solid var(--clay);
-  background: #f6e8da;
+  border-left: 3px solid var(--f-accent);
+  background: var(--f-warm-tint);
+  color: var(--f-ink);
 }
 
 /* ---------- notices ---------- */
@@ -502,25 +634,26 @@ html.f-large-text {
 .f-notice {
   margin: 0 0 1rem;
   padding: 0.9rem 1rem;
-  border: 1px solid var(--line);
+  border: 1px solid var(--f-line);
   border-left-width: 4px;
-  background: var(--paper);
+  background: var(--f-surface);
+  color: var(--f-ink);
   font-size: 0.95rem;
 }
 
 .f-notice--info {
-  border-left-color: #6f8a63;
+  border-left-color: var(--f-info);
 }
 
 .f-notice--warning,
 .f-notice--hold {
-  border-left-color: var(--clay);
-  background: #fbefe3;
+  border-left-color: var(--f-accent);
+  background: var(--f-warm-tint);
 }
 
 .f-notice--support {
-  border-left-color: #5d7a99;
-  background: #eef3f7;
+  border-left-color: var(--f-support);
+  background: var(--f-support-tint);
 }
 
 .f-toast {
@@ -530,8 +663,8 @@ html.f-large-text {
   z-index: 60;
   max-width: calc(100% - 2rem);
   padding: 0.75rem 1.1rem;
-  background: var(--espresso);
-  color: var(--cream);
+  background: var(--f-ink);
+  color: var(--f-bg);
   font-size: 0.9rem;
   transform: translate(-50%, 1rem);
   opacity: 0;
@@ -554,6 +687,7 @@ html.f-large-text {
 .f-field {
   display: grid;
   gap: 0.35rem;
+  min-width: 0;
   font-size: 0.9rem;
   font-weight: 500;
 }
@@ -569,11 +703,16 @@ html.f-large-text {
   width: 100%;
   min-height: 2.75rem;
   padding: 0.55rem 0.7rem;
-  border: 1px solid var(--line);
+  border: 1px solid var(--f-line-strong);
   border-radius: 0;
-  background: var(--paper);
-  color: var(--ink);
-  font: 400 1rem "DM Sans", sans-serif;
+  background: var(--f-surface-2);
+  color: var(--f-ink);
+  font: 400 1rem "DM Sans", system-ui, sans-serif;
+}
+
+.f-field input::placeholder,
+.f-field textarea::placeholder {
+  color: var(--f-muted);
 }
 
 .f-demo-switch select {
@@ -590,8 +729,8 @@ html.f-large-text {
 .f-page fieldset {
   margin: 0;
   padding: 1rem;
-  border: 1px solid var(--line);
-  background: var(--paper);
+  border: 1px solid var(--f-line);
+  background: var(--f-surface);
 }
 
 .f-page legend {
@@ -615,7 +754,7 @@ html.f-large-text {
   width: 1.15rem;
   height: 1.15rem;
   margin-top: 0.2rem;
-  accent-color: var(--clay);
+  accent-color: var(--f-accent);
   flex-shrink: 0;
 }
 
@@ -630,7 +769,7 @@ html.f-large-text {
 }
 
 .f-error {
-  color: #9a3a1f;
+  color: var(--f-danger);
   font-weight: 500;
 }
 
@@ -649,77 +788,95 @@ html.f-large-text {
   justify-content: flex-start;
 }
 
+/* Buttons follow the home page: mono uppercase, peach for the main action. */
 .f-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   min-height: 2.75rem;
   padding: 0.6rem 1.3rem;
-  border: 1px solid var(--espresso);
-  background: var(--espresso);
-  color: var(--cream);
-  font: 500 0.95rem "DM Sans", sans-serif;
+  border: 1px solid var(--f-accent);
+  background: var(--f-accent);
+  color: var(--f-accent-ink);
+  font: 500 0.78rem "DM Mono", ui-monospace, monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   text-decoration: none;
   cursor: pointer;
-  transition: background 0.2s ease;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 }
 
 .f-page a.f-button {
-  color: var(--cream);
+  color: var(--f-accent-ink);
   text-decoration: none;
 }
 
-.f-button:hover {
-  background: var(--ink);
+.f-button:hover,
+.f-page a.f-button:hover {
+  background: #f2c2a3;
+  border-color: #f2c2a3;
+  color: var(--f-accent-ink);
 }
 
 .f-button--quiet {
+  border-color: var(--f-line-strong);
   background: transparent;
-  color: var(--espresso);
+  color: var(--f-ink);
 }
 
 .f-page a.f-button--quiet {
-  color: var(--espresso);
+  color: var(--f-ink);
 }
 
-.f-button--quiet:hover {
-  background: #efe2d3;
+.f-button--quiet:hover,
+.f-page a.f-button--quiet:hover {
+  background: transparent;
+  border-color: var(--f-accent);
+  color: var(--f-accent);
 }
 
 .f-button--danger {
-  border-color: #9a3a1f;
-  background: #9a3a1f;
+  border-color: var(--f-danger-bg);
+  background: var(--f-danger-bg);
+  color: #fff4ef;
 }
 
 .f-button--danger:hover {
-  background: #7d2d16;
+  border-color: #9a3a1f;
+  background: #9a3a1f;
+  color: #fff4ef;
 }
 
 .f-link-button {
   padding: 0.25rem 0;
   border: 0;
   background: none;
-  color: var(--espresso);
-  font: 500 0.85rem "DM Sans", sans-serif;
+  color: var(--f-accent);
+  font: 500 0.85rem "DM Sans", system-ui, sans-serif;
   text-decoration: underline;
   text-underline-offset: 3px;
   cursor: pointer;
 }
 
+.f-link-button:hover {
+  color: var(--f-ink);
+}
+
 .f-link-button[aria-pressed="true"] {
-  color: var(--clay);
+  color: var(--f-ink);
+  font-weight: 600;
 }
 
 .f-dialog {
   width: min(30rem, calc(100% - 2rem));
   padding: 1.5rem;
-  border: 1px solid var(--line);
-  background: var(--paper);
-  color: var(--ink);
+  border: 1px solid var(--f-line-strong);
+  background: var(--f-surface);
+  color: var(--f-ink);
 }
 
 .f-dialog::backdrop {
-  background: #33241e66;
+  background: rgba(0, 0, 0, 0.6);
 }
 
 .f-dialog .f-h2 {
@@ -729,7 +886,17 @@ html.f-large-text {
 .f-danger {
   margin-top: 2rem;
   padding: 1.25rem;
-  border: 1px dashed var(--line);
+  border: 1px dashed var(--f-line-strong);
+}
+
+/* Shown in place of the forum when it needs you to sign in. */
+.f-signin {
+  display: grid;
+  gap: 1rem;
+  justify-items: start;
+  padding: clamp(1.4rem, 4vw, 2.4rem);
+  background: var(--f-surface);
+  border: 1px solid var(--f-line);
 }
 
 /* ---------- moderation ---------- */
@@ -737,8 +904,9 @@ html.f-large-text {
 .f-quote {
   margin: 0 0 1rem;
   padding: 0.75rem 1rem;
-  border-left: 3px solid var(--line);
-  background: var(--cream);
+  border-left: 3px solid var(--f-line-strong);
+  background: var(--f-surface-2);
+  overflow-wrap: anywhere;
 }
 
 .f-quote p {
@@ -753,6 +921,10 @@ html.f-large-text {
 
 .f-queue-item:hover {
   transform: none;
+}
+
+.f-queue-item--support {
+  border-left: 4px solid var(--f-support);
 }
 
 .f-history {
@@ -777,7 +949,7 @@ html.f-large-text {
 
 .f-defs dd {
   margin: 0.35rem 0 0;
-  color: #6d5648;
+  color: var(--f-soft);
 }
 
 .f-defs--inline {
@@ -790,7 +962,7 @@ html.f-large-text {
 
 .f-defs--inline dt {
   margin: 0;
-  color: var(--muted);
+  color: var(--f-muted);
 }
 
 .f-defs--inline dd {
@@ -835,6 +1007,18 @@ html.f-large-text {
   }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .f-card,
+  .f-toast,
+  .f-button {
+    transition: none;
+  }
+
+  .f-card:hover {
+    transform: none;
+  }
+}
+
 /* ---------- edits, mute, drafts ---------- */
 
 .f-edit-form {
@@ -870,6 +1054,15 @@ html.f-large-text {
 }
 
 .f-banner--warning {
-  background: var(--clay);
-  color: #fff;
+  background: var(--f-danger-bg);
+  color: #fff4ef;
+}
+
+/* Demo mode only: says plainly that the people and posts are made up. */
+.f-banner--demo {
+  background: var(--f-warm-tint);
+  color: var(--f-ink);
+  font-family: "DM Mono", ui-monospace, monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
 }

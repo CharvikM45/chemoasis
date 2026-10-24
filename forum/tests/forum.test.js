@@ -32,6 +32,18 @@ function freshForum() {
 const tests = [];
 const test = (name, run) => tests.push({ name, run });
 
+// Adds a person to the saved forum, the way the team would after checking them.
+// The example accounts don't include a professional on purpose (see seed.js).
+async function addPerson(F, profile) {
+  await F.store.listThreads(); // makes sure the forum is saved before we edit it
+  const key = "chemoasis-forum-demo-v1";
+  const data = JSON.parse(F.__storage.getItem(key));
+  data.profiles.push(Object.assign({ bio: "", showBio: false, createdAt: new Date().toISOString() }, profile));
+  F.__storage.setItem(key, JSON.stringify(data));
+}
+const addNurse = (F) =>
+  addPerson(F, { id: "u-nurse", displayName: "Checked nurse", type: "professional", professional: { verified: true, credential: "RN", specialty: "Oncology nursing" } });
+
 function assert(condition, message) {
   if (!condition) throw new Error(message || "expected true");
 }
@@ -61,6 +73,32 @@ test("an unsafe medical claim is held for a moderator", (F) => {
 test("an ordinary post passes with no notes", (F) => {
   const result = F.safety.review({ body: "Pair Match helped me pass the time today." });
   assert(!result.hold && result.notes.length === 0);
+});
+
+test("common crisis phrases show the 988 Lifeline and alert moderators", (F) => {
+  const phrases = [
+    "Honestly everyone would be better off without me.",
+    "I keep thinking about ending it all.",
+    "There's no reason to live like this.",
+    "I've been wanting to hurt myself again.",
+    "I thought about taking an overdose.",
+    "I can’t go on like this."
+  ];
+  for (const body of phrases) {
+    const result = F.safety.review({ body });
+    assert(result.alert && result.notes.some((n) => /988/.test(n.message)), "missed: " + body);
+    assert(!result.hold, "crisis posts should not be held: " + body);
+  }
+});
+
+test("a fever or a temperature of 100.4°F / 38°C shows the chemo fever warning", (F) => {
+  const fever = (body) => F.safety.review({ body }).notes.some((n) => n.id === "fever");
+  for (const body of ["I've had a fever since last night", "My temp was 100.6 this morning", "38.4 C after my infusion", "It hit 101°F"]) {
+    assert(fever(body), "missed: " + body);
+  }
+  for (const body of ["I slept 100 hours this week", "I reached level 38!", "My temperature was 98.6", "Normal temp, 37.2 C"]) {
+    assert(!fever(body), "false alarm: " + body);
+  }
 });
 
 test("only http and https source links are accepted", (F) => {
@@ -99,6 +137,7 @@ test("members can't use the professional label", async (F) => {
 });
 
 test("professional guidance is never anonymous", async (F) => {
+  await addNurse(F);
   await F.store.switchDemoUser("u-nurse");
   const saved = await F.store.createThread({ categoryId: "ask-a-professional", title: "Sleep tips", body: "Some general tips.", label: "professional", anonymous: true });
   const { thread } = await F.store.getThread(saved.id);
@@ -143,11 +182,56 @@ test("a post its author deleted can't be brought back by a moderator", async (F)
   assert(!(await F.store.moderationQueue()).some((item) => item.targetId === "r-quick-tap-2"));
 });
 
-test("topic signals for recommendations are counts only", async (F) => {
+test("topic signals count real members' posts only, as counts", async (F) => {
+  assert(Object.keys((await F.store.topicSignals(365)).areas).length === 0, "the team's example posts must not count");
+  await addPerson(F, { id: "real-member", displayName: "Maya", type: "member" });
+  await F.store.switchDemoUser("real-member");
+  await F.store.createThread({ categoryId: "games", title: "Story Echo tips", body: "Grouping words helps me.", gameIds: ["echo"] });
   const signals = await F.store.topicSignals(365);
   const text = JSON.stringify(signals);
-  assert(!/u-|body|title/.test(text), "signals leak people or text: " + text);
-  assert(Object.keys(signals.areas).length > 0);
+  assert(!/real-member|Maya|body|title|Grouping/.test(text), "signals leak people or text: " + text);
+  assert(signals.games.echo === 1 && signals.areas.words === 1 && signals.areas.memory === 1, text);
+});
+
+test("the example posts don't include a made-up verified professional", async (F) => {
+  const threads = await F.store.listThreads();
+  for (const t of threads) {
+    const { thread, replies } = await F.store.getThread(t.id);
+    for (const post of [thread, ...replies]) {
+      assert(post.label !== "professional", "example post uses professional guidance: " + post.id);
+      assert(!(post.author.professional && post.author.professional.verified), "example verified professional: " + post.id);
+    }
+  }
+});
+
+test("a crisis post stays up and goes to the top of the moderators' queue", async (F) => {
+  const saved = await F.store.createThread({ categoryId: "experiences", title: "Rough week", body: "Some days I feel like everyone is better off without me." });
+  assert(saved.status === "visible");
+  await F.store.switchDemoUser("u-june");
+  assert((await F.store.listThreads()).some((t) => t.id === saved.id), "others should still see it");
+  await F.store.switchDemoUser("u-mod");
+  const queue = await F.store.moderationQueue();
+  assert(queue[0].targetId === saved.id && queue[0].support, "it should be first in the queue");
+  assert(queue[0].reports.some((r) => r.reason === "support" && r.automatic));
+});
+
+test("people can flag that someone may need support, and it never hides the post", async (F) => {
+  for (const user of ["u-river", "u-june", "u-sam"]) {
+    await F.store.switchDemoUser(user);
+    await F.store.report("thread", "t-foggy", "support", "");
+  }
+  await F.store.switchDemoUser("u-jordan");
+  assert((await F.store.listThreads()).some((t) => t.id === "t-foggy"), "support reports must not hide a post");
+});
+
+test("the automatic safety report doesn't count toward hiding a post", async (F) => {
+  const saved = await F.store.createThread({ categoryId: "experiences", title: "Hard day", body: "I want to die some days." });
+  for (const user of ["u-june", "u-sam"]) {
+    await F.store.switchDemoUser(user);
+    await F.store.report("thread", saved.id, "other", "");
+  }
+  await F.store.switchDemoUser("u-alex");
+  assert((await F.store.listThreads()).some((t) => t.id === saved.id), "two people plus the safety check is not three reporters");
 });
 
 // ---------- edits ----------
@@ -175,6 +259,7 @@ test("hidden posts can't be edited", async (F) => {
 });
 
 test("an anonymous post can't be switched to professional guidance", async (F) => {
+  await addNurse(F);
   await F.store.switchDemoUser("u-nurse");
   const saved = await F.store.createThread({ categoryId: "experiences", title: "Anon nurse post", body: "Some thoughts.", anonymous: true });
   await rejects(F.store.editMyPost("thread", saved.id, { label: "professional" }), "can't become professional");
@@ -258,6 +343,20 @@ test("changes made in another tab aren't overwritten", async (F) => {
   await F.store.createThread({ categoryId: "welcome", title: "From tab one again", body: "Hello." });
   const titles = (await F.store.listThreads()).map((t) => t.title);
   assert(titles.includes("From tab two") && titles.includes("From tab one again"));
+});
+
+// ---------- game tags ----------
+
+test("forum game tags match the six games in the library", (F) => {
+  const recommender = fs.readFileSync(path.join(__dirname, "..", "..", "account", "assets", "js", "recommender.js"), "utf8");
+  const library = [...recommender.matchAll(/\{ id: "(\w+)", name: "([^"]+)", area: "[^"]*", areas: \[([^\]]*)\]/g)].map((m) => ({
+    id: m[1],
+    name: m[2],
+    areas: m[3].split(",").map((a) => a.trim().replace(/"/g, ""))
+  }));
+  assert(library.length === 6, "expected 6 library games, found " + library.length);
+  assert(JSON.stringify(F.catalog.GAMES) === JSON.stringify(library), "catalog.js GAMES differs from recommender.js GAMES");
+  library.forEach((game) => game.areas.forEach((area) => assert(F.catalog.area(area), "no training area " + area)));
 });
 
 (async () => {
