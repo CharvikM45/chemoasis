@@ -2,10 +2,10 @@
  * The forum's data layer. Pages only talk to Forum.store, never to storage directly.
  *
  * Today it saves made-up demo data in the browser (localStorage).
- * When Sahas's Supabase project is ready, swap the bodies of these functions for
- * Supabase queries (see forum/supabase/schema.sql). Every function already returns
- * a Promise, so the pages won't need to change. No page code here, so this file can
- * also move to the React Native app.
+ * When Sahas's Railway backend is ready, swap the bodies of these functions for
+ * calls to it (see forum/database/schema.sql for the tables and access rules).
+ * Every function already returns a Promise, so the pages won't need to change.
+ * No page code here, so this file can also move to the React Native app.
  */
 window.Forum = window.Forum || {};
 
