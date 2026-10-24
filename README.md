@@ -17,7 +17,7 @@ It's plain HTML, CSS and JavaScript with no build step. The server is Express wi
 
 ## Run it on your computer
 
-You need Node 20 or newer and a Postgres database (the team uses Railway's).
+You need Node 22 or newer (the test command needs it) and a Postgres database (the team uses Railway's).
 
 1. `npm install`
 2. Copy `.env.example` to `.env` and set `DATABASE_URL` to your Postgres URL. Add `MODERATOR_EMAILS` (comma-separated) to choose who can moderate the forum.
