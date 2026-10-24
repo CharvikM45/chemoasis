@@ -1,6 +1,7 @@
 /*
  * Turns the brain's distance field (shape.js) into a smooth triangle mesh with surface nets,
- * then cuts the surface into jigsaw pieces, so each piece can fly apart on its own.
+ * shades the grooves (ambient occlusion: how much of the sky each point can see), then cuts the
+ * surface into jigsaw pieces, so each piece can fly on its own.
  * Runs in a worker (build-worker.js); plain arrays in, typed arrays out.
  *
  * Pieces: the brain is wrapped in a cube (each face a PUZZLE_N × PUZZLE_N grid) and every point
@@ -10,10 +11,13 @@
 import { field, BOUNDS } from './shape.js';
 
 export const PUZZLE_N = 6;
+// Stretch the brain to a rounder shape before choosing cells, so pieces come out about the same size.
+export const PUZZLE_SCALE = [1 / 0.74, 1 / 0.78, 1];
+export const PUZZLE_SHIFT_Y = 0.1;
 
 // Which cube face and grid cell a point points toward: [face, column, row, fraction across, fraction up].
 export function puzzleCell(x, y, z) {
-  x /= 0.72; y = (y + 0.08) / 0.8; // stretch to a rounder shape, so pieces come out about the same size
+  x *= PUZZLE_SCALE[0]; y = (y + PUZZLE_SHIFT_Y) * PUZZLE_SCALE[1];
   const ax = Math.abs(x), ay = Math.abs(y), az = Math.abs(z);
   let face, u, v;
   if (ax >= ay && ax >= az) { face = x > 0 ? 0 : 1; u = (x > 0 ? -z : z) / ax; v = y / ax; }
@@ -26,8 +30,7 @@ export function puzzleCell(x, y, z) {
 }
 const pieceId = (face, i, j) => face * PUZZLE_N * PUZZLE_N + j * PUZZLE_N + i;
 
-export function buildBrainMesh({ step = 0.021 } = {}) {
-  let shards;
+export function buildBrainMesh({ step = 0.017 } = {}) {
   const { min, max } = BOUNDS;
   const nx = Math.ceil((max[0] - min[0]) / step) + 1;
   const ny = Math.ceil((max[1] - min[1]) / step) + 1;
@@ -42,6 +45,19 @@ export function buildBrainMesh({ step = 0.021 } = {}) {
       const y = min[1] + j * step;
       for (let i = 0; i < nx; i++) F[at(i, j, k)] = field(min[0] + i * step, y, z);
     }
+  }
+
+  // The field anywhere inside the grid, smoothly (trilinear); far outside, "empty".
+  function sample(x, y, z) {
+    const fx = (x - min[0]) / step, fy = (y - min[1]) / step, fz = (z - min[2]) / step;
+    if (fx < 0 || fy < 0 || fz < 0 || fx >= nx - 1 || fy >= ny - 1 || fz >= nz - 1) return 1;
+    const i = Math.floor(fx), j = Math.floor(fy), k = Math.floor(fz);
+    const tx = fx - i, ty = fy - j, tz = fz - k;
+    const c00 = F[at(i, j, k)] * (1 - tx) + F[at(i + 1, j, k)] * tx;
+    const c10 = F[at(i, j + 1, k)] * (1 - tx) + F[at(i + 1, j + 1, k)] * tx;
+    const c01 = F[at(i, j, k + 1)] * (1 - tx) + F[at(i + 1, j, k + 1)] * tx;
+    const c11 = F[at(i, j + 1, k + 1)] * (1 - tx) + F[at(i + 1, j + 1, k + 1)] * tx;
+    return (c00 * (1 - ty) + c10 * ty) * (1 - tz) + (c01 * (1 - ty) + c11 * ty) * tz;
   }
 
   // 2. One vertex per cell the surface passes through, at the average of its edge crossings.
@@ -91,23 +107,51 @@ export function buildBrainMesh({ step = 0.021 } = {}) {
     }
   }
 
-  // 4. Smooth normals from the field's slope.
+  // 4. Smooth normals from the field's slope (read from the grid, so no extra field samples).
   const vcount = pos.length / 3;
   const nor = new Float32Array(vcount * 3);
-  const e = step * 0.5;
+  const e = step * 0.75;
   for (let p = 0; p < vcount; p++) {
     const x = pos[p * 3], y = pos[p * 3 + 1], z = pos[p * 3 + 2];
-    const gx = field(x + e, y, z) - field(x - e, y, z);
-    const gy = field(x, y + e, z) - field(x, y - e, z);
-    const gz = field(x, y, z + e) - field(x, y, z - e);
+    const gx = sample(x + e, y, z) - sample(x - e, y, z);
+    const gy = sample(x, y + e, z) - sample(x, y - e, z);
+    const gz = sample(x, y, z + e) - sample(x, y, z - e);
     const l = Math.hypot(gx, gy, gz) || 1;
     nor[p * 3] = gx / l; nor[p * 3 + 1] = gy / l; nor[p * 3 + 2] = gz / l;
   }
 
-  // 5. Pieces. A quad goes into the cell each of its corners (and its middle) points toward, plus
+  // 5. Ambient occlusion: look out from each point in a cone of directions and count how much of
+  //    what it sees is brain. Deep in a sulcus the walls close in, so it comes out dark; on the
+  //    crown of a gyrus, light.
+  const ao = new Float32Array(vcount);
+  const REACH = [0.018, 0.04, 0.07, 0.11, 0.16];
+  const CONE = [[0, 0], [0.55, 0], [0.55, 2.1], [0.55, 4.2], [1.0, 1.05], [1.0, 3.15], [1.0, 5.25]]; // [tilt, turn]
+  for (let p = 0; p < vcount; p++) {
+    const x = pos[p * 3], y = pos[p * 3 + 1], z = pos[p * 3 + 2];
+    const n0 = nor[p * 3], n1 = nor[p * 3 + 1], n2 = nor[p * 3 + 2];
+    // Two directions across the surface, to tilt the normal into a cone.
+    let t0 = -n1, t1 = n0, t2 = 0;
+    if (Math.abs(n2) > 0.9) { t0 = 0; t1 = -n2; t2 = n1; }
+    let l = Math.hypot(t0, t1, t2); t0 /= l; t1 /= l; t2 /= l;
+    const b0 = n1 * t2 - n2 * t1, b1 = n2 * t0 - n0 * t2, b2 = n0 * t1 - n1 * t0;
+    let seen = 0, total = 0;
+    for (const [tilt, turn] of CONE) {
+      const ct = Math.cos(tilt), st = Math.sin(tilt), cu = Math.cos(turn), su = Math.sin(turn);
+      const d0 = n0 * ct + (t0 * cu + b0 * su) * st, d1 = n1 * ct + (t1 * cu + b1 * su) * st, d2 = n2 * ct + (t2 * cu + b2 * su) * st;
+      const weight = ct;
+      for (const h of REACH) {
+        const f = sample(x + d0 * h, y + d1 * h, z + d2 * h);
+        seen += weight * clamp01(0.5 - f / (0.6 * h)); // 1 = inside the brain, 0 = clear
+        total += weight;
+      }
+    }
+    ao[p] = clamp01(1 - 1.9 * seen / total);
+  }
+
+  // 6. Pieces. A quad goes into the cell each of its corners (and its middle) points toward, plus
   //    the neighbouring cell when it's near an edge, where a tab may reach across. The shader keeps
   //    only the part of each copy that is really inside that piece.
-  shards = 6 * PUZZLE_N * PUZZLE_N;
+  const shards = 6 * PUZZLE_N * PUZZLE_N;
   const reach = 0.36; // a tab reaches 0.32 of a piece across an edge (see the shader)
   const add = (set, x, y, z) => {
     const [face, i, j, fs, ft] = puzzleCell(x, y, z);
@@ -127,9 +171,9 @@ export function buildBrainMesh({ step = 0.021 } = {}) {
     quadShards.push([...set]);
   }
 
-  // 6. Final buffers: vertices are shared within a shard and duplicated where shards meet.
+  // 7. Final buffers: vertices are shared within a shard and duplicated where shards meet.
   const remap = new Map();
-  const outPos = [], outNor = [], outShard = [], index = [];
+  const outPos = [], outNor = [], outAo = [], outShard = [], index = [];
   const vertFor = (p, s) => {
     const key = p * 1024 + s;
     let id = remap.get(key);
@@ -138,6 +182,7 @@ export function buildBrainMesh({ step = 0.021 } = {}) {
       remap.set(key, id);
       outPos.push(pos[p * 3], pos[p * 3 + 1], pos[p * 3 + 2]);
       outNor.push(nor[p * 3], nor[p * 3 + 1], nor[p * 3 + 2]);
+      outAo.push(ao[p]);
       outShard.push(s);
     }
     return id;
@@ -166,8 +211,11 @@ export function buildBrainMesh({ step = 0.021 } = {}) {
   return {
     position: new Float32Array(outPos),
     normal: new Float32Array(outNor),
+    ao: new Float32Array(outAo),
     shard: new Float32Array(outShard),
     index: outShard.length > 65535 ? new Uint32Array(index) : new Uint16Array(index),
     centre, out, shards
   };
 }
+
+function clamp01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
