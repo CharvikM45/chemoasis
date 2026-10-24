@@ -4,7 +4,8 @@
  * These are the forum's rules. On the live site the server runs this file against the shared
  * forum in Postgres, as the signed-in person (server/forum.js), and pages reach it through
  * api-store.js. The tests run it directly against demo data in a pretend browser, which is
- * what the localStorage code below is for. No page code here.
+ * what the localStorage code below is for. forum/database/schema.sql is a draft of separate
+ * tables with the same rules enforced in the database, for a later move. No page code here.
  */
 window.Forum = window.Forum || {};
 

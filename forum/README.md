@@ -38,29 +38,30 @@ It is **live and shared**: everyone signed in to Reframe uses the same forum, an
 | File | What it is |
 | --- | --- |
 | `index.html`, `thread.html`, `new.html`, `profile.html`, `moderation.html`, `guidelines.html` | The pages |
-| `forum.css` | Forum styles. It loads `../styles.css` first and reuses its colors and fonts. Every class starts with `f-`. |
-| `js/catalog.js` | Categories, labels, training areas, the six games, report reasons |
-| `js/store.js` | The forum's rules; run on the server against the shared forum, and by the tests |
-| `js/api-store.js` | What the pages use: forwards each `Forum.store` call to `/api/forum` |
-| `js/safety.js` | The safety check before posting |
-| `js/seed.js` | The example conversations the forum starts with |
-| `js/ui.js` | Shared header, badges and the report dialog |
-| `js/home.js`, `thread.js`, `new-post.js`, `profile.js`, `moderation.js`, `guidelines.js` | One script per page |
-| `database/schema.sql` | An earlier draft of separate forum tables (not used; the live forum is stored by `server/forum.js`) |
+| `assets/css/forum.css` | Forum styles. It loads `../../styles.css` first and reuses its colors and fonts. Every class starts with `f-`. |
+| `assets/js/catalog.js` | Categories, labels, training areas, the six games, report reasons |
+| `assets/js/store.js` | The forum's rules; run on the server against the shared forum, and by the tests |
+| `assets/js/api-store.js` | What the pages use: forwards each `Forum.store` call to `/api/forum` |
+| `assets/js/safety.js` | The safety check before posting |
+| `assets/js/seed.js` | The example conversations the forum starts with |
+| `assets/js/ui.js` | Shared header, badges and the report dialog |
+| `assets/js/home.js`, `thread.js`, `new-post.js`, `profile.js`, `moderation.js`, `guidelines.js` | One script per page |
+| `database/schema.sql` | **Draft** of separate Postgres tables with the same rules enforced in the database (a `forum_app` role and a per-request `forum.current_account` setting). Not used yet: the live forum is stored by `server/forum.js` |
 | `tests/forum.test.js` | Checks the forum's rules (safety, privacy, moderation, edits, appeals, muting). Run `node forum/tests/forum.test.js` from the repo root. Needs only Node. |
-
 
 ## How it connects to the other parts
 
-- **Games:** `js/catalog.js` lists the six games with the same ids as the games and the recommender, so posts can be tagged and filtered by game.
+- **Games:** `assets/js/catalog.js` lists the six games with the same ids as the games and the recommender, so posts can be tagged and filtered by game.
 - **Recommendations (Sahas):** `Forum.store.topicSignals(days)` returns how often each training area and game comes up in public conversations. It returns counts only: no user IDs and no post text. That matches the brief's rule that forum signals come from clear categories, not from reading people's posts.
 - **Accounts:** the forum uses Reframe accounts (`server/`). Your forum name starts as your account name and can be changed on your profile.
+- **Moving to `database/schema.sql` later:** the server would swap its one shared document for those tables; pages and `api-store.js` wouldn't change.
 
 ## Testing
 
 - `node forum/tests/forum.test.js` runs 31 checks of the forum's rules in a few seconds, with no installs.
 - The pages were also tested in a real browser (Chromium) on desktop and phone sizes, including the edit, appeal, mute and draft flows.
 - `server/tests/forum.test.js` checks the live API: reading signed out, posting with an account, anonymous posts staying anonymous to others, moderators by email, saving to Postgres, and deleting an account.
+- `database/schema.sql` was loaded into a scratch PostgreSQL 16 database and its rules were tested there (for example: anonymous authors stay hidden, held posts can't be released by their author, members can't post professional guidance, a post is auto-hidden after 3 different reporters, people can only appeal their own hidden posts once, reporters can't read moderator notes, and moderators can't be muted). `forum_needs_review` in `database/schema.sql` copies the hold patterns from `assets/js/safety.js`, so change both together.
 
 ## Not done yet
 
