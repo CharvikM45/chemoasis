@@ -5,11 +5,11 @@ const { newDb } = require('pg-mem');
 const { migrate } = require('../db');
 const { createApp } = require('../app');
 
-async function start() {
+async function start({ dataKey } = {}) {
   const { Pool } = newDb().adapters.createPg();
   const db = new Pool();
   await migrate(db);
-  const app = createApp({ db, isProd: false });
+  const app = createApp({ db, isProd: false, dataKey });
   const server = await new Promise((resolve) => { const s = app.listen(0, () => resolve(s)); });
   const base = `http://127.0.0.1:${server.address().port}`;
   const call = async (method, path, { body, cookie } = {}) => {
@@ -129,5 +129,19 @@ test('deleting the account deletes its profile', async () => {
     await t.call('DELETE', '/api/auth/me', { cookie });
     const { rows } = await t.db.query('SELECT count(*)::int AS n FROM profiles');
     assert.strictEqual(rows[0].n, 0);
+  } finally { await t.close(); }
+});
+
+test('with a data key, answers are encrypted in the database and still come back', async () => {
+  const t = await start({ dataKey: require('crypto').randomBytes(32).toString('base64') });
+  try {
+    const cookie = await t.signUp('sam@example.com');
+    await t.call('PUT', '/api/profile', { cookie, body: { profile: { answers: { cancer: 'breast-cancer-secret' } } } });
+    const { rows } = await t.db.query('SELECT data FROM profiles');
+    const stored = JSON.stringify(rows[0].data);
+    assert.ok(!stored.includes('breast-cancer-secret'), 'the database never sees the answer in plain text');
+    assert.ok(rows[0].data.enc && rows[0].data.enc.tag);
+    const back = await t.call('GET', '/api/profile', { cookie });
+    assert.strictEqual(back.json.profile.answers.cancer, 'breast-cancer-secret');
   } finally { await t.close(); }
 });

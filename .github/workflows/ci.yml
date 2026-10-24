@@ -1,0 +1,20 @@
+# Runs on every push and pull request: all tests, plus a check for known-vulnerable dependencies.
+name: CI
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - name: Known vulnerabilities in the packages the site runs on
+        run: npm audit --omit=dev --audit-level=high

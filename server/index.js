@@ -4,6 +4,7 @@ const path = require('path');
 const { createPool, migrate } = require('./db');
 const { createApp } = require('./app');
 const { removeExpired } = require('./sessions');
+const { removeOldAudit } = require('./audit');
 
 // Local development: read KEY=value lines from .env (Railway sets real environment variables).
 const envFile = path.join(__dirname, '..', '.env');
@@ -21,11 +22,16 @@ async function main() {
 
   const allowedOrigins = (process.env.ALLOWED_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean);
   const moderators = (process.env.MODERATOR_EMAILS || '').split(',');
-  const app = createApp({ db, isProd, allowedOrigins, moderators });
+  const dataKey = process.env.DATA_KEY || '';
+  if (isProd && !dataKey) console.error(JSON.stringify({ type: 'security', level: 'alert', event: 'no_data_key', message: 'DATA_KEY is not set: profiles are stored unencrypted.' }));
+  const app = createApp({ db, isProd, allowedOrigins, moderators, dataKey });
   const port = Number(process.env.PORT || 3000);
   const server = app.listen(port, () => console.log(`Chemoasis running on http://localhost:${port}`));
 
-  const cleanup = setInterval(() => removeExpired(db).catch((e) => console.error('Session cleanup failed', e)), 60 * 60 * 1000);
+  const cleanup = setInterval(() => {
+    removeExpired(db).catch((e) => console.error('Session cleanup failed', e));
+    removeOldAudit(db).catch((e) => console.error('Audit cleanup failed', e));
+  }, 60 * 60 * 1000);
   cleanup.unref();
 
   const stop = () => {
