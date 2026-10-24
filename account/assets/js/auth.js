@@ -136,6 +136,7 @@ Account.auth = (function () {
     // Used by the home page to log plays and finished levels without loading the whole account app.
     recordPlay(gameId) { return notify("/play", { game: gameId }); },
     recordLevel(gameId, level) { return notify("/level", { game: gameId, level }); },
-    recordResult(gameId, level, score) { return notify("/result", { game: gameId, level, score }); }
+    // score is null for a Gentle session (it keeps no speed scores); mode is "gentle" or "challenge" for games that have both.
+    recordResult(gameId, level, score, mode) { return notify("/result", { game: gameId, level, score: score === undefined ? null : score, mode }); }
   };
 })();

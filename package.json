@@ -7,9 +7,10 @@
     "test": "node --test \"server/tests/*.test.js\" && node account/tests/recommender.test.js && node forum/tests/forum.test.js"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "dependencies": {
+    "compression": "^1.8.2",
     "express": "^4.22.3",
     "pg": "^8.23.1"
   },

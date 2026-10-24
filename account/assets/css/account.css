@@ -387,6 +387,18 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 .spark polyline { fill: none; stroke: var(--clay); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
 .spark circle { fill: var(--ink); }
 .prog-play { margin-top: auto; align-self: flex-start; }
+.prog-level { margin: 0; color: var(--muted); font: 11px "DM Mono", monospace; letter-spacing: .06em; text-transform: uppercase; }
+
+/* Last 7 days: one dot per day, filled when a game was finished. No streaks. */
+.week { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; margin: 0 0 16px; }
+.week-label, .week-note { margin: 0; color: var(--muted); font-size: 14px; }
+.week-label { font: 11px "DM Mono", monospace; letter-spacing: .08em; text-transform: uppercase; }
+.week-days { display: flex; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.week-days li { display: grid; justify-items: center; gap: 4px; }
+.week-days small { color: var(--muted); font: 10px "DM Mono", monospace; }
+.week-dot { width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid var(--line); }
+.week-days li.on .week-dot { background: var(--clay); border-color: var(--clay); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 .check { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.5; color: var(--ink); }
 .check[hidden] { display: none; }
