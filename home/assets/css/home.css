@@ -9,6 +9,8 @@
   --accent-2: #d9a07d;
   --card: rgba(14, 11, 14, .84);
   --line: rgba(255, 236, 220, .13);
+  --wall: #e7a782; /* the opening wall; brain/intro.js uses the same colour */
+  --wall-ink: #1c120d;
 }
 
 /* The games library and its launch button (games/assets/css/*) use the light palette. */
@@ -34,6 +36,24 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: "DM San
 .scene { position: fixed; inset: 0 0 auto; height: 100vh; height: 100lvh; z-index: 0; background: var(--bg); }
 #brain { display: block; width: 100%; height: 100%; opacity: 0; transition: opacity 1.2s ease; }
 .no-brain #brain { display: none; }
+
+/* The opening wall: the page starts on one solid colour that turns out to be a jigsaw (brain/intro.js).
+   Until the 3D wall is drawn, the hero itself is the wall, so it never flashes dark first. */
+.wall:not(.no-brain) .hero { background: var(--wall); transition: background-color .5s ease; }
+.wall.wall-live:not(.no-brain) .hero { background: transparent; }
+.wall:not(.no-brain) .hero h1 { color: var(--wall-ink); text-shadow: none; }
+.wall:not(.no-brain) .hero h1 em { color: #7d3a20; }
+.wall:not(.no-brain) .hero .eyebrow { color: #6a3520; }
+.wall:not(.no-brain) .hero .lede { color: #3d2318; text-shadow: none; }
+.wall:not(.no-brain) .hero .button { background: transparent; border-color: rgba(28, 18, 13, .5); color: var(--wall-ink); }
+.wall:not(.no-brain) .hero .button:hover,
+.wall:not(.no-brain) .hero .button:focus-visible { background: rgba(255, 244, 236, .22); border-color: var(--wall-ink); color: var(--wall-ink); }
+.wall:not(.no-brain) .hero .button.primary { background: var(--wall-ink); border-color: var(--wall-ink); color: var(--ink); }
+.wall:not(.no-brain) .hero .button.primary:hover,
+.wall:not(.no-brain) .hero .button.primary:focus-visible { background: #3a2419; border-color: #3a2419; color: var(--ink); }
+.wall:not(.no-brain) .hero .scroll-cue { color: #5c3322; }
+.wall:not(.no-brain) .hero .scroll-cue b { background: linear-gradient(#5c3322, transparent); }
+.wall:not(.no-brain) .vignette { opacity: 0; }
 .no-brain .scene { background: radial-gradient(70% 60% at 70% 40%, #2a140d, var(--bg)); }
 .vignette { position: fixed; inset: 0; z-index: 1; pointer-events: none; background: linear-gradient(90deg, rgba(7, 6, 9, .82) 0, rgba(7, 6, 9, .55) 38%, rgba(7, 6, 9, 0) 56%), radial-gradient(120% 95% at 60% 45%, transparent 45%, rgba(0, 0, 0, .55) 100%); }
 @media (max-width: 899px) { .vignette { background: radial-gradient(120% 95% at 50% 35%, transparent 45%, rgba(0, 0, 0, .55) 100%); } }
