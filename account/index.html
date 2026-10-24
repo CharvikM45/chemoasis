@@ -7,13 +7,17 @@
   <title>Your starting games · Reframe</title>
   <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono&family=DM+Sans:wght@400;500;600&family=Playfair+Display:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/css/account.css">
+  <link rel="stylesheet" href="assets/css/account.css?v=2">
 </head>
 <body>
   <div class="backdrop" aria-hidden="true"><i></i><i></i><i></i></div>
 
   <header class="topbar">
     <a class="brand" href="../home/index.html">✣ reframe</a>
+    <nav class="toplinks" aria-label="Primary navigation">
+      <a href="../home/index.html?games=1">Games</a>
+      <a href="../forum/index.html">Community</a>
+    </nav>
     <div class="who" id="who" hidden>
       <span id="whoName"></span>
       <button class="link-btn" id="signOutTop">Sign out</button>
@@ -46,6 +50,10 @@
             <span>Password</span>
             <input name="password" type="password" autocomplete="new-password" minlength="8" required>
             <small id="passwordHint">At least 8 characters.</small>
+          </label>
+          <label class="check" id="consentField">
+            <input type="checkbox" name="consent">
+            <span>I've read the <a href="privacy.html" target="_blank">privacy notice</a>, and I'm 13 or older, or a parent or guardian is setting this up with me.</span>
           </label>
           <p class="error" id="authError" role="alert"></p>
           <button class="primary" type="submit" id="authSubmit">Create account</button>
@@ -107,13 +115,18 @@
 
         <ol class="picks" id="picks"></ol>
         <div class="global-notes" id="globalNotes"></div>
+        <section class="panel" aria-labelledby="progressTitle">
+          <h2 class="panel-title" id="progressTitle">Your progress</h2>
+          <p class="panel-sub">All six games, with how you're doing in each. Every dot is one session; higher is better.</p>
+          <div class="progress" id="progress"></div>
+        </section>
 
         <section class="panel" aria-labelledby="signalsTitle">
           <h2 class="panel-title" id="signalsTitle">What shaped these suggestions</h2>
           <ul class="signals" id="signals"></ul>
           <button class="switch" role="switch" id="ownPostsSwitch" aria-checked="false">
             Use my own forum posts
-            <small>Looks for topics like “word-finding” or “numb fingers” in posts you wrote. Only in this browser, and you can turn it off any time.</small>
+            <small>Looks for topics like “word-finding” or “numb fingers” in posts you wrote. The check runs in your browser, and you can turn it off any time.</small>
           </button>
         </section>
 
@@ -134,15 +147,14 @@
   </main>
 
   <!-- Forum data (for community topics and, if allowed, your own posts) -->
-  <script src="../forum/assets/js/catalog.js"></script>
-  <script src="../forum/assets/js/seed.js"></script>
+  <script src="../forum/assets/js/catalog.js?v=2"></script>
   <script src="../forum/assets/js/safety.js"></script>
-  <script src="../forum/assets/js/store.js"></script>
+  <script src="../forum/assets/js/api-store.js?v=1"></script>
 
   <script src="assets/js/questions.js"></script>
-  <script src="assets/js/recommender.js?v=2"></script>
-  <script src="assets/js/auth.js?v=2"></script>
+  <script src="assets/js/recommender.js?v=3"></script>
+  <script src="assets/js/auth.js?v=3"></script>
   <script src="assets/js/context.js"></script>
-  <script src="assets/js/app.js?v=2"></script>
+  <script src="assets/js/app.js?v=3"></script>
 </body>
 </html>

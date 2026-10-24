@@ -12,7 +12,17 @@
     if (card && window.Account && Account.auth) Account.auth.recordPlay(card.dataset.game);
   }, true);
 
-  const id = new URLSearchParams(location.search).get('play');
+  const params = new URLSearchParams(location.search);
+  // ?games: open the games library (the "Games" link on other pages).
+  if (params.has('games')) {
+    window.addEventListener('load', () => {
+      history.replaceState(null, '', location.pathname);
+      const library = document.querySelector('.launch-experience');
+      if (library) library.click();
+    });
+    return;
+  }
+  const id = params.get('play');
   if (!GAMES.includes(id)) return;
   window.addEventListener('load', () => {
     history.replaceState(null, '', location.pathname);

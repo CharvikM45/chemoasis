@@ -97,8 +97,8 @@ check("low energy lowers demanding games (Cloudpath, Story Echo)", () => {
   const tired = R.recommend(Object.assign({ energy: 1, sleep: "lt5" }, base), {}, R.newModel());
   const fit = (r, id) => r.picks.find((p) => p.game.id === id).fit;
   assert.ok(fit(tired, "cloudpath") < fit(rested, "cloudpath"));
-  assert.ok(tired.notes.some((n) => n.includes("Make gentler")));
-  assert.ok(!rested.notes.some((n) => n.includes("Make gentler")));
+  assert.ok(tired.notes.some((n) => n.includes("Level 1")));
+  assert.ok(!rested.notes.some((n) => n.includes("Level 1")));
 });
 
 check("community topics nudge, but don't outweigh, the person's own ranking", () => {

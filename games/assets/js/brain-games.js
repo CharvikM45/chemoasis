@@ -13,7 +13,9 @@
  * Opening a game: a click on any [data-game] element (the library cards, ?play= links).
  * Levels set where a session starts; results and personal bests are shown at the end.
  */
-import * as THREE from 'three';
+// three.js is loaded only when a game opens with 3D on (not in calm mode).
+let THREE = null;
+const loadThree = () => import('three').then((m) => { THREE = m; });
 
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -57,7 +59,8 @@ class World {
     return this.host.querySelector('.world-panel');
   }
   scene() {
-    if (this.renderer) return;
+    if (this.renderer || window.reframeCalm) return; // calm mode: plain background, no 3D
+    if (!THREE) { loadThree().then(() => { if (!this.host.hidden && !this.renderer) { this.scene(); this.resize(); cancelAnimationFrame(this.raf); this.tick(); } }).catch(() => {}); return; }
     try {
       this.renderer = new THREE.WebGLRenderer({ antialias: !reduceMotion, alpha: true, powerPreference: 'high-performance' });
     } catch (_) { return; } // no 3D: the game still works on its plain background
@@ -138,8 +141,10 @@ function intro(world, level, lines, safety) {
   });
 }
 
-// The level-complete screen, with this session's results and the personal best.
-function finish(world, game, level, lines, bestText) {
+// The level-complete screen, with this session's results and the personal best. `score` (if
+// there is one) is saved to the account for the progress chart on the Your games page.
+function finish(world, game, level, lines, bestText, score) {
+  if (score !== null && score !== undefined && window.Account && Account.auth) Account.auth.recordResult(game.id, level.index, score);
   GameLevels.done({
     host: world.host, game: game.id, level: level.index, levels: game.levels,
     message: `${lines.join(' ')} ${bestText} These scores track your practice, not your health.`,
@@ -227,7 +232,7 @@ const lumen = {
     }
     if (!alive()) return;
     const { best, isNew } = recordBest('lumen', longest);
-    finish(world, lumen, level, [`Longest path you got right: ${longest} flowers${level.backward ? ' backwards' : ''}. Paths correct: ${correct} of ${TRIALS}.`], isNew ? 'That is a new personal best!' : `Personal best: ${best}.`);
+    finish(world, lumen, level, [`Longest path you got right: ${longest} flowers${level.backward ? ' backwards' : ''}. Paths correct: ${correct} of ${TRIALS}.`], isNew ? 'That is a new personal best!' : `Personal best: ${best}.`, longest);
   }
 };
 
@@ -319,7 +324,7 @@ const starling = {
     if (!alive()) return;
     const threshold = Math.round(history.slice(-6).reduce((a, b) => a + b, 0) / Math.min(6, history.length));
     const { best, isNew } = recordBest('starling', threshold, true);
-    finish(world, starling, level, [`Your flash speed settled around ${threshold} ms (shorter is faster). Right: ${right} of ${TRIALS}.`], isNew ? 'That is a new personal best!' : `Personal best: ${best} ms.`);
+    finish(world, starling, level, [`Your flash speed settled around ${threshold} ms (shorter is faster). Right: ${right} of ${TRIALS}.`], isNew ? 'That is a new personal best!' : `Personal best: ${best} ms.`, threshold);
   }
 };
 
@@ -428,7 +433,7 @@ const cloudpath = {
     }
     if (!alive()) return;
     const { best, isNew } = recordBest('cloudpath', hardest);
-    finish(world, cloudpath, level, [`Perfect solutions: ${perfect} of ${PUZZLES}. Longest route solved perfectly: ${hardest || 'none yet'}${hardest ? ' moves' : ''}.`], isNew && hardest ? 'That is a new personal best!' : `Personal best: ${best} moves.`);
+    finish(world, cloudpath, level, [`Perfect solutions: ${perfect} of ${PUZZLES}. Longest route solved perfectly: ${hardest || 'none yet'}${hardest ? ' moves' : ''}.`], isNew && hardest ? 'That is a new personal best!' : `Personal best: ${best} moves.`, hardest);
   }
 };
 
@@ -516,7 +521,7 @@ const echo = {
     }
     if (!alive()) return;
     const { best, isNew } = recordBest('echo', bestLen);
-    finish(world, echo, level, [`Words remembered: ${totalHits} of ${totalShown}. Longest list at 85% or better: ${bestLen || 'not yet'}${bestLen ? ' words' : ''}.`], isNew && bestLen ? 'That is a new personal best!' : `Personal best: ${best} words.`);
+    finish(world, echo, level, [`Words remembered: ${totalHits} of ${totalShown}. Longest list at 85% or better: ${bestLen || 'not yet'}${bestLen ? ' words' : ''}.`], isNew && bestLen ? 'That is a new personal best!' : `Personal best: ${best} words.`, bestLen);
   }
 };
 
@@ -599,7 +604,7 @@ const rhythm = {
       `Hits: ${hitsAll} of ${ROUNDS * 8}. Average reaction: ${Math.round(mean([...rts.pattern, ...rts.random]))} ms.`,
       perMinute ? `Fastest pace you kept up with: ${perMinute} lights a minute.` : '',
       learned > 20 ? `Your hands learned the hidden pattern: you were ${learned} ms quicker on it than on the random round.` : ''
-    ].filter(Boolean), isNew && perMinute ? 'That is a new personal best!' : `Personal best: ${best} a minute.`);
+    ].filter(Boolean), isNew && perMinute ? 'That is a new personal best!' : `Personal best: ${best} a minute.`, perMinute);
   }
 };
 
@@ -677,8 +682,8 @@ const signal = {
     const { best, isNew } = recordBest('signal', score, true);
     finish(world, signal, level, [
       `Right: ${accuracy}%. Average answer: ${all} ms.`,
-      cost !== null ? `Switch cost: ${cost} ms (the extra time a rule change takes; it shrinks with practice).` : ''
-    ].filter(Boolean), isNew && score < 9999 ? 'That is a new personal best!' : best < 9999 ? `Personal best: ${best} ms with 85% or more right.` : 'Aim for 85% right to set a personal best.');
+      cost === null ? '' : cost > 15 ? `Switching rules slowed you by ${cost} ms (this shrinks with practice).` : 'No slowdown when the rule switched. Nicely done.'
+    ].filter(Boolean), isNew && score < 9999 ? 'That is a new personal best!' : best < 9999 ? `Personal best: ${best} ms with 85% or more right.` : 'Aim for 85% right to set a personal best.', score < 9999 ? score : null);
   }
 };
 

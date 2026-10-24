@@ -23,7 +23,7 @@ async function start() {
     const setCookie = res.headers.get('set-cookie');
     return { status: res.status, json, cookie: setCookie ? setCookie.split(';')[0] : null };
   };
-  const signUp = async (email) => (await call('POST', '/api/auth/signup', { body: { email, name: 'Sam', password: 'gentle-steps-42' } })).cookie;
+  const signUp = async (email) => (await call('POST', '/api/auth/signup', { body: { email, name: 'Sam', password: 'gentle-steps-42', consent: true } })).cookie;
   return { db, call, signUp, close: () => new Promise((r) => server.close(r)) };
 }
 
@@ -50,7 +50,7 @@ test('answers and the model are saved per account and come back after signing in
     assert.strictEqual(put.json.profile.extra, undefined, 'unknown fields are dropped');
 
     await t.call('POST', '/api/auth/logout', { cookie });
-    const again = await t.call('POST', '/api/auth/login', { body: { email: 'sam@example.com', password: 'gentle-steps-42' } });
+    const again = await t.call('POST', '/api/auth/login', { body: { email: 'sam@example.com', password: 'gentle-steps-42', consent: true } });
     const got = await t.call('GET', '/api/profile', { cookie: again.cookie });
     assert.deepStrictEqual(got.json.profile.answers, profile.answers);
     assert.strictEqual(got.json.profile.completedAt, profile.completedAt);
@@ -90,6 +90,20 @@ test('plays and levels sent at the same moment are all kept', async () => {
     const { profile } = (await t.call('GET', '/api/profile', { cookie })).json;
     assert.strictEqual(profile.model.events.length, 4);
     assert.deepStrictEqual(profile.levels.lumen, [0, 1, 2]);
+  } finally { await t.close(); }
+});
+
+test('game results are saved for the progress chart', async () => {
+  const t = await start();
+  try {
+    const cookie = await t.signUp('sam@example.com');
+    assert.strictEqual((await t.call('POST', '/api/profile/result', { cookie, body: { game: 'lumen', level: 1, score: 6 } })).status, 204);
+    assert.strictEqual((await t.call('POST', '/api/profile/result', { cookie, body: { game: 'starling', level: 0, score: 233.4 } })).status, 204);
+    assert.strictEqual((await t.call('POST', '/api/profile/result', { cookie, body: { game: 'lumen', level: 1, score: 'lots' } })).status, 400);
+    assert.strictEqual((await t.call('POST', '/api/profile/result', { cookie, body: { game: 'chess', level: 1, score: 3 } })).status, 400);
+    const { results } = (await t.call('GET', '/api/profile', { cookie })).json.profile;
+    assert.deepStrictEqual(results.map((r) => [r.game, r.score]), [['lumen', 6], ['starling', 233.4]]);
+    assert.ok(results[0].at);
   } finally { await t.close(); }
 });
 

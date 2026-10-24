@@ -40,7 +40,7 @@
     }
     document.querySelector(".f-main .eyebrow").textContent = "Edit conversation";
     document.querySelector(".f-main h1").textContent = "Edit your post";
-    document.title = "Edit post · Chemoasis community";
+    document.title = "Edit post · Reframe community";
     form.elements.categoryId.value = thread.categoryId;
     form.elements.categoryId.disabled = true;
     form.elements.title.value = thread.title;

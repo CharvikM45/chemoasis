@@ -28,7 +28,7 @@ async function start({ isProd = false, limits } = {}) {
   return { db, call, base, close: () => new Promise((r) => server.close(r)) };
 }
 
-const maya = { email: 'Maya@Example.com', name: 'Maya', password: 'gentle-steps-42' };
+const maya = { email: 'Maya@Example.com', name: 'Maya', password: 'gentle-steps-42', consent: true };
 
 test('create an account, stay signed in, sign out', async () => {
   const t = await start();
@@ -173,5 +173,14 @@ test('in production the cookie is locked to HTTPS and this site', async () => {
     const signup = await t.call('POST', '/api/auth/signup', { body: maya });
     assert.match(signup.setCookie, /^__Host-chemoasis_session=/);
     assert.match(signup.setCookie, /Secure/);
+  } finally { await t.close(); }
+});
+
+test('creating an account needs agreement to the privacy notice', async () => {
+  const t = await start();
+  try {
+    const res = await t.call('POST', '/api/auth/signup', { body: { ...maya, consent: false } });
+    assert.strictEqual(res.status, 400);
+    assert.match(res.json.error, /privacy notice/);
   } finally { await t.close(); }
 });

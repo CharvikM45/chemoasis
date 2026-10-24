@@ -1,11 +1,12 @@
-// /api/profile: the signed-in person's questionnaire answers, recommender model and level progress.
+// /api/profile: the signed-in person's questionnaire answers, recommender model, levels and game results.
 const express = require('express');
 const sessions = require('./sessions');
 const { InputError } = require('./auth');
 
 const GAMES = ['lumen', 'starling', 'cloudpath', 'echo', 'rhythm', 'signal'];
-const FIELDS = ['answers', 'completedAt', 'skippedAt', 'useOwnPosts', 'model', 'levels'];
+const FIELDS = ['answers', 'completedAt', 'skippedAt', 'useOwnPosts', 'model', 'levels', 'results'];
 const MAX_EVENTS = 300;
+const MAX_RESULTS = 400;
 const MAX_BYTES = 48 * 1024;
 
 const isObject = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
@@ -17,6 +18,8 @@ function cleanProfile(input) {
   for (const key of FIELDS) if (input[key] !== undefined) out[key] = input[key];
   if (out.answers !== undefined && !isObject(out.answers)) throw new InputError('Answers must be an object.');
   if (out.levels !== undefined && !isObject(out.levels)) throw new InputError('Levels must be an object.');
+  if (out.results !== undefined && !Array.isArray(out.results)) throw new InputError('Results must be a list.');
+  if (Array.isArray(out.results) && out.results.length > MAX_RESULTS) out.results = out.results.slice(-MAX_RESULTS);
   if (out.model !== undefined && out.model !== null) {
     if (!isObject(out.model)) throw new InputError('The model must be an object.');
     if (Array.isArray(out.model.events) && out.model.events.length > MAX_EVENTS) {
@@ -102,6 +105,23 @@ function profileRouter({ db, isProd }) {
     const levels = isObject(data.levels) ? data.levels : {};
     levels[game] = [...new Set([...(Array.isArray(levels[game]) ? levels[game] : []), level])].sort((a, b) => a - b);
     await store(user.id, cleanProfile({ ...data, levels }));
+    res.status(204).end();
+  }));
+
+  // A finished game session: one point on that game's progress chart.
+  router.post('/result', handle(async (req, res, user) => {
+    const b = req.body || {};
+    const game = String(b.game || '');
+    const level = Number(b.level);
+    const score = Number(b.score);
+    if (!GAMES.includes(game) || !Number.isInteger(level) || level < 0 || level > 20 || !Number.isFinite(score) || score < 0 || score > 100000) {
+      throw new InputError('That result could not be read.');
+    }
+    const row = await load(user.id);
+    const data = (row && row.data) || {};
+    const results = Array.isArray(data.results) ? data.results : [];
+    results.push({ game, level, score: Math.round(score * 10) / 10, at: new Date().toISOString() });
+    await store(user.id, cleanProfile({ ...data, results }));
     res.status(204).end();
   }));
 
