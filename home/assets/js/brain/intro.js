@@ -1,15 +1,11 @@
 /*
- * Home page brain, made of flat tiles and lit from above in the dark.
- * Scroll story: whole at the top, it bursts apart on the first scroll, then the tiles drift back
- * into place as you read down the page, until it is whole again at the bottom.
- * All tile motion runs on the GPU (one draw call); the page only updates a few numbers per frame.
+ * Home page brain: a soft, glossy brain cut into geometric shards.
+ * Scroll story: whole at the top, it bursts into shards on the first scroll, then the shards drift
+ * back into place as you read down the page, until it is whole again at the bottom.
+ * The mesh is built in a worker (build-worker.js) and all shard motion runs on the GPU, so the
+ * page only updates a few numbers per frame.
  */
 import * as THREE from 'three';
-import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
-import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
-import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
-import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
-import { buildTiles } from './tiles.js';
 
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const smooth = (a, b, v) => { const t = clamp((v - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
@@ -31,291 +27,277 @@ window.__brainStarted = true;
 let pixelRatio = Math.min(devicePixelRatio || 1, 1.5);
 renderer.setPixelRatio(pixelRatio);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.05;
+renderer.toneMappingExposure = 1.1;
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color('#060507');
-scene.fog = new THREE.FogExp2('#060507', 0.06);
-const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 60);
+scene.background = new THREE.Color('#070609');
+const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 60);
 
 // Everything that moves with the brain (it sits right of the text on wide screens).
 const stage = new THREE.Group();
 scene.add(stage);
 
-/* ---------- light: one warm beam from above, cold rim behind, a little red below ---------- */
+/* ---------- soft studio light ---------- */
 
-scene.add(new THREE.HemisphereLight('#3a4560', '#1a0b07', 0.55));
-const key = new THREE.SpotLight('#fff7ef', 40, 12, 0.5, 0.85, 2);
-key.position.set(0.35, 3.9, 0.7);
-key.target.position.set(0, -0.1, 0);
-stage.add(key, key.target);
-const rimCool = new THREE.DirectionalLight('#6f9bff', 1.6);
-rimCool.position.set(-2.6, 1.3, -3);
-const rimWarm = new THREE.DirectionalLight('#ff8a5c', 0.3);
-rimWarm.position.set(2.7, 0.4, -2.3);
-const front = new THREE.DirectionalLight('#fff1e8', 0.9);
-front.position.set(0.6, 0.3, 3);
-const under = new THREE.PointLight('#8e2418', 2.2, 6, 2);
-under.position.set(0, -1.7, 1.3);
-scene.add(rimCool, rimWarm, front);
-stage.add(under);
+scene.add(new THREE.HemisphereLight('#ffe9e2', '#2a1418', 1.1));
+const key = new THREE.DirectionalLight('#fff4ee', 2.4);
+key.position.set(-2, 3, 3);
+const fill = new THREE.DirectionalLight('#ffd6cc', 0.8);
+fill.position.set(3, 0.5, 2);
+const rim = new THREE.DirectionalLight('#9fb6ff', 1.4);
+rim.position.set(1, 1.5, -3.5);
+scene.add(key, fill, rim);
 
-// Faint glow far behind, so the dark has depth.
-const backGlow = new THREE.Mesh(
-  new THREE.PlaneGeometry(16, 10),
-  new THREE.ShaderMaterial({
-    depthWrite: false,
-    uniforms: { uColor: { value: new THREE.Color('#3b1c12') } },
-    vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
-    fragmentShader: 'uniform vec3 uColor; varying vec2 vUv; void main(){ float d = distance(vUv, vec2(0.5, 0.56)); gl_FragColor = vec4(uColor * smoothstep(0.5, 0.0, d), 1.0); }'
-  })
+/* ---------- geometric backdrop: a faint geodesic shell and drifting points ---------- */
+
+const shell = new THREE.LineSegments(
+  new THREE.EdgesGeometry(new THREE.IcosahedronGeometry(1.75, 1)),
+  new THREE.LineBasicMaterial({ color: '#e7a782', transparent: true, opacity: 0, depthWrite: false })
 );
-backGlow.position.set(0, 0.2, -6);
-stage.add(backGlow);
-
-// The visible beam: an open cone, brightest near the lamp.
-const beam = new THREE.Mesh(
-  new THREE.ConeGeometry(1.75, 4.6, 64, 1, true),
-  new THREE.ShaderMaterial({
-    transparent: true,
-    depthWrite: false,
-    side: THREE.DoubleSide,
-    blending: THREE.AdditiveBlending,
-    uniforms: { uColor: { value: new THREE.Color('#ffcf9e') }, uStrength: { value: 0 } },
-    vertexShader: `varying float vH; varying float vFacing;
-      void main(){
-        vH = position.y / 4.6 + 0.5;
-        vec4 mv = modelViewMatrix * vec4(position, 1.0);
-        vec3 n = normalize(normalMatrix * normal);
-        vFacing = abs(dot(n, normalize(-mv.xyz)));
-        gl_Position = projectionMatrix * mv;
-      }`,
-    fragmentShader: `uniform vec3 uColor; uniform float uStrength; varying float vH; varying float vFacing;
-      void main(){
-        float a = pow(vH, 1.7) * pow(vFacing, 2.0) * uStrength;
-        gl_FragColor = vec4(uColor * a, a);
-      }`
-  })
+stage.add(shell);
+const ring = new THREE.LineSegments(
+  new THREE.EdgesGeometry(new THREE.IcosahedronGeometry(2.6, 0)),
+  new THREE.LineBasicMaterial({ color: '#8fa6c8', transparent: true, opacity: 0, depthWrite: false })
 );
-beam.position.set(0.35, 3.9 - 2.3, 0.7);
-stage.add(beam);
+stage.add(ring);
 
-// Dust drifting in the beam. Moved in the vertex shader, so it costs nothing per frame.
-const DUST = 420;
+const DUST = 260;
 const dustPos = new Float32Array(DUST * 3);
-const dustSeed = new Float32Array(DUST);
 for (let i = 0; i < DUST; i++) {
-  const r = Math.sqrt(Math.random()) * 1.5, a = Math.random() * Math.PI * 2;
-  dustPos[i * 3] = 0.35 + Math.cos(a) * r;
-  dustPos[i * 3 + 1] = Math.random() * 4.4;
-  dustPos[i * 3 + 2] = 0.7 + Math.sin(a) * r;
-  dustSeed[i] = Math.random() * 100;
+  const r = 1.6 + Math.random() * 2.6, a = Math.random() * Math.PI * 2, y = (Math.random() - 0.5) * 4;
+  dustPos.set([Math.cos(a) * r, y, Math.sin(a) * r], i * 3);
 }
 const dustGeo = new THREE.BufferGeometry();
 dustGeo.setAttribute('position', new THREE.BufferAttribute(dustPos, 3));
-dustGeo.setAttribute('seed', new THREE.BufferAttribute(dustSeed, 1));
 const dust = new THREE.Points(dustGeo, new THREE.ShaderMaterial({
   transparent: true,
   depthWrite: false,
   blending: THREE.AdditiveBlending,
-  uniforms: { uTime: { value: 0 }, uOpacity: { value: 0 }, uSize: { value: 30 } },
-  vertexShader: `attribute float seed; uniform float uTime; uniform float uSize;
+  uniforms: { uOpacity: { value: 0 }, uSize: { value: 22 } },
+  vertexShader: `uniform float uSize;
     void main(){
-      vec3 p = position;
-      p.y = mod(p.y + uTime * (0.04 + 0.03 * sin(seed)), 4.4) - 1.0;
-      p.x += 0.12 * sin(uTime * 0.3 + seed);
-      vec4 mv = modelViewMatrix * vec4(p, 1.0);
+      vec4 mv = modelViewMatrix * vec4(position, 1.0);
       gl_PointSize = uSize / -mv.z;
       gl_Position = projectionMatrix * mv;
     }`,
   fragmentShader: `uniform float uOpacity;
     void main(){
       float d = length(gl_PointCoord - 0.5);
-      gl_FragColor = vec4(1.0, 0.85, 0.71, smoothstep(0.5, 0.0, d) * uOpacity);
+      gl_FragColor = vec4(1.0, 0.86, 0.78, smoothstep(0.5, 0.1, d) * uOpacity);
     }`
 }));
 stage.add(dust);
 
-/* ---------- the tiles ---------- */
+/* ---------- the brain ---------- */
 
-// 0 frontal, 1 parietal, 2 temporal, 3 occipital, 4 cerebellum, 5 brainstem
-const PALETTE = ['#ec9f74', '#ecd9c0', '#c9787a', '#7f9dc0', '#a993d6', '#f2e6d4'].map((c) => new THREE.Color(c));
-const GROOVE = new THREE.Color('#3a1a1f');
-const ORDER = [5, 4, 3, 2, 1, 0]; // assembly order: brainstem first, frontal lobe last
-const SPREAD = 1.2; // how staggered the tiles are, in units of the whole assembly
-
-const uniforms = { uAssemble: { value: 1 }, uTime: { value: 0 } };
-const tiles = buildTiles();
-const brain = buildMesh(tiles);
+const SPREAD = 1.1; // how staggered the shards are, in units of the whole assembly
+const uniforms = { uAssemble: { value: 1 }, uTime: { value: 0 }, uShards: { value: null } };
+const brain = new THREE.Group();
 stage.add(brain);
+let ready = false;
 
 function seeded(n) { const x = Math.sin(n * 91.7) * 43758.5; return x - Math.floor(x); }
 
-function buildMesh({ count, home, normal, region, groove, spacing }) {
-  const box = new THREE.BoxGeometry(1, 1, 0.22);
-  const geo = new THREE.InstancedBufferGeometry();
-  geo.index = box.index;
-  geo.setAttribute('position', box.getAttribute('position'));
-  geo.setAttribute('normal', box.getAttribute('normal'));
-  geo.instanceCount = count;
+function addMesh(m) {
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(m.position, 3));
+  geo.setAttribute('normal', new THREE.BufferAttribute(m.normal, 3));
+  geo.setAttribute('aShard', new THREE.BufferAttribute(m.shard, 1));
+  geo.setIndex(new THREE.BufferAttribute(m.index, 1));
 
-  const scatter = new Float32Array(count * 3);
-  const spin = new Float32Array(count * 4);
-  const delay = new Float32Array(count);
-  const color = new Float32Array(count * 3);
-  const size = new Float32Array(count);
-  const c = new THREE.Color();
-  for (let i = 0; i < count; i++) {
-    const x = home[i * 3], y = home[i * 3 + 1], z = home[i * 3 + 2];
-    // Fly outward from the middle, plus some sideways drift.
-    const len = Math.hypot(x, y + 0.05, z) || 1;
-    const out = 0.5 + 1.3 * seeded(i + 1);
-    scatter[i * 3] = x + (x / len) * out + (seeded(i + 2) - 0.5) * 0.6;
-    scatter[i * 3 + 1] = y + ((y + 0.05) / len) * out + (seeded(i + 3) - 0.5) * 0.6;
-    scatter[i * 3 + 2] = z + (z / len) * out + (seeded(i + 4) - 0.5) * 0.6;
-    const ax = seeded(i + 5) - 0.5, ay = seeded(i + 6) - 0.5, az = seeded(i + 7) - 0.5;
+  // Per shard, 7 texels: [centre, delay] [scattered position, turn] [turn axis, -]
+  // [its face direction] [the three neighbouring faces' directions], for trimming straight edges.
+  const W = 7;
+  const data = new Float32Array(m.shards * W * 4);
+  const face = (f) => [m.faces[f * 3], m.faces[f * 3 + 1], m.faces[f * 3 + 2], 0];
+  for (let s = 0; s < m.shards; s++) {
+    const cx = m.centre[s * 3], cy = m.centre[s * 3 + 1], cz = m.centre[s * 3 + 2];
+    const ox = m.out[s * 3], oy = m.out[s * 3 + 1], oz = m.out[s * 3 + 2];
+    const dist = 0.55 + 1.05 * seeded(s + 1);
+    const swirl = (Math.atan2(cz, cx) + Math.PI) / (Math.PI * 2);
+    const ax = seeded(s + 5) - 0.5, ay = seeded(s + 6) - 0.5, az = seeded(s + 7) - 0.5;
     const al = Math.hypot(ax, ay, az) || 1;
-    spin.set([ax / al, ay / al, az / al, (1.5 + 3 * seeded(i + 8)) * (seeded(i + 9) < 0.5 ? -1 : 1)], i * 4);
-    delay[i] = (ORDER.indexOf(region[i]) / ORDER.length) * 0.75 * SPREAD + seeded(i + 10) * 0.25 * SPREAD;
-    c.copy(PALETTE[region[i]]).multiplyScalar(0.84 + 0.26 * seeded(i + 11));
-    if (groove[i]) c.lerp(GROOVE, 0.82);
-    color.set([c.r, c.g, c.b], i * 3);
-    size[i] = spacing * (groove[i] ? 0.74 : 0.8 + 0.05 * seeded(i + 12));
+    data.set([
+      cx, cy, cz, (0.65 * swirl + 0.35 * seeded(s + 9)) * SPREAD,
+      cx + ox * dist + (seeded(s + 2) - 0.5) * 0.5, cy + oy * dist + (seeded(s + 3) - 0.5) * 0.5, cz + oz * dist + (seeded(s + 4) - 0.5) * 0.5,
+      (1.2 + 2.4 * seeded(s + 8)) * (seeded(s + 10) < 0.5 ? -1 : 1),
+      ax / al, ay / al, az / al, 0,
+      ...face(s), ...face(m.neighbours[s * 3]), ...face(m.neighbours[s * 3 + 1]), ...face(m.neighbours[s * 3 + 2])
+    ], s * W * 4);
   }
-  const inst = (array, n) => new THREE.InstancedBufferAttribute(array, n);
-  geo.setAttribute('aHome', inst(home, 3));
-  geo.setAttribute('aNormal', inst(normal, 3));
-  geo.setAttribute('aScatter', inst(scatter, 3));
-  geo.setAttribute('aSpin', inst(spin, 4));
-  geo.setAttribute('aDelay', inst(delay, 1));
-  geo.setAttribute('aColor', inst(color, 3));
-  geo.setAttribute('aSize', inst(size, 1));
+  const tex = new THREE.DataTexture(data, W, m.shards, THREE.RGBAFormat, THREE.FloatType);
+  tex.needsUpdate = true;
+  uniforms.uShards.value = tex;
 
-  const material = new THREE.MeshStandardMaterial({ roughness: 0.72, metalness: 0 });
+  const material = new THREE.MeshPhysicalMaterial({
+    color: '#f0a38f',
+    roughness: 0.42,
+    metalness: 0,
+    clearcoat: 0.55,
+    clearcoatRoughness: 0.3,
+    sheen: 0.5,
+    sheenRoughness: 0.6,
+    sheenColor: new THREE.Color('#ffd3c6'),
+    side: THREE.DoubleSide
+  });
   material.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, uniforms);
-    shader.vertexShader = `attribute vec3 aHome; attribute vec3 aNormal; attribute vec3 aScatter; attribute vec4 aSpin;
-      attribute float aDelay; attribute vec3 aColor; attribute float aSize;
-      uniform float uAssemble; uniform float uTime;
-      varying vec3 vTileColor; varying float vLoose;
+    shader.vertexShader = `attribute float aShard;
+      uniform float uAssemble; uniform float uTime; uniform sampler2D uShards;
+      varying float vLoose; varying vec3 vRest; varying float vShard;
       vec3 rotAxis(vec3 v, vec3 axis, float a) { float c = cos(a), s = sin(a); return v * c + cross(axis, v) * s + axis * dot(axis, v) * (1.0 - c); }
       ` + shader.vertexShader
       .replace('#include <beginnormal_vertex>', `
-        // How settled this tile is: 0 = flying loose, 1 = in place on the brain.
-        float k = clamp(uAssemble * (1.0 + ${SPREAD.toFixed(2)}) - aDelay, 0.0, 1.0);
+        int row = int(aShard + 0.5);
+        vec4 sA = texelFetch(uShards, ivec2(0, row), 0);
+        vec4 sB = texelFetch(uShards, ivec2(1, row), 0);
+        vec3 axis = texelFetch(uShards, ivec2(2, row), 0).xyz;
+        // How settled this shard is: 0 = flying loose, 1 = in place.
+        float k = clamp(uAssemble * (1.0 + ${SPREAD.toFixed(2)}) - sA.w, 0.0, 1.0);
         k = k * k * (3.0 - 2.0 * k);
-        vec3 tn = normalize(aNormal);
-        vec3 up = abs(tn.y) < 0.95 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0);
-        vec3 tx = normalize(cross(up, tn));
-        vec3 ty = cross(tn, tx);
-        float turn = aSpin.w * (1.0 - k) + (1.0 - k) * uTime * 0.25 * sign(aSpin.w);
-        vec3 objectNormal = rotAxis(tx * normal.x + ty * normal.y + tn * normal.z, aSpin.xyz, turn);
-        vTileColor = aColor;
-        vLoose = 1.0 - k;`)
+        float turn = (sB.w + uTime * 0.2 * sign(sB.w)) * (1.0 - k);
+        vec3 objectNormal = rotAxis(normal, axis, turn);
+        vLoose = 1.0 - k;
+        vRest = position;
+        vShard = aShard;`)
       .replace('#include <begin_vertex>', `
-        vec3 local = position * aSize;
-        vec3 drift = (1.0 - k) * 0.06 * vec3(sin(uTime * 0.5 + aDelay * 40.0), cos(uTime * 0.4 + aDelay * 31.0), sin(uTime * 0.3 + aDelay * 17.0));
-        vec3 transformed = mix(aScatter, aHome, k) + drift + rotAxis(tx * local.x + ty * local.y + tn * local.z, aSpin.xyz, turn);`);
-    shader.fragmentShader = 'varying vec3 vTileColor; varying float vLoose;\n' + shader.fragmentShader
-      .replace('#include <color_fragment>', '#include <color_fragment>\n diffuseColor.rgb *= vTileColor;')
-      .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n totalEmissiveRadiance += vTileColor * (0.05 + 0.18 * vLoose);');
+        vec3 local = (position - sA.xyz) * mix(0.9, 1.0, k); // small gaps between loose shards
+        vec3 transformed = mix(sB.xyz, sA.xyz, k) + rotAxis(local, axis, turn);`);
+    shader.fragmentShader = `uniform sampler2D uShards; varying float vLoose; varying vec3 vRest; varying float vShard;
+      ` + shader.fragmentShader
+      .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>
+        // Keep only the part of this shard's quads that points toward its own face: straight cuts.
+        int row = int(vShard + 0.5);
+        vec3 dir = vec3(vRest.x / 0.72, (vRest.y + 0.08) / 0.8, vRest.z);
+        float own = dot(dir, texelFetch(uShards, ivec2(3, row), 0).xyz);
+        if (dot(dir, texelFetch(uShards, ivec2(4, row), 0).xyz) > own ||
+            dot(dir, texelFetch(uShards, ivec2(5, row), 0).xyz) > own ||
+            dot(dir, texelFetch(uShards, ivec2(6, row), 0).xyz) > own) discard;`)
+      .replace('#include <color_fragment>', `#include <color_fragment>
+        if (!gl_FrontFacing) diffuseColor.rgb *= 0.45; // the inside of a shard is darker`)
+      .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+        totalEmissiveRadiance += vec3(0.9, 0.42, 0.32) * 0.12 * vLoose;`);
   };
   const mesh = new THREE.Mesh(geo, material);
-  mesh.frustumCulled = false; // tiles move in the shader, so the box three.js knows about is wrong
-  return mesh;
+  mesh.frustumCulled = false; // shards move in the shader, so the box three.js knows about is wrong
+  brain.add(mesh);
+  ready = true;
+  document.body.classList.add('brain-ready');
 }
 
-/* ---------- post-processing ---------- */
-
-const composer = new EffectComposer(renderer);
-composer.addPass(new RenderPass(scene, camera));
-const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.4, 0.55, 0.82);
-composer.addPass(bloom);
-composer.addPass(new OutputPass());
+function build() {
+  try {
+    const worker = new Worker(new URL('./build-worker.js?v=4', import.meta.url), { type: 'module' });
+    worker.onmessage = (e) => { addMesh(e.data); worker.terminate(); };
+    worker.onerror = () => { worker.terminate(); buildHere(); };
+    worker.postMessage({});
+  } catch (_) {
+    buildHere();
+  }
+}
+// Browsers without module workers: build on the page instead (a short pause while it loads).
+function buildHere() {
+  import('./mesh.js').then(({ buildBrainMesh }) => addMesh(buildBrainMesh())).catch((error) => {
+    console.error(error);
+    window.brainFallback && window.brainFallback();
+  });
+}
+build();
 
 /* ---------- scroll + frame ---------- */
 
-let width = 0, height = 0;
+let width = 0, height = 0, maxScroll = 1;
+function measure() {
+  maxScroll = Math.max(1, document.documentElement.scrollHeight - innerHeight);
+}
+// Phones change the window height as the address bar shows and hides while scrolling;
+// resizing the canvas for that would stutter, so small height changes are ignored.
 function resize() {
-  width = innerWidth;
-  height = innerHeight;
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  if (w === width && Math.abs(h - height) < 140) return;
+  width = w;
+  height = h;
   renderer.setSize(width, height, false);
-  composer.setSize(width, height);
-  bloom.resolution.set(width / 3, height / 3);
   camera.aspect = width / height;
   camera.updateProjectionMatrix();
 }
 
-// 0 at the top of the page, 1 at the bottom.
-function progress() {
-  const max = document.documentElement.scrollHeight - innerHeight;
-  return max > 0 ? clamp(scrollY / max, 0, 1) : 0;
-}
 // Whole at the top, apart after the first screen, whole again at the very bottom.
 function assembleAt(p) {
-  if (p < 0.08) return 1 - smooth(0, 0.08, p);
-  return smooth(0.12, 0.97, p);
+  if (p < 0.07) return 1 - smooth(0, 0.07, p);
+  return smooth(0.1, 0.96, p);
 }
 
 const pointer = { x: 0, y: 0, tx: 0, ty: 0 };
-let smoothP = progress();
+let smoothP = 0;
 let lastTime = performance.now();
 let appear = 0;
 let slowFrames = 0;
 
+// A game or the games library covers the page: no need to draw the brain underneath.
+const covered = () => document.body.style.overflow === 'hidden';
+
 function frame(now) {
   requestAnimationFrame(frame);
-  if (document.hidden) return;
   const dt = Math.min(0.05, (now - lastTime) / 1000);
   lastTime = now;
+  if (document.hidden || covered()) return;
   const t = reducedMotion ? 0 : now / 1000;
 
-  // Drop the resolution, then the glow, on devices that can't keep up.
-  slowFrames = dt > 0.028 ? slowFrames + 1 : Math.max(0, slowFrames - 1);
-  if (slowFrames > 45) {
+  // Lower the resolution on devices that can't keep up.
+  slowFrames = dt > 0.026 ? slowFrames + 1 : Math.max(0, slowFrames - 1);
+  if (slowFrames > 40 && pixelRatio > 1) {
     slowFrames = 0;
-    if (pixelRatio > 1) { pixelRatio = 1; renderer.setPixelRatio(1); resize(); }
-    else if (bloom.enabled) bloom.enabled = false;
+    pixelRatio = 1;
+    renderer.setPixelRatio(1);
+    width = 0;
+    resize();
   }
 
-  const p = progress();
-  smoothP += (p - smoothP) * (reducedMotion ? 1 : Math.min(1, dt * 6));
+  const p = clamp(scrollY / maxScroll, 0, 1);
+  smoothP += (p - smoothP) * (reducedMotion ? 1 : Math.min(1, dt * 9));
   const assemble = assembleAt(smoothP);
   const loose = 1 - assemble;
-  appear = Math.min(1, appear + dt * 0.8);
+  if (ready) appear = Math.min(1, appear + dt * 0.9);
   pointer.x += (pointer.tx - pointer.x) * Math.min(1, dt * 3);
   pointer.y += (pointer.ty - pointer.y) * Math.min(1, dt * 3);
 
   uniforms.uAssemble.value = assemble;
   uniforms.uTime.value = t;
-  dust.material.uniforms.uTime.value = t;
-  dust.material.uniforms.uOpacity.value = 0.5 * appear;
-  dust.material.uniforms.uSize.value = 30 * pixelRatio;
-  beam.material.uniforms.uStrength.value = lerp(0.07, 0.12, assemble) * appear;
-  key.intensity = lerp(22, 40, assemble) * appear;
+  dust.material.uniforms.uOpacity.value = 0.55 * appear;
+  dust.material.uniforms.uSize.value = 22 * pixelRatio;
 
-  // Wide screens: the brain sits right of the text. Narrow: centred behind it.
+  // Wide screens: the brain sits right of the text. Narrow: in the upper part of the screen,
+  // with the camera far enough back that the whole brain fits the width.
   const wide = width >= 900;
-  stage.position.x = wide ? lerp(1.3, 1.1, loose) : 0;
-  stage.position.y = wide ? 0 : 0.62; // phones: above the hero text
-  camera.position.set(pointer.x * 0.25, 0.2 + pointer.y * 0.12, lerp(6.0, 8.0, loose) + (wide ? 0 : 2.4));
-  camera.lookAt(wide ? 0.45 : 0, -0.08, 0);
+  const tanHalf = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+  const narrowZ = 1.7 / (tanHalf * camera.aspect);
+  stage.position.set(wide ? lerp(1.25, 1.05, loose) : 0, wide ? 0 : 0.36 * narrowZ * tanHalf, 0);
+  camera.position.set(pointer.x * 0.25, 0.2 + pointer.y * 0.12, wide ? lerp(6.2, 8.2, loose) : lerp(narrowZ, narrowZ * 1.25, loose));
+  camera.lookAt(wide ? 0.45 : 0, -0.05, 0);
 
-  const idle = reducedMotion ? 0 : Math.sin(t * 0.18) * 0.14;
-  brain.rotation.set(0.06, -Math.PI / 2 + 0.42 + idle + smoothP * Math.PI * 0.9, 0);
-  brain.position.y = reducedMotion ? 0 : Math.sin(t * 0.5) * 0.015;
+  const idle = reducedMotion ? 0 : Math.sin(t * 0.2) * 0.12;
+  brain.rotation.set(0.16, -1.05 + idle + smoothP * Math.PI * 0.8, 0);
+  brain.position.y = reducedMotion ? 0 : Math.sin(t * 0.6) * 0.02;
+  shell.rotation.set(t * 0.03, t * 0.05 + smoothP * 1.2, 0);
+  ring.rotation.set(-t * 0.02, -t * 0.03 - smoothP * 0.8, 0.3);
+  shell.material.opacity = 0.16 * appear;
+  ring.material.opacity = 0.08 * appear;
+  dust.rotation.y = t * 0.02 + smoothP * 0.6;
 
   canvas.style.opacity = String(appear);
-  composer.render();
+  renderer.render(scene, camera);
 }
 
-addEventListener('resize', resize);
+addEventListener('resize', () => { resize(); measure(); });
+new ResizeObserver(measure).observe(document.body);
 addEventListener('pointermove', (e) => {
   if (reducedMotion) return;
   pointer.tx = e.clientX / innerWidth - 0.5;
   pointer.ty = -(e.clientY / innerHeight - 0.5);
 }, { passive: true });
 
+measure();
 resize();
-document.body.classList.add('brain-ready');
+smoothP = clamp(scrollY / maxScroll, 0, 1);
 requestAnimationFrame(frame);
