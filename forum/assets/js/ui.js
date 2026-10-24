@@ -193,21 +193,36 @@ Forum.ui = (function () {
       account = '<div class="f-account"><a href="../account/index.html?next=forum">Sign in</a></div>';
     }
 
+    // The top bar is the same as on every other page (logo left; Games, Community and Your games
+    // right). The community's own links and the account sit on a bar below it, which scrolls away.
     header.innerHTML =
       '<a class="skip-link" href="#main">Skip to main content</a>' +
-      '<div class="f-header__inner">' +
+      '<nav class="f-top" aria-label="Primary navigation">' +
       '<a class="f-brand" href="../home/index.html"><span class="f-brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>chemoasis</a>' +
-      '<nav class="f-nav" aria-label="Primary navigation">' +
-      '<a href="../home/index.html?games=1">Games</a>' +
-      '<a href="../account/index.html">Your games</a>' +
-      link("index.html", "Forum") +
+      '<div class="f-top__links">' +
+      '<a class="f-top__link" href="../home/index.html?games=1">Games</a>' +
+      '<a class="f-top__link" href="index.html" aria-current="true">Community</a>' +
+      '<a class="f-top__link f-top__cta" href="../account/index.html">Your games <span aria-hidden="true">→</span></a>' +
+      "</div>" +
+      "</nav>";
+
+    let below = document.querySelector("[data-forum-subbar]");
+    if (!below) {
+      below = document.createElement("div");
+      below.setAttribute("data-forum-subbar", "");
+      header.after(below);
+    }
+    below.innerHTML =
+      '<div class="f-subbar"><div class="f-subbar__inner">' +
+      '<nav class="f-nav" aria-label="Community">' +
+      link("index.html", "Conversations") +
       link("new.html", "New post") +
       link("guidelines.html", "Guidelines") +
       (user && user.canModerate ? link("moderation.html", "Review queue") : "") +
       (user ? '<a href="profile.html?id=' + encodeURIComponent(user.id) + '"' + (here === "profile.html" && param("id") === user.id ? ' aria-current="page"' : "") + ">My profile</a>" : "") +
       "</nav>" +
       account +
-      "</div>" +
+      "</div></div>" +
       '<p class="f-banner">Chemoasis is supportive and educational. It does not diagnose and does not replace your care team. For new, severe or worsening symptoms, contact your care team, or call 911 in an emergency.</p>' +
       (mode === "demo"
         ? '<p class="f-banner f-banner--demo">Demo: the Chemoasis server isn\'t running, so these are the example posts, and anything you post is saved only in this browser.</p>'
@@ -219,7 +234,7 @@ Forum.ui = (function () {
     // The demo's account switcher and reset button only belong on the demo.
     if (mode !== "demo") document.querySelectorAll("[data-demo-only]").forEach((el) => el.remove());
 
-    const switcher = header.querySelector("#f-demo-user");
+    const switcher = below.querySelector("#f-demo-user");
     if (switcher) {
       switcher.addEventListener("change", async (event) => {
         await Forum.store.switchDemoUser(event.target.value);

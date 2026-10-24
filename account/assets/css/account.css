@@ -46,16 +46,19 @@ body {
 .backdrop i:nth-child(3) { width: 26vmax; height: 26vmax; right: 18vmax; top: 10vmax; background: #1f1426; opacity: .45; animation-delay: -17s; }
 @keyframes drift { to { transform: translate(4vmax, 3vmax) scale(1.06); } }
 
+/* The same top bar as the home page's .nav (home/assets/css/home.css) and the community's. */
 .topbar {
   position: relative;
   z-index: 2;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 22px clamp(16px, 4vw, 56px);
+  gap: 20px;
+  padding: 22px clamp(20px, 5vw, 72px);
+  background: rgba(6, 5, 7, .9);
+  border-bottom: 1px solid var(--line);
 }
-.brand { display: flex; gap: 10px; align-items: center; font: 600 21px "DM Sans"; color: var(--ink); text-decoration: none; letter-spacing: -.05em; }
+.brand { display: flex; gap: 10px; align-items: center; font: 600 21px "DM Sans", sans-serif; color: var(--ink); text-decoration: none; letter-spacing: -.05em; }
 .brand-mark { display: grid; grid-template-columns: repeat(2, 6px); gap: 2px; transform: rotate(45deg); }
 .brand-mark i { width: 6px; height: 6px; display: block; background: #a86c4e; }
 .brand-mark i:nth-child(2) { background: #d7b391; }
@@ -390,7 +393,18 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 .check input { width: 20px; height: 20px; margin-top: 1px; flex: none; accent-color: var(--clay); }
 .check a { color: var(--clay); }
 
-.toplinks { display: flex; gap: 22px; margin-left: auto; margin-right: 22px; }
-.toplinks a { color: var(--soft); text-decoration: none; font: 12px "DM Mono", monospace; letter-spacing: .1em; text-transform: uppercase; }
+.toplinks { display: flex; align-items: center; gap: clamp(14px, 2.6vw, 34px); margin-left: auto; }
+.toplinks a { color: var(--ink); text-decoration: none; font: 11px "DM Mono", monospace; letter-spacing: .11em; text-transform: uppercase; white-space: nowrap; }
 .toplinks a:hover { color: var(--clay); }
-@media (max-width: 560px) { .toplinks { gap: 14px; margin-right: 10px; } .toplinks a { font-size: 11px; } }
+.toplinks .toplinks-cta { padding: 9px 13px; border: 1px solid rgba(231, 167, 130, .55); }
+.toplinks .toplinks-cta span { color: var(--clay); }
+@media (max-width: 640px) { .topbar { padding: 16px; } .toplinks { gap: 14px; } }
+/* Small phones: everything still fits on one line (as on the home page). */
+@media (max-width: 480px) {
+  .topbar { gap: 12px; }
+  .brand { font-size: 18px; }
+  .toplinks { gap: 12px; flex-wrap: wrap; justify-content: flex-end; row-gap: 6px; }
+  .toplinks a { font-size: 10px; letter-spacing: .06em; }
+  .toplinks .toplinks-cta { padding: 6px 8px; }
+  .toplinks .toplinks-cta span { display: none; }
+}

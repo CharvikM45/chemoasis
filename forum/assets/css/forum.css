@@ -172,32 +172,32 @@ html {
   color: var(--f-accent);
 }
 
-/* ---------- header (matches the home page nav) ---------- */
+/* ---------- header ---------- */
 
+/* The top bar matches .nav on the home page (home/assets/css/home.css) exactly: same padding,
+   logo, link type and "Your games" button, so moving between pages feels like one site. */
 .f-header {
   position: sticky;
   top: 0;
   z-index: 30;
-  background: rgba(6, 5, 7, 0.92);
+  background: rgba(6, 5, 7, 0.9);
   border-bottom: 1px solid var(--f-line);
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px); /* posts scrolling under it stay out of the way */
 }
 
-.f-header__inner {
+.f-top {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 0.75rem 1.75rem;
-  max-width: 72rem;
-  margin: 0 auto;
-  padding: 1rem clamp(1rem, 4vw, 2.5rem);
+  justify-content: space-between;
+  gap: 20px;
+  padding: 22px clamp(20px, 5vw, 72px);
 }
 
 .f-brand {
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  font: 600 1.3rem "DM Sans", system-ui, sans-serif;
+  font: 600 21px "DM Sans", system-ui, sans-serif;
   letter-spacing: -0.05em;
   color: var(--f-ink);
   text-decoration: none;
@@ -227,16 +227,61 @@ html {
 .f-brand-mark i:nth-child(3) { background: #72503e; }
 .f-brand-mark i:nth-child(4) { background: #ead5c0; }
 
+.f-top__links {
+  display: flex;
+  align-items: center;
+  gap: clamp(14px, 2.6vw, 34px);
+}
+
+.f-page .f-top__link {
+  color: var(--f-ink);
+  font: 11px "DM Mono", ui-monospace, monospace;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.f-page .f-top__link:hover,
+.f-page .f-top__link[aria-current] {
+  color: var(--f-accent);
+}
+
+.f-page .f-top__cta {
+  padding: 9px 13px;
+  border: 1px solid rgba(231, 167, 130, 0.55);
+}
+
+.f-top__cta span {
+  color: var(--f-accent);
+}
+
+/* The community's own links and the account: a quieter bar under the top bar, lined up with the
+   page content, that scrolls away with the page. */
+.f-subbar {
+  border-bottom: 1px solid var(--f-line);
+}
+
+.f-subbar__inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1.5rem;
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 0.55rem clamp(1rem, 4vw, 2.5rem);
+}
+
 .f-nav {
   display: flex;
   flex-wrap: wrap;
   gap: 0.25rem 1.3rem;
-  flex: 1;
 }
 
 .f-nav a {
   padding: 0.35rem 0;
-  font: 0.72rem "DM Mono", ui-monospace, monospace;
+  font: 11px "DM Mono", ui-monospace, monospace;
   letter-spacing: 0.11em;
   text-transform: uppercase;
   text-decoration: none;
@@ -258,24 +303,20 @@ html {
 .f-account {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  font: 0.68rem "DM Mono", ui-monospace, monospace;
-  letter-spacing: 0.1em;
+  gap: 0.75rem;
+  font: 11px "DM Mono", ui-monospace, monospace;
+  letter-spacing: 0.11em;
   text-transform: uppercase;
   color: var(--f-muted);
 }
 
-.f-account a {
-  padding: 0.45rem 0.8rem;
-  border: 1px solid rgba(231, 167, 130, 0.55);
-  font: 0.72rem "DM Mono", ui-monospace, monospace;
-  letter-spacing: 0.11em;
+.f-page .f-account a {
+  color: var(--f-accent);
   text-decoration: none;
 }
 
-.f-page .f-account a {
+.f-page .f-account a:hover {
   color: var(--f-ink);
-  text-decoration: none;
 }
 
 .f-demo-switch select {
@@ -982,6 +1023,47 @@ html {
   }
 
   .f-categories__blurb {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .f-top {
+    padding: 16px;
+  }
+
+  .f-top__links {
+    gap: 14px;
+  }
+}
+
+/* Small phones: the logo and all three links still fit on one line (as on the home page). */
+@media (max-width: 480px) {
+  .f-top {
+    gap: 12px;
+  }
+
+  .f-brand {
+    font-size: 18px;
+  }
+
+  .f-top__links {
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    row-gap: 6px;
+  }
+
+  .f-page .f-top__link {
+    font-size: 10px;
+    letter-spacing: 0.06em;
+  }
+
+  .f-page .f-top__cta {
+    padding: 6px 8px;
+  }
+
+  .f-top__cta span {
     display: none;
   }
 }
