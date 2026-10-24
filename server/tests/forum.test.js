@@ -117,8 +117,11 @@ test('deleting an account takes its posts down', async () => {
     await t.call('DELETE', '/api/auth/me', { cookie: maya });
     const after = await t.forum('getThread', [made.json.result.id], sam);
     assert.strictEqual(after.status, 400, 'the post is gone');
-    const saved = JSON.stringify((await t.db.query('SELECT data FROM forum_state WHERE id = 1')).rows[0].data);
-    assert.ok(!saved.includes('Testing deletion') && !saved.includes('Goodbye post'), 'the text is erased, not just hidden');
+    const { rows } = await t.db.query('SELECT data FROM forum_state WHERE id = 1');
+    const stored = rows[0].data.threads.find((x) => x.id === made.json.result.id);
+    assert.strictEqual(stored.body, '', 'its words are erased from the database, not just hidden');
+    const saved = JSON.stringify(rows[0].data);
+    assert.ok(!saved.includes('Testing deletion') && !saved.includes('Goodbye post'), 'the text and title are erased');
     assert.ok(!saved.includes('my private note'), 'notes on reports they filed are erased');
   } finally { await t.close(); }
 });

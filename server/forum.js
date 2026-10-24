@@ -183,8 +183,8 @@ function forumRouter({ db, isProd, moderators = [], limits = {} }) {
       for (const item of list) {
         if (item.authorId !== userId) continue;
         item.status = 'removed-by-author';
+        if (item.title !== undefined) item.title = '';
         item.body = '';
-        if ('title' in item) item.title = 'Deleted';
         delete item.sourceUrl;
         if (item.gameIds) item.gameIds = [];
       }

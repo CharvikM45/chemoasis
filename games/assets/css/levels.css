@@ -94,3 +94,9 @@
   .level-screen, .level-panel { animation: none; }
   .level-grid button { transition: none; }
 }
+
+/* "Show details" on the level-complete screen: speed numbers stay tucked away unless asked for. */
+.level-details { margin: 14px 0 0; max-width: 560px; color: #c9cde0; font-size: 15px; }
+.level-details summary { display: inline-block; min-height: 44px; padding: 10px 0; color: #f0ce88; cursor: pointer; }
+.level-details summary:focus-visible { outline: 3px solid #fff3b5; outline-offset: 3px; }
+.level-details ul { margin: 4px 0 0; padding-left: 20px; display: grid; gap: 6px; line-height: 1.5; }

@@ -7,7 +7,23 @@
 .bg-safety { margin: 18px 0 0; padding: 12px 14px; border-left: 2px solid #ff9a7a; background: rgba(255, 154, 122, .08); font-size: 14px !important; color: #ffd9cc; }
 .world-controls .bg-primary { background: var(--tone); border-color: var(--tone); color: #0d1424; }
 .bg-choices { justify-content: center; }
-.bg-choices button { min-width: 160px; min-height: 56px; font-size: 13px; }
+.bg-choices button { min-width: 160px; min-height: 64px; font-size: 15px; }
+.world-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+
+/* Gentle / Challenge choice on the start card */
+.bg-modes { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; margin: 14px 0 20px; }
+.bg-modes button { min-height: 72px; padding: 12px 16px; border: 1px solid rgba(255, 250, 230, .35); border-radius: 10px; background: rgba(7, 13, 28, .6); color: #fffaf0; font: 600 18px "DM Sans", sans-serif; text-align: left; cursor: pointer; }
+.bg-modes button small { display: block; margin-top: 4px; color: #c9cde0; font-size: 14px; font-weight: 400; line-height: 1.4; }
+.bg-modes button[aria-pressed="true"] { border: 2px solid var(--tone); background: rgba(255, 255, 255, .09); }
+.bg-modes button[aria-pressed="true"]::before { content: "✓ "; color: var(--tone); }
+.bg-modes button:focus-visible { outline: 3px solid #fff3b5; outline-offset: 3px; }
+
+/* Pause screen */
+.bg-pause { position: fixed; inset: 0; z-index: 25; display: grid; place-items: center; padding: 16px; background: rgba(3, 5, 14, .8); backdrop-filter: blur(8px); }
+.bg-pause-card { width: min(440px, 100%); padding: 28px; border: 1px solid rgba(255, 248, 224, .28); background: rgba(6, 11, 25, .92); text-align: center; }
+.bg-pause-card h3 { margin: 0 0 8px; font: 400 40px/1 "Playfair Display", serif; letter-spacing: -.03em; }
+.bg-pause-card p { margin: 0; color: #d9dcea; font-size: 17px; line-height: 1.55; }
+.bg-pause-card .world-controls { justify-content: center; }
 
 /* Lumen Garden: the flower grid */
 .span-grid { display: grid; grid-template-columns: repeat(var(--n), 1fr); gap: 10px; width: min(100%, calc(var(--n) * 96px)); margin: 18px auto 6px; }
@@ -39,8 +55,9 @@ button.tol-peg:hover { background: rgba(246, 209, 132, .12); }
 
 /* Story Echo: words */
 .word-show { min-height: 110px; display: grid; place-items: center; margin: 20px 0; font: 400 clamp(40px, 8vw, 64px) / 1 "Playfair Display", serif !important; letter-spacing: -.02em; color: #fff1c8; }
-.word-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; margin-top: 14px; }
-.word-grid button { min-height: 46px; border: 1px solid rgba(255, 250, 230, .35); border-radius: 6px; background: rgba(7, 13, 28, .6); color: #fffaf0; font: 15px "DM Sans", sans-serif; cursor: pointer; }
+.word-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; margin-top: 14px; }
+.word-grid button { min-height: 64px; padding: 8px; border: 1px solid rgba(255, 250, 230, .35); border-radius: 8px; background: rgba(7, 13, 28, .6); color: #fffaf0; font: 18px "DM Sans", sans-serif; cursor: pointer; }
+.word-grid button:disabled { cursor: default; opacity: 1; }
 .word-grid button[aria-pressed="true"] { background: var(--tone); border-color: var(--tone); color: #1c1306; }
 .word-grid button.hit { background: #8fe3a4; border-color: #8fe3a4; color: #0d2414; }
 .word-grid button.missed { border: 2px dashed #8fe3a4; }
@@ -49,14 +66,20 @@ button.tol-peg:hover { background: rgba(246, 209, 132, .12); }
 /* Finger Rhythm: four quick pads */
 .brain-game .rhythm-row { gap: clamp(10px, 3vw, 28px); margin: 30px 0; }
 .brain-game .pad { width: clamp(70px, 19vw, 132px); height: clamp(70px, 19vw, 132px); font-size: clamp(26px, 6vw, 38px); transition: transform .08s, background .08s, box-shadow .08s; touch-action: manipulation; }
+.brain-game .rhythm-row[data-count="2"] .pad { width: clamp(118px, 30vw, 170px); height: clamp(118px, 30vw, 170px); }
+.brain-game .pad { position: relative; }
 .brain-game .pad.good { background: #8fe3a4; color: #0d2414; }
-.brain-game .pad.bad { background: #ff8a78; color: #2a0d08; }
+.brain-game .pad.bad { background: #ffb38a; color: #2a0d08; }
+/* A symbol as well as a colour, so right and wrong don't depend on telling green from red. */
+.brain-game .pad.good::after, .brain-game .pad.bad::after { position: absolute; top: 12%; right: 16%; font-size: 22px; font-weight: 700; }
+.brain-game .pad.good::after { content: "✓"; }
+.brain-game .pad.bad::after { content: "✗"; }
 
 /* Signal Match: rule switching */
 .switch-rule { margin: 10px 0 0; text-align: center; font: 500 22px "DM Mono", monospace !important; letter-spacing: .3em; }
 .switch-rule.rule-shape { color: #fff1c8; }
-.switch-rule.rule-colour { color: #d8a4f0; }
-.switch-card { width: 150px; height: 150px; margin: 16px auto 10px; display: grid; place-items: center; border: 1px solid rgba(255, 255, 255, .3); border-radius: 18px; background: rgba(0, 0, 0, .35); font-size: 84px; line-height: 1; }
+.switch-rule.rule-fill { color: #d8a4f0; }
+.switch-card { width: min(240px, 64vw); aspect-ratio: 1; margin: 16px auto 10px; display: grid; place-items: center; border: 1px solid rgba(255, 255, 255, .3); border-radius: 18px; background: rgba(0, 0, 0, .35); font-size: clamp(110px, 34vw, 172px); line-height: 1; }
 .switch-bar { width: min(100%, 320px); height: 4px; margin: 0 auto 6px; background: rgba(255, 255, 255, .12); border-radius: 4px; overflow: hidden; }
 .switch-bar i { display: block; height: 100%; width: 100%; background: var(--tone); }
 .brain-game .game-status { text-align: center; }
