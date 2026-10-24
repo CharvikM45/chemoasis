@@ -7,7 +7,7 @@
 
   if (!user || !user.canModerate) {
     area.innerHTML =
-      '<div class="f-notice f-notice--info" role="status">Only moderators can see the review queue. To try it, switch the demo account (top right) to "Moderator (demo)".</div>';
+      '<div class="f-notice f-notice--info" role="status">Only moderators can see the review queue.</div>';
     history.closest("section").hidden = true;
     return;
   }

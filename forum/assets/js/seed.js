@@ -12,7 +12,7 @@ Forum.seed = function () {
   const profiles = [
     {
       id: "u-river",
-      displayName: "River (demo)",
+      displayName: "River (example)",
       type: "member",
       bio: "Here mostly for the puzzle games on slower days.",
       showBio: true,
@@ -20,7 +20,7 @@ Forum.seed = function () {
     },
     {
       id: "u-alex",
-      displayName: "Alex (demo)",
+      displayName: "Alex (example)",
       type: "member",
       bio: "",
       showBio: false,
@@ -28,7 +28,7 @@ Forum.seed = function () {
     },
     {
       id: "u-june",
-      displayName: "June (demo)",
+      displayName: "June (example)",
       type: "member",
       bio: "I like short activities I can do sitting down.",
       showBio: true,
@@ -36,7 +36,7 @@ Forum.seed = function () {
     },
     {
       id: "u-sam",
-      displayName: "Sam (demo creator)",
+      displayName: "Sam (example creator)",
       type: "creator",
       bio: "I design calm puzzle activities for the library. Creator status is not a medical qualification.",
       showBio: true,
@@ -44,7 +44,7 @@ Forum.seed = function () {
     },
     {
       id: "u-nurse",
-      displayName: "Demo Oncology Nurse",
+      displayName: "Oncology nurse (example)",
       type: "professional",
       bio: "Demo profile used to show how verified professionals appear.",
       showBio: true,
@@ -58,7 +58,7 @@ Forum.seed = function () {
     },
     {
       id: "u-jordan",
-      displayName: "Jordan (demo)",
+      displayName: "Jordan (example)",
       type: "member",
       bio: "",
       showBio: false,
@@ -66,7 +66,7 @@ Forum.seed = function () {
     },
     {
       id: "u-mod",
-      displayName: "Moderator (demo)",
+      displayName: "Moderator (example)",
       type: "moderator",
       bio: "Keeps the community safe and kind.",
       showBio: true,
@@ -80,7 +80,7 @@ Forum.seed = function () {
       categoryId: "welcome",
       authorId: "u-alex",
       title: "Hi from a new member",
-      body: "Hi everyone. I just found Chemoasis and wanted to say hello. I'm mostly looking for short activities for low-energy days.",
+      body: "Hi everyone. I just found Reframe and wanted to say hello. I'm mostly looking for short activities for low-energy days.",
       label: "experience",
       gameIds: [],
       createdAt: daysAgo(3)
@@ -89,10 +89,10 @@ Forum.seed = function () {
       id: "t-pair-match",
       categoryId: "games",
       authorId: "u-river",
-      title: "Pair Match on the easiest level was a gentle start",
-      body: "I tried Pair Match on the easiest setting with the larger text turned on. It took about five minutes and felt calm, not stressful. Has anyone tried the next level up?",
+      title: "Lumen Garden on Level 1 was a good start",
+      body: "I tried Lumen Garden on Level 1. It took about three minutes, and the paths got longer as I went, which was a nice challenge without feeling stressful. Has anyone tried the backwards level?",
       label: "experience",
-      gameIds: ["placeholder-pair-match"],
+      gameIds: ["lumen"],
       createdAt: daysAgo(2)
     },
     {
@@ -119,20 +119,20 @@ Forum.seed = function () {
       id: "t-quick-tap",
       categoryId: "games",
       authorId: "u-river",
-      title: "Quick Tap feels too fast for me",
-      body: "Is there a way to slow Quick Tap down? Even the first level moves faster than I'm comfortable with.",
+      title: "Signal Match feels fast for me",
+      body: "Signal Match speeds up when I get answers right, and some days it moves faster than I'm comfortable with. Is that normal?",
       label: "experience",
-      gameIds: ["placeholder-quick-tap"],
+      gameIds: ["signal"],
       createdAt: hoursAgo(20)
     },
     {
       id: "t-seated",
       categoryId: "ideas",
       authorId: "u-june",
-      title: "Idea: a seated version of every movement activity",
-      body: "It would help if every movement activity had a seated option, like Seated Stretch Flow does. Some days standing up for long isn't realistic.",
+      title: "Idea: a movement or balance activity",
+      body: "It would help to have a gentle movement or balance activity, with a seated option. Some days standing up for long isn't realistic.",
       label: "experience",
-      gameIds: ["placeholder-seated-stretch"],
+      gameIds: [],
       createdAt: daysAgo(4)
     },
     {
@@ -151,9 +151,9 @@ Forum.seed = function () {
       categoryId: "games",
       authorId: "u-jordan",
       title: "This game cured my brain fog",
-      body: "Spot the Change cured my brain fog completely. You can stop going to your doctor about it, just play this every day.",
+      body: "Starling Observatory cured my brain fog completely. You can stop going to your doctor about it, just play this every day.",
       label: "experience",
-      gameIds: ["placeholder-spot-the-change"],
+      gameIds: ["starling"],
       status: "pending",
       createdAt: hoursAgo(3)
     }
@@ -164,7 +164,7 @@ Forum.seed = function () {
       id: "r-hello-1",
       threadId: "t-hello",
       authorId: "u-june",
-      body: "Welcome! The games with a seated option have been my go-to on low-energy days.",
+      body: "Welcome! Starting a game at Level 1 has been my go-to on low-energy days.",
       label: "experience",
       createdAt: daysAgo(2.8)
     },
@@ -205,7 +205,7 @@ Forum.seed = function () {
       id: "r-quick-tap-1",
       threadId: "t-quick-tap",
       authorId: "u-sam",
-      body: "Thanks for saying so. A slower starting speed is a fair request, and I've passed it on to the library team.",
+      body: "Yes, that's how it adapts: it speeds up when you're doing well and slows down after a miss. Starting at Level 1 gives you the most time to answer, and you can stop whenever you like.",
       label: "experience",
       createdAt: hoursAgo(15)
     },
@@ -221,7 +221,7 @@ Forum.seed = function () {
       id: "r-change-answers-1",
       threadId: "t-change-answers",
       authorId: "u-mod",
-      body: "Yes. The plan is that you can update your questionnaire answers at any time, and your recommendations will update too. That part of the app is still being built.",
+      body: "Yes. On the Your games page, choose \"Edit my answers\". Your suggestions update straight away.",
       label: "info",
       createdAt: hoursAgo(26)
     }

@@ -19,6 +19,7 @@
  * three.js only draws the backdrop, so it is loaded on demand: if it can't download (offline,
  * a blocked network), the games still open on their plain background.
  */
+// three.js is loaded only when a game opens with 3D on (not in calm mode).
 let THREE = null;
 const loadThree = () => (THREE ? Promise.resolve(THREE) : import('three').then((m) => (THREE = m), () => null));
 
@@ -77,7 +78,7 @@ class World {
     return this.host.querySelector('.world-panel');
   }
   async scene() {
-    if (this.renderer || this.sceneTried) return;
+    if (this.renderer || this.sceneTried || window.reframeCalm) return; // calm mode: plain background, no 3D
     this.sceneTried = true;
     const T = await loadThree();
     if (!T) return; // no 3D: the game still works on its plain background
@@ -231,8 +232,10 @@ function intro(world, game, level) {
 }
 
 // The level-complete screen. `lines` are the friendly results; `details` (speed numbers and
-// the like) sit behind "Show details".
-function finish(world, game, level, lines, bestText = '', details = []) {
+// the like) sit behind "Show details". `score` (if there is one) is saved to the account for
+// the progress chart on the Your games page.
+function finish(world, game, level, lines, bestText = '', details = [], score = null) {
+  if (score !== null && score !== undefined && window.Account && Account.auth) Account.auth.recordResult(game.id, level.index, score);
   GameLevels.done({
     host: world.host, game: game.id, level: level.index, levels: game.levels,
     message: [...lines, bestText, 'These scores track your practice, not your health.'].filter(Boolean).join(' '),
@@ -326,7 +329,7 @@ const lumen = {
     }
     if (!alive()) return;
     const { best, isNew } = recordBest('lumen', longest);
-    finish(world, lumen, level, [`Longest path you got right: ${longest} flowers${level.backward ? ' backwards' : ''}. Paths correct: ${correct} of ${TRIALS}.`], isNew ? 'That is a new personal best!' : `Personal best: ${best}.`);
+    finish(world, lumen, level, [`Longest path you got right: ${longest} flowers${level.backward ? ' backwards' : ''}. Paths correct: ${correct} of ${TRIALS}.`], isNew ? 'That is a new personal best!' : `Personal best: ${best}.`, [], longest);
   }
 };
 
@@ -425,7 +428,7 @@ const starling = {
     finish(world, starling, level, [
       `You got ${right} of ${TRIALS} right.`,
       threshold < level.start ? 'The flashes got shorter as you went: you were taking in more at a glance.' : 'The flashes stayed about the same length. That’s fine; it often takes a few sessions.'
-    ], '', [`Flash length it settled at: about ${threshold} ms (shorter means quicker).`, isNew ? 'That is a new personal best.' : `Personal best: ${best} ms.`]);
+    ], '', [`Flash length it settled at: about ${threshold} ms (shorter means quicker).`, isNew ? 'That is a new personal best.' : `Personal best: ${best} ms.`], threshold);
   }
 };
 
@@ -536,7 +539,7 @@ const cloudpath = {
     }
     if (!alive()) return;
     const { best, isNew } = recordBest('cloudpath', hardest);
-    finish(world, cloudpath, level, [`Perfect solutions: ${perfect} of ${PUZZLES}. Longest route solved perfectly: ${hardest || 'none yet'}${hardest ? ' moves' : ''}.`], isNew && hardest ? 'That is a new personal best!' : best ? `Personal best: ${best} moves.` : '');
+    finish(world, cloudpath, level, [`Perfect solutions: ${perfect} of ${PUZZLES}. Longest route solved perfectly: ${hardest || 'none yet'}${hardest ? ' moves' : ''}.`], isNew && hardest ? 'That is a new personal best!' : best ? `Personal best: ${best} moves.` : '', [], hardest);
   }
 };
 
@@ -658,7 +661,7 @@ const echo = {
     }
     if (!alive()) return;
     const { best, isNew } = recordBest('echo', bestLen);
-    finish(world, echo, level, [`You remembered ${totalHits} of ${totalShown} words. Longest list at 85% or better: ${bestLen || 'not yet'}${bestLen ? ' words' : ''}.`], isNew && bestLen ? 'That is a new personal best!' : best ? `Personal best: ${best} words.` : '');
+    finish(world, echo, level, [`You remembered ${totalHits} of ${totalShown} words. Longest list at 85% or better: ${bestLen || 'not yet'}${bestLen ? ' words' : ''}.`], isNew && bestLen ? 'That is a new personal best!' : best ? `Personal best: ${best} words.` : '', [], bestLen);
   }
 };
 
@@ -789,7 +792,7 @@ const rhythm = {
       perMinute ? `Quickest pace you kept up with: ${perMinute} lights a minute.` : 'No round was quick enough to count toward a personal best yet.',
       learned > 30 ? `On the hidden pattern you were about ${learned} ms quicker than on the mixed-up round.` : '',
       record ? (record.isNew ? 'That is a new Challenge personal best.' : `Challenge personal best: ${record.best} a minute.`) : ''
-    ]);
+    ], perMinute || null);
   }
 };
 
@@ -878,9 +881,9 @@ const signal = {
     const record = accuracy >= 85 ? recordBest('signal-challenge', all, true) : null; // best: fastest average with 85% right
     finish(world, signal, level, lines, '', [
       `Average answer: ${all} ms.`,
-      cost !== null ? `Switch cost: ${cost} ms (the extra time a rule change takes; it often shrinks with practice).` : '',
+      cost === null ? '' : cost > 15 ? `Switching rules slowed you by ${cost} ms (this often shrinks with practice).` : 'No slowdown when the rule switched.',
       record ? (record.isNew ? 'That is a new Challenge personal best.' : `Challenge personal best: ${record.best} ms with 85% or more right.`) : 'Get 85% right to set a Challenge personal best.'
-    ]);
+    ], record ? all : null);
   }
 };
 

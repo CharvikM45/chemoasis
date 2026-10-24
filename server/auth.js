@@ -24,10 +24,11 @@ function readSignup(body) {
   if (name.length > 40) throw new InputError('Please keep your name to 40 characters or fewer.');
   if (password.length < 8) throw new InputError('Please use a password with at least 8 characters.');
   if (password.length > 200) throw new InputError('Please use a password with 200 characters or fewer.');
+  if (!(body && body.consent === true)) throw new InputError('Please read the privacy notice and tick the box to agree.');
   return { email, name, password };
 }
 
-function authRouter({ db, isProd, limits = {} }) {
+function authRouter({ db, isProd, limits = {}, onDelete }) {
   const router = express.Router();
   const signupLimit = createLimiter({ limit: 5, windowMs: 60 * 60 * 1000, ...limits.signup });
   const loginPerAccount = createLimiter({ limit: 8, windowMs: 15 * 60 * 1000, ...limits.loginAccount });
@@ -117,6 +118,7 @@ function authRouter({ db, isProd, limits = {} }) {
     try {
       const user = await sessions.findUser(db, sessions.readToken(req, isProd));
       if (!user) return res.status(401).json({ error: 'Not signed in.' });
+      if (onDelete) await onDelete(user.id);
       await db.query('DELETE FROM users WHERE id = $1', [user.id]);
       sessions.clearCookie(res, isProd);
       res.status(204).end();

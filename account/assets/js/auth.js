@@ -72,8 +72,8 @@ Account.auth = (function () {
   }
 
   return {
-    async createAccount({ email, name, password }) {
-      const { user } = await api("/signup", { method: "POST", body: { email, name, password } });
+    async createAccount({ email, name, password, consent }) {
+      const { user } = await api("/signup", { method: "POST", body: { email, name, password, consent } });
       return remember(user);
     },
 
@@ -134,6 +134,7 @@ Account.auth = (function () {
 
     // Used by the home page to log plays and finished levels without loading the whole account app.
     recordPlay(gameId) { return notify("/play", { game: gameId }); },
-    recordLevel(gameId, level) { return notify("/level", { game: gameId, level }); }
+    recordLevel(gameId, level) { return notify("/level", { game: gameId, level }); },
+    recordResult(gameId, level, score) { return notify("/result", { game: gameId, level, score }); }
   };
 })();

@@ -14,7 +14,7 @@
     return;
   }
   const { profile, threads } = result;
-  document.title = profile.displayName + " · Chemoasis community";
+  document.title = profile.displayName + " · Reframe community";
 
   const pro = profile.professional;
   box.innerHTML =
@@ -105,9 +105,4 @@
   });
   await drawMuted();
 
-  document.getElementById("reset-demo").addEventListener("click", async () => {
-    if (!confirm("Reset all demo posts, reports and settings in this browser?")) return;
-    await Forum.store.resetDemo();
-    location.href = "index.html";
-  });
 })();

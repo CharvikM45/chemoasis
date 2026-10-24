@@ -3,11 +3,12 @@ const path = require('path');
 const express = require('express');
 const { authRouter } = require('./auth');
 const { profileRouter } = require('./profile');
+const { forumRouter } = require('./forum');
 
 const ROOT = path.join(__dirname, '..');
 const SITE_FOLDERS = ['home', 'account', 'forum', 'games']; // never serve server/, node_modules/, .git/, .env
 
-function createApp({ db, isProd = false, allowedOrigins = [], limits } = {}) {
+function createApp({ db, isProd = false, allowedOrigins = [], moderators = [], limits } = {}) {
   const app = express();
   app.disable('x-powered-by');
   app.set('trust proxy', 1); // Railway sits in front, so use its X-Forwarded-For / -Proto
@@ -34,8 +35,10 @@ function createApp({ db, isProd = false, allowedOrigins = [], limits } = {}) {
       res.status(503).json({ ok: false });
     }
   });
-  app.use('/api/auth', authRouter({ db, isProd, limits }));
+  const forum = forumRouter({ db, isProd, moderators, limits });
+  app.use('/api/auth', authRouter({ db, isProd, limits, onDelete: forum.forgetUser }));
   app.use('/api/profile', profileRouter({ db, isProd }));
+  app.use('/api/forum', forum.router);
   app.use('/api', (req, res) => res.status(404).json({ error: 'Not found.' }));
 
   for (const folder of SITE_FOLDERS) {

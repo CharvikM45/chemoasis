@@ -43,7 +43,7 @@ Account.recommender = (function () {
       gentle: 0.3, "community:memory": 0.3, "own:memory": 0.9, "played:lumen": 0.25
     },
     starling: {
-      bias: -1.05, "cog:focus": 2.0, "cog:speed": 0.3, "phys:reaction": 0.3,
+      bias: -1.05, "cog:focus": 2.0, "cog:speed": 1.0, "phys:reaction": 0.5,
       "life:work": 0.5, "life:driving": 0.6, "life:school": 0.6, "life:homework": 0.4,
       "med:any": 0.4, "dx:anemia": 0.3, "dx:thyroid": 0.3, "dx:b12d": 0.2, short_sleep: 0.3,
       gentle: 0.2, "community:focus": 0.3, "own:focus": 0.9, "played:starling": 0.25
@@ -147,7 +147,7 @@ Account.recommender = (function () {
       fatigue >= 0 ? rankWeight(fatigue) * 0.5 : 0
     );
     set("gentle", Math.round(gentle * 100) / 100,
-      a.energy && a.energy <= 2 ? `You rated your energy ${a.energy} out of 5, and this one is short and gentle` : "Short and gentle, which can suit lower-energy days");
+      a.energy && a.energy <= 2 ? `You rated your energy ${a.energy} out of 5, and this one is quick and starts easy` : "Quick to play and starts easy, which can suit lower-energy days");
 
     // Context from the rest of the app.
     const community = ctx.communityAreas || {};
@@ -288,7 +288,7 @@ Account.recommender = (function () {
   function globalNotes(answers, features) {
     const a = answers || {};
     const notes = [];
-    if ((features.x.gentle || 0) >= 0.6) notes.push("Your energy may be low right now. Try one short round. Story Echo, Finger Rhythm and Signal Match start in Gentle mode, with no timer, and you can pause any game whenever you need to.");
+    if ((features.x.gentle || 0) >= 0.6) notes.push("Your energy may be low right now. Try one session at Level 1. Story Echo, Finger Rhythm and Signal Match start in Gentle mode, with no timer, and you can pause any game or stop at any time.");
     if ((a.rankPhys || []).slice(0, 2).includes("balance")) {
       notes.push("There isn't a balance activity in the library yet. Your care team or a physical therapist can suggest safe balance exercises.");
     }

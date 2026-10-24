@@ -60,7 +60,12 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: "DM San
 .brand-mark i:nth-child(4) { background: #ead5c0; }
 .nav-links { display: flex; align-items: center; gap: clamp(14px, 2.6vw, 34px); }
 .nav-link { color: var(--ink); text-decoration: none; font: 11px "DM Mono", monospace; letter-spacing: .11em; text-transform: uppercase; }
+.nav-link { background: none; border: 0; padding: 0; cursor: pointer; }
 .nav-link:hover { color: var(--accent); }
+.nav-calm[aria-pressed="true"] { color: var(--accent); }
+.nav-calm[aria-pressed="true"]::before { content: "● "; }
+/* One way into the games: the nav and hero buttons. No floating corner button. */
+.corner-launch { display: none !important; }
 .nav-cta { padding: 9px 13px; border: 1px solid rgba(231, 167, 130, .55); }
 .nav-cta span { color: var(--accent); }
 
@@ -164,7 +169,8 @@ h1 em, h2 em { color: var(--accent); }
 }
 @media (max-width: 640px) {
   .nav { padding: 16px 16px; }
-  .nav-links .nav-link:not(.nav-cta) { display: none; }
+  .nav-links { gap: 14px; }
+  .nav-links .nav-calm { display: none; }
   .hero, .band { padding-left: 16px; padding-right: 16px; }
   .band .copy { padding: 22px 16px; }
   .stats, .features { grid-template-columns: 1fr; }
