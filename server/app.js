@@ -40,6 +40,7 @@ function createApp({ db, isProd = false, allowedOrigins = [], moderators = [], d
   });
 
   app.use('/api/profile', express.json({ limit: '64kb', reviver: safeJsonReviver })); // answers + play history are bigger than a sign-in
+  app.use('/api/forum', express.json({ limit: '32kb', reviver: safeJsonReviver })); // a 5,000-character post in another script can pass 10 KB
   app.use('/api', express.json({ limit: '10kb', reviver: safeJsonReviver }));
 
   app.get('/api/health', async (req, res) => {

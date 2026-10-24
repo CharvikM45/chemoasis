@@ -1,5 +1,9 @@
 /*
- * Made-up demo data for the forum. Every person, post and report here is fictional.
+ * The example conversations the forum starts with. Every person, post and report here is
+ * fictional, written by the team, and every example account is marked "(example)".
+ * There is no example professional on purpose: a made-up "verified" nurse giving guidance
+ * on a real health forum would mislead people. Real professionals get the badge only after
+ * the team checks their credentials.
  * Never replace this with real people's posts or health information.
  */
 window.Forum = window.Forum || {};
@@ -41,20 +45,6 @@ Forum.seed = function () {
       bio: "I design calm puzzle activities for the library. Creator status is not a medical qualification.",
       showBio: true,
       createdAt: daysAgo(60)
-    },
-    {
-      id: "u-nurse",
-      displayName: "Oncology nurse (example)",
-      type: "professional",
-      bio: "Demo profile used to show how verified professionals appear.",
-      showBio: true,
-      professional: {
-        verified: true,
-        credential: "Registered Nurse (demo, not a real credential)",
-        specialty: "Oncology nursing",
-        location: "Georgia, US"
-      },
-      createdAt: daysAgo(50)
     },
     {
       id: "u-jordan",
@@ -120,7 +110,7 @@ Forum.seed = function () {
       categoryId: "games",
       authorId: "u-river",
       title: "Signal Match feels fast for me",
-      body: "Signal Match speeds up when I get answers right, and some days it moves faster than I'm comfortable with. Is that normal?",
+      body: "I tried Challenge mode in Signal Match. It speeds up when I get answers right, and some days that's faster than I'm comfortable with. Is that normal?",
       label: "experience",
       gameIds: ["signal"],
       createdAt: hoursAgo(20)
@@ -195,9 +185,9 @@ Forum.seed = function () {
     {
       id: "r-foggy-1",
       threadId: "t-foggy",
-      authorId: "u-nurse",
+      authorId: "u-mod",
       body: "Many people describe memory and concentration that changes from day to day during or after cancer treatment, and experiences vary. The National Cancer Institute has a plain-language page on it. If anything is new, severe or getting worse, please bring it to your care team, since they know your situation.",
-      label: "professional",
+      label: "info",
       sourceUrl: "https://www.cancer.gov/about-cancer/treatment/side-effects/memory",
       createdAt: daysAgo(1)
     },
@@ -205,7 +195,7 @@ Forum.seed = function () {
       id: "r-quick-tap-1",
       threadId: "t-quick-tap",
       authorId: "u-sam",
-      body: "Yes, that's how it adapts: it speeds up when you're doing well and slows down after a miss. Starting at Level 1 gives you the most time to answer, and you can stop whenever you like.",
+      body: "Yes, that's how Challenge adapts: it speeds up when you're doing well and slows down after a miss. Gentle mode has no timer at all, so it waits for you, and you can pause or stop whenever you like.",
       label: "experience",
       createdAt: hoursAgo(15)
     },
@@ -260,7 +250,7 @@ Forum.seed = function () {
   return {
     version: 1,
     currentUserId: "u-river",
-    profiles,
+    profiles: profiles.map((p) => Object.assign({ example: true }, p)), // never counted as real members' topics
     threads: threads.map((t) => Object.assign({ status: "visible", anonymous: false }, t)),
     replies: replies.map((r) => Object.assign({ status: "visible", anonymous: false }, r)),
     reports,

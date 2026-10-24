@@ -4,6 +4,7 @@
   const { CATEGORIES, GAMES, TRAINING_AREAS } = Forum.catalog;
 
   await Forum.ui.renderHeader();
+  if (Forum.ui.pageBlocked()) return;
 
   const form = document.getElementById("filters");
   const list = document.getElementById("threads");

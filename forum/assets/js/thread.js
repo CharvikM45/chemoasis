@@ -3,6 +3,7 @@
   const { esc, paragraphs, timeAgo, fullDate, badge, authorLink, labelPill, gameChips, statusNote, toast } = Forum.ui;
   const threadId = Forum.ui.param("id");
   const user = await Forum.ui.renderHeader();
+  if (Forum.ui.pageBlocked()) return;
 
   const threadBox = document.getElementById("thread");
   const repliesSection = document.querySelector(".f-replies");
