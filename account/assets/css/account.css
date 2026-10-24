@@ -333,3 +333,31 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
+
+/* Your progress: one card per game */
+.panel-sub { margin: -4px 0 16px; color: var(--muted, #80695b); font-size: 15px; }
+.progress { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+.prog { display: flex; flex-direction: column; gap: 10px; padding: 16px; border: 1px solid rgba(74, 48, 37, .16); border-radius: 12px; background: linear-gradient(160deg, var(--tint), var(--paper, #fffaf4) 70%); }
+.prog-head { display: flex; gap: 12px; align-items: center; }
+.prog-icon { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 10px; background: rgba(255, 255, 255, .7); font-size: 20px; }
+.prog h3 { margin: 0; font: 400 20px/1.15 "Playfair Display", serif; }
+.prog-area { margin: 2px 0 0; color: var(--clay, #a86c4e); font: 11px "DM Mono", monospace; letter-spacing: .08em; text-transform: uppercase; }
+.prog-empty { margin: 0; color: var(--muted, #80695b); font-size: 14px; }
+.prog dl { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 0; }
+.prog dt { color: var(--muted, #80695b); font-size: 11px; line-height: 1.3; }
+.prog dd { margin: 2px 0 0; font-weight: 600; font-size: 15px; }
+.prog-trend { margin: 0; font-size: 13px; color: var(--espresso, #4a3025); }
+.spark { width: 100%; height: 52px; }
+.spark polyline { fill: none; stroke: var(--clay, #a86c4e); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
+.spark circle { fill: var(--espresso, #4a3025); }
+.prog-play { margin-top: auto; align-self: flex-start; }
+
+.check { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.5; color: var(--ink); }
+.check[hidden] { display: none; }
+.check input { width: 20px; height: 20px; margin-top: 1px; flex: none; accent-color: var(--clay); }
+.check a { color: var(--clay); }
+
+.toplinks { display: flex; gap: 22px; margin-left: auto; margin-right: 22px; }
+.toplinks a { color: var(--espresso); text-decoration: none; font: 12px "DM Mono", monospace; letter-spacing: .1em; text-transform: uppercase; }
+.toplinks a:hover { color: var(--clay); }
+@media (max-width: 560px) { .toplinks { gap: 14px; margin-right: 10px; } .toplinks a { font-size: 11px; } }

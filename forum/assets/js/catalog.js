@@ -2,7 +2,7 @@
  * Shared lists the forum uses: categories, post labels, training areas and games.
  *
  * TRAINING_AREAS follow the goals in the onboarding questionnaire (brief, question 1).
- * GAMES is a placeholder until Charvik's game library publishes its real IDs.
+ * GAMES matches the six games in the library (same ids as the games and the recommender).
  * Swap in his list here and every game tag in the forum follows.
  */
 window.Forum = window.Forum || {};
@@ -31,7 +31,7 @@ Forum.catalog = (function () {
     },
     {
       id: "app-help",
-      name: "Using Chemoasis",
+      name: "Using Reframe",
       blurb: "Questions about finding your way around the app."
     },
     {
@@ -62,6 +62,7 @@ Forum.catalog = (function () {
 
   const TRAINING_AREAS = [
     { id: "memory", name: "Memory" },
+    { id: "words", name: "Words and language" },
     { id: "focus", name: "Focus and attention" },
     { id: "speed", name: "Thinking speed" },
     { id: "planning", name: "Planning and problem-solving" },
@@ -70,16 +71,14 @@ Forum.catalog = (function () {
     { id: "balance", name: "Balance-related activities" }
   ];
 
-  // Placeholder games. Replace with the game library's real IDs and names.
+  // The six games, with the same ids as the games and the recommender.
   const GAMES = [
-    { id: "placeholder-pair-match", name: "Pair Match", areas: ["memory"] },
-    { id: "placeholder-word-recall", name: "Word Recall", areas: ["memory"] },
-    { id: "placeholder-spot-the-change", name: "Spot the Change", areas: ["focus"] },
-    { id: "placeholder-quick-tap", name: "Quick Tap", areas: ["speed", "focus"] },
-    { id: "placeholder-route-planner", name: "Route Planner", areas: ["planning"] },
-    { id: "placeholder-trace-the-path", name: "Trace the Path", areas: ["hand"] },
-    { id: "placeholder-seated-stretch", name: "Seated Stretch Flow", areas: ["movement"] },
-    { id: "placeholder-steady-stance", name: "Steady Stance", areas: ["balance"] }
+    { id: "lumen", name: "Lumen Garden", areas: ["memory"] },
+    { id: "starling", name: "Starling Observatory", areas: ["focus", "speed"] },
+    { id: "cloudpath", name: "Cloudpath Cartographer", areas: ["planning"] },
+    { id: "echo", name: "Story Echo", areas: ["words", "memory"] },
+    { id: "rhythm", name: "Finger Rhythm", areas: ["hand"] },
+    { id: "signal", name: "Signal Match", areas: ["speed", "focus"] }
   ];
 
   const REPORT_REASONS = [

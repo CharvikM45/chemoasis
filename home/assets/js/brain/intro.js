@@ -16,16 +16,19 @@ const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const canvas = document.querySelector('#brain');
 if (window.__brainFallen) throw new Error('No 3D on this device.');
 
+// Chromebooks and older phones: a lighter brain, no antialiasing, normal resolution.
+const lowPower = (navigator.deviceMemory && navigator.deviceMemory <= 4) || (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4) || matchMedia('(max-width: 700px)').matches;
+
 let renderer;
 try {
-  renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: !lowPower, powerPreference: 'high-performance' });
 } catch (error) {
   window.brainFallback && window.brainFallback();
   throw error;
 }
 window.__brainStarted = true;
 
-let pixelRatio = Math.min(devicePixelRatio || 1, 1.5);
+let pixelRatio = lowPower ? 1 : Math.min(devicePixelRatio || 1, 1.5);
 renderer.setPixelRatio(pixelRatio);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.1;
@@ -237,14 +240,14 @@ function build() {
     const worker = new Worker(new URL('./build-worker.js?v=5', import.meta.url), { type: 'module' });
     worker.onmessage = (e) => { addMesh(e.data); worker.terminate(); };
     worker.onerror = () => { worker.terminate(); buildHere(); };
-    worker.postMessage({});
+    worker.postMessage({ step: lowPower ? 0.027 : 0.021 });
   } catch (_) {
     buildHere();
   }
 }
 // Browsers without module workers: build on the page instead (a short pause while it loads).
 function buildHere() {
-  import('./mesh.js').then(({ buildBrainMesh }) => addMesh(buildBrainMesh())).catch((error) => {
+  import('./mesh.js').then(({ buildBrainMesh }) => addMesh(buildBrainMesh({ step: lowPower ? 0.027 : 0.021 }))).catch((error) => {
     console.error(error);
     window.brainFallback && window.brainFallback();
   });
@@ -284,21 +287,28 @@ let slowFrames = 0;
 // A game or the games library covers the page: no need to draw the brain underneath.
 const covered = () => document.body.style.overflow === 'hidden';
 
+let stopped = false;
 function frame(now) {
+  if (stopped) return;
   requestAnimationFrame(frame);
   const dt = Math.min(0.05, (now - lastTime) / 1000);
   lastTime = now;
   if (document.hidden || covered()) return;
   const t = reducedMotion ? 0 : now / 1000;
 
-  // Lower the resolution on devices that can't keep up.
-  slowFrames = dt > 0.026 ? slowFrames + 1 : Math.max(0, slowFrames - 1);
+  // Devices that can't keep up: first lower the resolution, then switch to a still background.
+  if (ready) slowFrames = dt > 0.026 ? slowFrames + 1 : Math.max(0, slowFrames - 1);
   if (slowFrames > 40 && pixelRatio > 1) {
     slowFrames = 0;
     pixelRatio = 1;
     renderer.setPixelRatio(1);
     width = 0;
     resize();
+  } else if (slowFrames > 120) {
+    stopped = true;
+    window.brainFallback && window.brainFallback();
+    renderer.dispose();
+    return;
   }
 
   const p = clamp(scrollY / maxScroll, 0, 1);

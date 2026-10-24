@@ -154,7 +154,6 @@ Forum.ui = (function () {
     const header = document.querySelector("[data-forum-header]");
     if (!header) return null;
     const user = await Forum.store.currentUser();
-    const users = await Forum.store.listDemoUsers();
     const here = location.pathname.split("/").pop() || "index.html";
     const link = (href, text) =>
       '<a href="' + href + '"' + (here === href ? ' aria-current="page"' : "") + ">" + text + "</a>";
@@ -164,28 +163,22 @@ Forum.ui = (function () {
     header.innerHTML =
       '<a class="skip-link" href="#main">Skip to main content</a>' +
       '<div class="f-header__inner">' +
-      '<a class="f-brand" href="../../home/index.html">✣ reframe</a>' +
+      '<a class="f-brand" href="../home/index.html">✣ reframe</a>' +
       '<nav class="f-nav" aria-label="Primary navigation">' +
-      '<a href="../../home/index.html">Games portal</a>' +
+      '<a href="../home/index.html?games=1">Games</a>' +
+      '<a href="../account/index.html">Your games</a>' +
       link("index.html", "Forum") +
       link("new.html", "New post") +
       link("guidelines.html", "Guidelines") +
       (user && user.canModerate ? link("moderation.html", "Review queue") : "") +
       (user ? '<a href="profile.html?id=' + encodeURIComponent(user.id) + '"' + (here === "profile.html" && param("id") === user.id ? ' aria-current="page"' : "") + ">My profile</a>" : "") +
       "</nav>" +
-      '<label class="f-demo-switch"><span>Demo account</span><select id="f-demo-user">' +
-      users.map((u) => '<option value="' + esc(u.id) + '"' + (user && u.id === user.id ? " selected" : "") + ">" + esc(u.displayName) + "</option>").join("") +
-      "</select></label>" +
+      (user
+        ? '<span class="f-demo-switch">Signed in as <b>' + esc(user.displayName) + "</b></span>"
+        : '<a class="f-button" href="../account/index.html?next=forum">Sign in to post</a>') +
       "</div>" +
-      '<p class="f-banner">Chemoasis is supportive and educational. It does not diagnose and does not replace your care team. For new, severe or worsening symptoms, contact your care team, or call 911 in an emergency.</p>' +
-      (Forum.store.isPersistent()
-        ? ""
-        : '<p class="f-banner f-banner--warning" role="status">This browser is blocking site storage, so anything you post in this demo disappears when you leave the page.</p>');
-
-    header.querySelector("#f-demo-user").addEventListener("change", async (event) => {
-      await Forum.store.switchDemoUser(event.target.value);
-      location.reload();
-    });
+      '<p class="f-banner">Reframe is supportive and educational. It does not diagnose and does not replace your care team. For new, severe or worsening symptoms, contact your care team, or call 911 in an emergency.</p>' +
+      "";
     return user;
   }
 

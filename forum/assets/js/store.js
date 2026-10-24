@@ -1,11 +1,10 @@
 /*
  * The forum's data layer. Pages only talk to Forum.store, never to storage directly.
  *
- * Today it saves made-up demo data in the browser (localStorage).
- * When Sahas's Supabase project is ready, swap the bodies of these functions for
- * Supabase queries (see forum/supabase/schema.sql). Every function already returns
- * a Promise, so the pages won't need to change. No page code here, so this file can
- * also move to the React Native app.
+ * These are the forum's rules. On the live site the server runs this file against the shared
+ * forum in Postgres, as the signed-in person (server/forum.js), and pages reach it through
+ * api-store.js. The tests run it directly against demo data in a pretend browser, which is
+ * what the localStorage code below is for. No page code here.
  */
 window.Forum = window.Forum || {};
 
@@ -149,7 +148,7 @@ Forum.store = (function () {
     const body = (draft.body || "").trim();
     const sourceUrl = (draft.sourceUrl || "").trim();
 
-    if (!author) return { error: "Choose a demo account first." };
+    if (!author) return { error: "Please sign in to post." };
     if (needsTitle && title.length < 4) return { error: "Please add a title (at least 4 characters)." };
     if (needsTitle && title.length > 120) return { error: "Please keep the title under 120 characters." };
     if (body.length < 2) return { error: "Please write something before posting." };
@@ -236,12 +235,12 @@ Forum.store = (function () {
     updateMyProfile(patch) {
       const data = load();
       const user = me(data);
-      if (!user) return fail("Choose a demo account first.");
+      if (!user) return fail("Please sign in first.");
       if (patch.displayName !== undefined) {
         const name = String(patch.displayName).trim();
         if (name.length < 2 || name.length > 40) return fail("Display names need 2 to 40 characters.");
         // Names that could pass for staff, a badge or an anonymous post would mislead readers.
-        if ((user.type === "member" || user.type === "creator") && /\b(anonymous|moderator|mod|admin|chemoasis|verified|official|staff|nurse|doctor|dr)\b/i.test(name)) {
+        if ((user.type === "member" || user.type === "creator") && /\b(anonymous|moderator|mod|admin|chemoasis|reframe|verified|official|staff|nurse|doctor|dr)\b/i.test(name)) {
           return fail("Please pick a name that doesn't sound like a role, a badge or the app itself.");
         }
         user.displayName = name;
@@ -255,7 +254,7 @@ Forum.store = (function () {
     updateMySettings(patch) {
       const data = load();
       const user = me(data);
-      if (!user) return fail("Choose a demo account first.");
+      if (!user) return fail("Please sign in first.");
       const current = data.settings[user.id] || {};
       data.settings[user.id] = Object.assign(current, {
         anonymousByDefault: patch.anonymousByDefault !== undefined ? Boolean(patch.anonymousByDefault) : Boolean(current.anonymousByDefault),
@@ -426,7 +425,7 @@ Forum.store = (function () {
     setMuted(userId, muted) {
       const data = load();
       const user = me(data);
-      if (!user) return fail("Choose a demo account first.");
+      if (!user) return fail("Please sign in first.");
       const target = data.profiles.find((p) => p.id === userId);
       if (!target || target.id === user.id) return fail("You can't mute that account.");
       if (target.type === "moderator") return fail("Moderators can't be muted, so safety notices always reach you.");
@@ -475,7 +474,7 @@ Forum.store = (function () {
     toggleHelpful(id) {
       const data = load();
       const user = me(data);
-      if (!user) return fail("Choose a demo account first.");
+      if (!user) return fail("Please sign in first.");
       const post = data.threads.find((t) => t.id === id) || data.replies.find((r) => r.id === id);
       if (!post || post.status !== "visible") return fail("You can only mark visible posts as helpful.");
       const list = data.helpful[id] || (data.helpful[id] = []);
@@ -489,7 +488,7 @@ Forum.store = (function () {
     report(kind, id, reason, note) {
       const data = load();
       const user = me(data);
-      if (!user) return fail("Choose a demo account first.");
+      if (!user) return fail("Please sign in first.");
       if (!Forum.catalog.reportReason(reason)) return fail("Please choose a reason.");
       const list = kind === "thread" ? data.threads : data.replies;
       const item = list.find((x) => x.id === id);

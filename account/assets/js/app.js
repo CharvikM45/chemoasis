@@ -29,6 +29,7 @@
     $('tabCreate').setAttribute('aria-selected', String(mode === 'create'));
     $('tabSignin').setAttribute('aria-selected', String(mode === 'signin'));
     $('nameField').hidden = mode !== 'create';
+    $('consentField').hidden = mode !== 'create';
     $('passwordHint').hidden = mode !== 'create';
     $('authSubmit').textContent = mode === 'create' ? 'Create account' : 'Sign in';
     $('authForm').password.setAttribute('autocomplete', mode === 'create' ? 'new-password' : 'current-password');
@@ -45,7 +46,7 @@
     btn.disabled = true;
     $('authError').textContent = '';
     try {
-      const fields = { name: form.name.value, email: form.email.value, password: form.password.value };
+      const fields = { name: form.name.value, email: form.email.value, password: form.password.value, consent: form.consent.checked };
       if (mode === 'create') await auth.createAccount(fields);
       else await auth.signIn(fields);
       form.reset();
@@ -63,6 +64,8 @@
     answers = data.answers || {};
     $('who').hidden = false;
     $('whoName').textContent = user.name;
+    // Came here from the forum's "Sign in to post": go back once signed in.
+    if (new URLSearchParams(location.search).get('next') === 'forum') { location.href = '../forum/index.html'; return; }
     // New accounts go straight to the questionnaire.
     if (!data.completedAt && !data.skippedAt) show('introView');
     else await renderResults();
@@ -319,12 +322,73 @@
       notes.appendChild(p);
     }
 
+    renderProgress(data.results || []);
     renderSignals(ctx, model, answered);
     $('resultsStatus').textContent = statusText || '';
     show('resultsView');
   }
 
   const ordinalWord = (n) => ['First', 'Second', 'Third'][n - 1] || `#${n}`;
+
+  /* ---------- Progress ---------- */
+
+  // What each game's saved score means. lower: smaller numbers are better (times in ms).
+  const MEASURE = {
+    lumen: { label: 'Longest path', unit: 'flowers' },
+    starling: { label: 'Flash speed', unit: 'ms', lower: true },
+    cloudpath: { label: 'Longest perfect route', unit: 'moves' },
+    echo: { label: 'Longest list remembered', unit: 'words' },
+    rhythm: { label: 'Fastest pace', unit: 'a minute' },
+    signal: { label: 'Average answer time', unit: 'ms', lower: true }
+  };
+
+  // A small line chart of the last 20 sessions, drawn so that up always means better.
+  function sparkline(values, lower) {
+    const pts = values.slice(-20);
+    if (pts.length < 2) return '';
+    const min = Math.min(...pts), max = Math.max(...pts), span = max - min || 1;
+    const x = (i) => 4 + (i / (pts.length - 1)) * 192;
+    const y = (v) => { const t = (v - min) / span; return 6 + (lower ? t : 1 - t) * 40; };
+    const line = pts.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+    return `<svg viewBox="0 0 200 52" class="spark" aria-hidden="true"><polyline points="${line}" /><circle cx="${x(pts.length - 1).toFixed(1)}" cy="${y(pts[pts.length - 1]).toFixed(1)}" r="3.5" /></svg>`;
+  }
+
+  function renderProgress(results) {
+    const box = $('progress');
+    box.innerHTML = '';
+    for (const game of R.GAMES) {
+      const m = MEASURE[game.id];
+      const values = results.filter((r) => r.game === game.id).map((r) => r.score);
+      const best = values.length ? (m.lower ? Math.min(...values) : Math.max(...values)) : null;
+      const last = values[values.length - 1];
+      let trend = '';
+      if (values.length >= 4) {
+        const half = Math.floor(values.length / 2);
+        const avg = (a) => a.reduce((s, v) => s + v, 0) / a.length;
+        const early = avg(values.slice(0, half)), late = avg(values.slice(half));
+        const better = m.lower ? early - late : late - early;
+        trend = better > Math.abs(early) * 0.05 ? 'Improving' : better < -Math.abs(early) * 0.05 ? 'Dipped lately: that’s normal' : 'Holding steady';
+      }
+      const card = document.createElement('article');
+      card.className = 'prog';
+      card.style.setProperty('--tint', TINT[game.id] || '#efe5d9');
+      card.innerHTML = `
+        <div class="prog-head"><span class="prog-icon" aria-hidden="true">${game.icon}</span><div><h3></h3><p class="prog-area"></p></div></div>
+        <div class="prog-body"></div>
+        <button class="primary prog-play">Play</button>`;
+      card.querySelector('h3').textContent = game.name;
+      card.querySelector('.prog-area').textContent = game.area;
+      const body = card.querySelector('.prog-body');
+      if (!values.length) body.innerHTML = '<p class="prog-empty">Not played yet.</p>';
+      else {
+        body.innerHTML = `${sparkline(values, m.lower)}<dl><div><dt>${m.label}</dt><dd>${last} ${m.unit}</dd></div><div><dt>Best</dt><dd>${best} ${m.unit}</dd></div><div><dt>Sessions</dt><dd>${values.length}</dd></div></dl>${trend ? `<p class="prog-trend">${trend}</p>` : ''}`;
+        card.setAttribute('aria-label', `${game.name}: ${values.length} sessions, latest ${m.label.toLowerCase()} ${last} ${m.unit}, best ${best} ${m.unit}${trend ? ', ' + trend.toLowerCase() : ''}.`);
+      }
+      card.querySelector('.prog-play').addEventListener('click', () => play(game.id));
+      card.querySelector('.prog-play').setAttribute('aria-label', `Play ${game.name}`);
+      box.appendChild(card);
+    }
+  }
 
   function renderSignals(ctx, model, answered) {
     const plays = model.events.filter((e) => e.kind === 'play').length;
@@ -333,7 +397,7 @@
     const rows = [
       [answered > 0, 'Answers', answered ? `${answered} of ${QUESTIONS.length} questions answered` : 'Questionnaire skipped'],
       [topics > 0, 'Community', topics ? 'Topics from public forum conversations in the last 30 days (counts only, no one’s posts are read)' : 'No recent community topics yet'],
-      [data.useOwnPosts, 'Your posts', data.useOwnPosts ? `${ctx.ownPostCount} posts you wrote in the forum as ${ctx.forumName || 'your demo account'}` : 'Off'],
+      [data.useOwnPosts, 'Your posts', data.useOwnPosts ? `${ctx.ownPostCount} posts you wrote in the community` : 'Off'],
       [plays + skips > 0, 'Your choices', `${plays} game ${plays === 1 ? 'play' : 'plays'} and ${skips} “Not for me” so far. The model learns from these.`]
     ];
     const ul = $('signals');

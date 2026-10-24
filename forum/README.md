@@ -1,23 +1,15 @@
-# Chemoasis community forum
+# Reframe community forum
 
-The moderated community forum from section 5 of the concept brief. It's plain HTML, CSS and JavaScript like the rest of the site, and it lives in its own folder so it doesn't touch the landing page.
+The moderated community forum. Plain HTML, CSS and JavaScript like the rest of the site.
 
-Everything in it is **made-up demo data** saved in your own browser. No real accounts, posts or health information.
+It is **live and shared**: everyone signed in to Reframe uses the same forum, and posts are saved in Postgres. Anyone can read; posting needs an account. The starter conversations come from accounts marked "(example)", written by the team to show how the community works.
 
-## Try it
+## How it works
 
-Open `forum/index.html` in a browser, or visit `/forum/` once the site is on Vercel. No build step.
-
-Use the **Demo account** menu (top right) to switch between made-up people:
-
-| Account | Shows |
-| --- | --- |
-| River, Alex, June (demo) | Regular members |
-| Sam (demo creator) | Activity creator badge |
-| Demo Oncology Nurse | Verified professional badge and the "Professional guidance" label |
-| Moderator (demo) | The review queue |
-
-"Reset demo data" on your own profile page puts the original posts back.
+- `assets/js/store.js` holds all the forum's rules (below). The server runs this same file against the shared forum, acting as the signed-in person (`server/forum.js`, `/api/forum`), so only what a person is allowed to see ever leaves the server.
+- Pages call `Forum.store` from `assets/js/api-store.js`, which forwards each call to the server.
+- Moderators are the accounts whose emails are listed in the `MODERATOR_EMAILS` environment variable (comma-separated). They see the review queue.
+- Deleting a Reframe account takes that person's posts down.
 
 ## What it does
 
@@ -47,33 +39,31 @@ Use the **Demo account** menu (top right) to switch between made-up people:
 | --- | --- |
 | `index.html`, `thread.html`, `new.html`, `profile.html`, `moderation.html`, `guidelines.html` | The pages |
 | `forum.css` | Forum styles. It loads `../styles.css` first and reuses its colors and fonts. Every class starts with `f-`. |
-| `js/catalog.js` | Categories, labels, training areas, **placeholder game IDs**, report reasons |
-| `js/store.js` | All saving and loading. Pages only talk to this file. |
+| `js/catalog.js` | Categories, labels, training areas, the six games, report reasons |
+| `js/store.js` | The forum's rules; run on the server against the shared forum, and by the tests |
+| `js/api-store.js` | What the pages use: forwards each `Forum.store` call to `/api/forum` |
 | `js/safety.js` | The safety check before posting |
-| `js/seed.js` | The made-up demo data |
+| `js/seed.js` | The example conversations the forum starts with |
 | `js/ui.js` | Shared header, badges and the report dialog |
 | `js/home.js`, `thread.js`, `new-post.js`, `profile.js`, `moderation.js`, `guidelines.js` | One script per page |
-| `supabase/schema.sql` | **Draft** database tables for when Supabase is ready (not run anywhere) |
-| `tests/run-tests.js` | Checks the forum's rules (safety, privacy, moderation, edits, appeals, muting). Run `node forum/tests/run-tests.js` from the repo root. Needs only Node. |
+| `database/schema.sql` | An earlier draft of separate forum tables (not used; the live forum is stored by `server/forum.js`) |
+| `tests/forum.test.js` | Checks the forum's rules (safety, privacy, moderation, edits, appeals, muting). Run `node forum/tests/forum.test.js` from the repo root. Needs only Node. |
 
-`store.js`, `safety.js`, `catalog.js` and `seed.js` don't touch the page at all, so they can move into the React Native app later as they are.
 
 ## How it connects to the other parts
 
-- **Game library (Charvik):** `js/catalog.js` has placeholder games. Swap in the library's real game IDs and names, and the forum's game tags and filters follow.
+- **Games:** `js/catalog.js` lists the six games with the same ids as the games and the recommender, so posts can be tagged and filtered by game.
 - **Recommendations (Sahas):** `Forum.store.topicSignals(days)` returns how often each training area and game comes up in public conversations. It returns counts only: no user IDs and no post text. That matches the brief's rule that forum signals come from clear categories, not from reading people's posts.
-- **Accounts (Supabase, Sahas):** today the forum uses demo accounts. When sign-in is ready, replace the function bodies in `js/store.js` with Supabase calls. `supabase/schema.sql` is a starting draft of the tables and access rules.
+- **Accounts:** the forum uses Reframe accounts (`server/`). Your forum name starts as your account name and can be changed on your profile.
 
 ## Testing
 
-- `node forum/tests/run-tests.js` runs 31 checks of the forum's rules in a few seconds, with no installs.
+- `node forum/tests/forum.test.js` runs 31 checks of the forum's rules in a few seconds, with no installs.
 - The pages were also tested in a real browser (Chromium) on desktop and phone sizes, including the edit, appeal, mute and draft flows.
-- `supabase/schema.sql` was loaded into a scratch PostgreSQL 16 database and its access rules were tested there (for example: anonymous authors stay hidden, people can only appeal their own hidden posts once, and moderators can't be muted).
-- The database repeats the app's key rules itself, so a modified app can't skip them: the unsafe-claim hold, "professional guidance" for verified professionals only, auto-hide after 3 reports, and only moderators changing whether a post is visible. `forum_needs_review` in `schema.sql` copies the hold patterns from `js/safety.js`, so change both together.
+- `server/tests/forum.test.js` checks the live API: reading signed out, posting with an account, anonymous posts staying anonymous to others, moderators by email, saving to Postgres, and deleting an account.
 
 ## Not done yet
 
-- Real sign-in and storage (waiting on Supabase).
-- Checking professional credentials for real. Today the badge is demo data.
+- Checking professional credentials. Only the example nurse account has the badge today; there's no way yet to verify a real professional.
 - Notifications when someone replies.
 - The brief says the moderation rules should be checked with qualified people before launch.

@@ -72,7 +72,7 @@
     }
     const { thread, replies, mutedCount } = result;
     const category = Forum.catalog.category(thread.categoryId);
-    document.title = thread.title + " · Chemoasis community";
+    document.title = thread.title + " · Reframe community";
     posts[thread.id] = thread;
     replies.forEach((r) => (posts[r.id] = r));
 
