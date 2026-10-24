@@ -224,14 +224,15 @@ function addMesh(m) {
   for (let s = 0; s < m.shards; s++) {
     const cx = m.centre[s * 3], cy = m.centre[s * 3 + 1], cz = m.centre[s * 3 + 2];
     const ox = m.out[s * 3], oy = m.out[s * 3 + 1], oz = m.out[s * 3 + 2];
-    const dist = 0.5 + 1.1 * seeded(s + 1);
+    // Loose pieces float close to their place, so the cloud already reads as a brain in pieces.
+    const dist = 0.3 + 0.6 * seeded(s + 1);
     const swirl = (Math.atan2(cz, cx) + Math.PI) / (Math.PI * 2);
     const ax = seeded(s + 5) - 0.5, ay = seeded(s + 6) - 0.5, az = seeded(s + 7) - 0.5;
     const al = Math.hypot(ax, ay, az) || 1;
     data.set([
       cx, cy, cz, (0.65 * swirl + 0.35 * seeded(s + 9)) * SPREAD,
-      cx + ox * dist + (seeded(s + 2) - 0.5) * 0.5, cy + oy * dist + (seeded(s + 3) - 0.5) * 0.5, cz + oz * dist + (seeded(s + 4) - 0.5) * 0.5,
-      (1.2 + 2.4 * seeded(s + 8)) * (seeded(s + 10) < 0.5 ? -1 : 1),
+      cx + ox * dist + (seeded(s + 2) - 0.5) * 0.3, cy + oy * dist + (seeded(s + 3) - 0.5) * 0.3, cz + oz * dist + (seeded(s + 4) - 0.5) * 0.3,
+      (0.5 + 1.3 * seeded(s + 8)) * (seeded(s + 10) < 0.5 ? -1 : 1),
       ax / al, ay / al, az / al, seeded(s + 11)
     ], s * W * 4);
   }
@@ -309,13 +310,23 @@ function addMesh(m) {
       uniform float uSeams; uniform vec3 uWallColor;
       ${PUZZLE_SPACE}
       ${PUZZLE_GLSL}
+      ${FACE_GLSL}
       ` + shader.fragmentShader
       .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>
         // Keep only the part of this copy that is really inside its piece: exact jigsaw outlines.
-        float seam;
-        if (abs(pieceAt(vRest, seam) - vShard) > 0.5) discard;
-        float line = 1.0 - smoothstep(0.0, 0.025 + fwidth(seam) * 1.5, seam);
         float inWall = smoothstep(0.9, 1.0, vWall); // still part of the flat wall
+        float seam;
+        float piece = pieceAt(vRest, seam);
+        float seamWidth = 0.025 + fwidth(seam) * 1.5;
+        if (abs(piece - vShard) > 0.5) {
+          // In the wall, a piece on the edge of its cube face may reach a hair past it, so the six
+          // blocks of the wall meet without hairline cracks.
+          float face = floor(vShard / (PN * PN) + 0.01);
+          vec2 g = abs(faceGrid(vRest, face) - PN * 0.5);
+          if (inWall < 0.999 || floor(piece / (PN * PN) + 0.01) == face || max(g.x, g.y) > PN * 0.5 + 0.06) discard;
+          seam = 9.0;
+        }
+        float line = 1.0 - smoothstep(0.0, seamWidth, seam);
         // A piece sitting in the wall is just its plain colour, with the seams drawn in once they
         // show: skip the lighting, since the wall covers the whole screen.
         if (inWall > 0.999) { gl_FragColor = vec4(uWallColor * (1.0 - 0.3 * line * uSeams), 1.0); return; }`)
@@ -368,6 +379,9 @@ build();
 /* ---------- scroll + frame ---------- */
 
 let width = 0, height = 0, maxScroll = 1;
+// Wide screens: where the finished brain sits, in the space right of the text column.
+const place = { distance: 6.2, x: 1 };
+const BRAIN_LENGTH = 2.2, BRAIN_HEIGHT = 1.75; // its size on screen, side on (shape.js)
 function measure() {
   maxScroll = Math.max(1, document.documentElement.scrollHeight - innerHeight);
 }
@@ -391,6 +405,16 @@ function resize() {
   uniforms.uBlocks.value.set(tall ? 2 : 3, tall ? 3 : 2);
   uniforms.uWall.value.set(Math.max((2 * halfW) / cols, (2 * halfH) / rows), WALL_DISTANCE, cols, rows);
   uniforms.uView.value.set(halfW, halfH);
+
+  // Size the brain to the free space right of the text (at most 40% of the screen's width and 70%
+  // of its height), with the camera looking straight ahead, and centre it in that space.
+  const copy = document.querySelector('.hero .copy');
+  const textRight = copy ? copy.getBoundingClientRect().right / width : 0.5;
+  const free = Math.max(0.3, 1 - textRight);
+  const share = Math.min(0.4, free * 0.8);
+  const tanHalf = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+  place.distance = Math.max(BRAIN_LENGTH / (share * 2 * tanHalf * camera.aspect), BRAIN_HEIGHT / (0.7 * 2 * tanHalf));
+  place.x = (1 - free * 0.54 - 0.5) * 2 * place.distance * tanHalf * camera.aspect;
 }
 
 // How assembled the brain is (0 = every piece loose, 1 = whole) at scroll position p (0 to 1):
@@ -452,8 +476,9 @@ function frame(now) {
   }
   dust.material.uniforms.uOpacity.value = 0.55 * appear * (1 - wall);
   dust.material.uniforms.uSize.value = 22 * pixelRatio;
-  // The dark edge shading only makes sense once the wall has gone.
-  const shown = Math.round((1 - wall) * 50) / 50;
+  // The dark edge shading only makes sense once the wall has (nearly) gone: on the wall it would
+  // just muddy the colour behind the headline.
+  const shown = Math.round(smooth(0.5, 1, 1 - wall) * 50) / 50;
   if (shown !== vignetteShown && vignette) { vignette.style.opacity = String(shown); vignetteShown = shown; }
 
   // Wide screens: the brain sits right of the text. Narrow: in the upper part of the screen,
@@ -461,9 +486,9 @@ function frame(now) {
   const wide = width >= 900;
   const tanHalf = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
   const narrowZ = 1.7 / (tanHalf * camera.aspect);
-  stage.position.set(wide ? lerp(1.25, 1.05, loose) : 0, wide ? 0 : 0.36 * narrowZ * tanHalf, 0);
-  camera.position.set(pointer.x * 0.25, 0.2 + pointer.y * 0.12, wide ? lerp(6.2, 8.2, loose) : lerp(narrowZ, narrowZ * 1.25, loose));
-  camera.lookAt(wide ? 0.45 : 0, -0.05, 0);
+  stage.position.set(wide ? place.x : 0, wide ? 0 : 0.42 * narrowZ * tanHalf, 0);
+  camera.position.set(pointer.x * 0.25, 0.2 + pointer.y * 0.12, wide ? lerp(place.distance, place.distance * 1.3, loose) : lerp(narrowZ, narrowZ * 1.25, loose));
+  camera.lookAt(pointer.x * 0.25, -0.05, 0);
 
   const idle = still ? 0 : Math.sin(t * 0.2) * 0.12;
   brain.rotation.set(0.16, -1.05 + idle + (still ? 0.62 : smoothP) * Math.PI * 0.8, 0);
