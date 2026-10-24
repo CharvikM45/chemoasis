@@ -16,7 +16,7 @@ A small Node server that serves the Chemoasis website and the account API, deplo
 | POST | `/api/profile/play` | `{ game }` → logs a play for the recommender |
 | POST | `/api/profile/level` | `{ game, level }` → records a finished level |
 | POST | `/api/profile/result` | `{ game, level, score }` → one point on that game's progress chart |
-| POST | `/api/forum/:method` | `{ args }` → runs one forum action (see `forum/README.md`) as the signed-in person; reading works signed out |
+| POST | `/api/forum/:method` | `{ args }` → runs one forum action (see `forum/README.md`) as the signed-in person. Reading needs an account too; signed out, only `currentUser` answers (with `null`) |
 | GET | `/api/health` | Checks the database connection (Railway health check) |
 
 ## Security built in
