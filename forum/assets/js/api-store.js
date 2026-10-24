@@ -6,8 +6,9 @@
  *     here with made-up example posts saved only in this browser, and a demo account switcher.
  *   - "offline": the server is there but not answering. Calls fail with a friendly message
  *     instead of quietly showing demo posts on the real site.
- * Load after catalog.js, seed.js, safety.js and store.js. Pages don't change between modes:
- * every function returns a Promise either way.
+ * Forum pages load it after catalog.js, seed.js, safety.js and store.js. Pages elsewhere that
+ * only read from the live forum (the account page) can leave out seed.js and store.js; they
+ * just get no demo. Pages don't change between modes: every function returns a Promise either way.
  */
 window.Forum = window.Forum || {};
 
@@ -62,17 +63,18 @@ Forum.store = (function (local) {
   }
 
   const offline = () => Promise.reject(new Error("We can't reach the community right now. Please try again in a few minutes."));
+  const noDemo = () => Promise.reject(new Error("The community isn't available here."));
 
   const store = {
-    AUTO_HIDE_REPORTS: local.AUTO_HIDE_REPORTS,
+    AUTO_HIDE_REPORTS: local ? local.AUTO_HIDE_REPORTS : 3,
     mode,
     // False only in a demo whose browser blocks site storage, so the page can warn people.
-    isPersistent: () => (currentMode === "demo" ? local.isPersistent() : true)
+    isPersistent: () => (currentMode === "demo" && local ? local.isPersistent() : true)
   };
   for (const m of methods) {
     store[m] = (...args) =>
       mode().then((which) => {
-        if (which === "demo") return local[m](...args);
+        if (which === "demo") return local ? local[m](...args) : noDemo();
         if (which === "offline") return offline();
         if (m === "currentUser" && firstUser !== undefined) {
           const user = firstUser;
@@ -84,7 +86,7 @@ Forum.store = (function (local) {
   }
   for (const m of demoOnly) {
     store[m] = (...args) =>
-      mode().then((which) => (which === "demo" ? local[m](...args) : m === "listDemoUsers" ? [] : Promise.reject(new Error("Demo accounts are switched off on the live forum."))));
+      mode().then((which) => (which === "demo" && local ? local[m](...args) : m === "listDemoUsers" ? [] : Promise.reject(new Error("Demo accounts are switched off on the live forum."))));
   }
   return store;
 })(Forum.store);
