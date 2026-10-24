@@ -4,42 +4,27 @@ const express = require('express');
 const { authRouter } = require('./auth');
 const { profileRouter } = require('./profile');
 const { forumRouter } = require('./forum');
+const { securityHeaders, safeJsonReviver } = require('./security');
+const { createLimiter } = require('./rate-limit');
+const { audit } = require('./audit');
 
 const ROOT = path.join(__dirname, '..');
 const SITE_FOLDERS = ['home', 'account', 'forum', 'games']; // never serve server/, node_modules/, .git/, .env
 
-function createApp({ db, isProd = false, allowedOrigins = [], moderators = [], limits } = {}) {
+function createApp({ db, isProd = false, allowedOrigins = [], moderators = [], dataKey, limits } = {}) {
   const app = express();
   app.disable('x-powered-by');
   app.set('trust proxy', 1); // Railway sits in front, so use its X-Forwarded-For / -Proto
+  app.use(securityHeaders({ root: ROOT, folders: SITE_FOLDERS, isProd }));
 
-  // Security headers on every response. The policy lists only what the pages really load: this
-  // site, Google Fonts, and inline scripts and styles (the pages and games use some). Other sites
-  // can't show these pages in a frame, so nobody can hide a "Delete my account" button under a
-  // fake page (clickjacking).
-  const policy = [
-    "default-src 'self'",
-    "script-src 'self' 'unsafe-inline'",
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    "font-src 'self' https://fonts.gstatic.com",
-    "img-src 'self' data: blob:",
-    "connect-src 'self'",
-    "worker-src 'self'",
-    "object-src 'none'",
-    "base-uri 'self'",
-    "form-action 'self'",
-    "frame-ancestors 'none'"
-  ].join('; ');
-  app.use((req, res, next) => {
-    res.set({
-      'Content-Security-Policy': policy,
-      'X-Frame-Options': 'DENY',
-      'X-Content-Type-Options': 'nosniff',
-      'Referrer-Policy': 'strict-origin-when-cross-origin',
-      'Permissions-Policy': 'camera=(), microphone=(), geolocation=()'
-    });
-    if (isProd) res.set('Strict-Transport-Security', 'max-age=15552000; includeSubDomains');
-    next();
+  // An overall limit on API calls per IP, on top of the stricter sign-in and posting limits.
+  const apiLimit = createLimiter({ limit: 600, windowMs: 5 * 60 * 1000, ...(limits && limits.api) });
+  app.use('/api', (req, res, next) => {
+    const wait = apiLimit.hit(req.ip);
+    if (!wait) return next();
+    if (apiLimit.hit(req.ip + ':logged') === 0) audit(db, req, 'api_rate_limited'); // once per window per IP
+    res.set('Retry-After', String(wait));
+    res.status(429).json({ error: 'Too many requests. Please wait a few minutes and try again.' });
   });
 
   // Reject state-changing API calls sent from other websites (cross-site request forgery).
@@ -50,12 +35,13 @@ function createApp({ db, isProd = false, allowedOrigins = [], moderators = [], l
     if (!origin) return next();
     const own = `${req.protocol}://${req.get('host')}`;
     if (origin === own || allowedOrigins.includes(origin)) return next();
+    audit(db, req, 'cross_site_blocked', { detail: { path: req.path, origin: origin.slice(0, 100) } });
     res.status(403).json({ error: 'This request came from another website and was blocked.' });
   });
 
-  app.use('/api/profile', express.json({ limit: '64kb' })); // answers + play history are bigger than a sign-in
-  app.use('/api/forum', express.json({ limit: '32kb' })); // a 5,000-character post in another script can pass 10 KB
-  app.use('/api', express.json({ limit: '10kb' }));
+  app.use('/api/profile', express.json({ limit: '64kb', reviver: safeJsonReviver })); // answers + play history are bigger than a sign-in
+  app.use('/api/forum', express.json({ limit: '32kb', reviver: safeJsonReviver })); // a 5,000-character post in another script can pass 10 KB
+  app.use('/api', express.json({ limit: '10kb', reviver: safeJsonReviver }));
 
   app.get('/api/health', async (req, res) => {
     try {
@@ -67,7 +53,7 @@ function createApp({ db, isProd = false, allowedOrigins = [], moderators = [], l
   });
   const forum = forumRouter({ db, isProd, moderators, limits });
   app.use('/api/auth', authRouter({ db, isProd, limits, onDelete: forum.forgetUser }));
-  app.use('/api/profile', profileRouter({ db, isProd }));
+  app.use('/api/profile', profileRouter({ db, isProd, dataKey }));
   app.use('/api/forum', forum.router);
   app.use('/api', (req, res) => res.status(404).json({ error: 'Not found.' }));
 

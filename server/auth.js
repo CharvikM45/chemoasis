@@ -4,6 +4,7 @@ const express = require('express');
 const { hashPassword, verifyPassword, dummyHash } = require('./password');
 const sessions = require('./sessions');
 const { createLimiter } = require('./rate-limit');
+const { audit } = require('./audit');
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const publicUser = (u) => ({ id: u.id, email: u.email, name: u.name, createdAt: u.created_at });
@@ -47,7 +48,7 @@ function authRouter({ db, isProd, limits = {}, onDelete }) {
   router.post('/signup', async (req, res, next) => {
     try {
       const wait = signupLimit.hit(req.ip);
-      if (wait) return tooMany(res, wait);
+      if (wait) { await audit(db, req, 'signup_rate_limited'); return tooMany(res, wait); }
       const { email, name, password } = readSignup(req.body);
       const id = crypto.randomUUID();
       const hash = await hashPassword(password);
@@ -65,6 +66,7 @@ function authRouter({ db, isProd, limits = {}, onDelete }) {
         throw error;
       }
       await startSession(res, user);
+      await audit(db, req, 'signup', { userId: user.id });
       res.status(201).json({ user: publicUser(user) });
     } catch (error) {
       next(error);
@@ -76,16 +78,20 @@ function authRouter({ db, isProd, limits = {}, onDelete }) {
       const email = String((req.body && req.body.email) || '').trim().toLowerCase();
       const password = String((req.body && req.body.password) || '');
       const wait = loginPerIp.hit(req.ip) || loginPerAccount.hit(email);
-      if (wait) return tooMany(res, wait);
+      if (wait) { await audit(db, req, 'login_rate_limited'); return tooMany(res, wait); }
 
       const { rows } = await db.query('SELECT id, email, name, created_at, password_hash FROM users WHERE email = $1', [email]);
       const user = rows[0];
       // Same work either way, so response time doesn't reveal whether the email has an account.
       const ok = await verifyPassword(password, user ? user.password_hash : await dummyHash);
-      if (!user || !ok) throw new InputError("That email and password don't match an account.", 401);
+      if (!user || !ok) {
+        await audit(db, req, 'login_failed', { userId: user ? user.id : null });
+        throw new InputError("That email and password don't match an account.", 401);
+      }
 
       loginPerAccount.reset(email);
       await startSession(res, user);
+      await audit(db, req, 'login', { userId: user.id });
       res.json({ user: publicUser(user) });
     } catch (error) {
       next(error);
@@ -94,8 +100,10 @@ function authRouter({ db, isProd, limits = {}, onDelete }) {
 
   router.post('/logout', async (req, res, next) => {
     try {
+      const user = await sessions.findUser(db, sessions.readToken(req, isProd));
       await sessions.endSession(db, sessions.readToken(req, isProd));
       sessions.clearCookie(res, isProd);
+      if (user) await audit(db, req, 'logout', { userId: user.id });
       res.status(204).end();
     } catch (error) {
       next(error);
@@ -120,6 +128,7 @@ function authRouter({ db, isProd, limits = {}, onDelete }) {
       if (!user) return res.status(401).json({ error: 'Not signed in.' });
       if (onDelete) await onDelete(user.id);
       await db.query('DELETE FROM users WHERE id = $1', [user.id]);
+      await audit(db, req, 'account_deleted', { userId: user.id });
       sessions.clearCookie(res, isProd);
       res.status(204).end();
     } catch (error) {

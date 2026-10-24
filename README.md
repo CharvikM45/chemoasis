@@ -25,7 +25,7 @@ You need Node 22 or newer (the test command needs it) and a Postgres database (t
 
 ## Tests
 
-`npm test` runs every test suite: the account server (against an in-memory Postgres, so no real database is needed), the recommender and the forum. GitHub runs them automatically on every pull request (`.github/workflows/test.yml`).
+`npm test` runs every test suite: the account server (against an in-memory Postgres, so no real database is needed), the recommender and the forum. GitHub runs them automatically on every push and pull request (`.github/workflows/ci.yml`).
 
 ## How we work
 

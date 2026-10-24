@@ -1,0 +1,11 @@
+# Opens a pull request when a dependency (npm packages or the CI actions) has a security fix or update.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

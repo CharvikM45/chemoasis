@@ -13,6 +13,7 @@ const vm = require('vm');
 const express = require('express');
 const sessions = require('./sessions');
 const { createLimiter } = require('./rate-limit');
+const { audit } = require('./audit');
 
 const FORUM_JS = path.join(__dirname, '..', 'forum', 'assets', 'js');
 
@@ -158,6 +159,8 @@ function forumRouter({ db, isProd, moderators = [], limits = {} }) {
       state.currentUserId = null;
       if (dirty) await persist();
 
+      // Moderation decisions are recorded, so there's a history of who hid or removed what.
+      if (!error && method === 'resolve') await audit(db, req, 'moderation', { userId: user.id, detail: { targetId: String(args[0]).slice(0, 40), action: String(args[1]).slice(0, 10) } });
       if (error) return res.status(400).json({ error: error.message });
       res.json({ result: result === undefined ? null : result });
     } catch (error) {

@@ -16,7 +16,7 @@ A small Node server that serves the Chemoasis website and the account API, deplo
 | POST | `/api/profile/play` | `{ game }` → logs a play for the recommender |
 | POST | `/api/profile/level` | `{ game, level }` → records a finished level |
 | POST | `/api/profile/result` | `{ game, level, score }` → one point on that game's progress chart |
-| POST | `/api/forum/:method` | `{ args }` → runs one forum action (see `forum/README.md`) as the signed-in person; reading works signed out |
+| POST | `/api/forum/:method` | `{ args }` → runs one forum action (see `forum/README.md`) as the signed-in person. Reading needs an account too; signed out, only `currentUser` answers (with `null`) |
 | GET | `/api/health` | Checks the database connection (Railway health check) |
 
 ## Security built in
@@ -26,7 +26,7 @@ A small Node server that serves the Chemoasis website and the account API, deplo
 - Requests that change things are refused if they come from another website (Origin check).
 - Sign-in attempts are limited per account and per IP; sign-ups per IP.
 - A wrong email and a wrong password get the same message and take the same time.
-- Every response has security headers: a content security policy that allows only this site and Google Fonts, no framing by other sites (stops clickjacking), `nosniff`, a referrer policy, and HTTPS-only (HSTS) in production. The 3D library (three.js) is served from `home/assets/vendor/`, not from an outside server.
+- Every response has security headers (`security.js`): a content security policy that runs only this site's scripts (inline ones by hash) and allows Google Fonts, no framing by other sites (stops clickjacking), `nosniff`, a referrer policy, and HTTPS-only (HSTS) in production. The 3D library (three.js) is served from `games/assets/vendor/`, not from an outside server. `SECURITY.md` lists every security check and what's left.
 - Request bodies are capped at 10 KB. Only the site folders are served, never `server/`, `node_modules/`, `.git/` or `.env`.
 - Tables are created by migrations in `migrations/`, which run on startup.
 

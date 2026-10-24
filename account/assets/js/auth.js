@@ -119,7 +119,8 @@ Account.auth = (function () {
     // Finished levels saved on the account, or null when signed out.
     async levels() {
       if (!read(SESSION, null)) return null;
-      try { const { profile } = await profileApi(""); return (profile && profile.levels) || {}; } catch (_) { return null; }
+      try { const { profile } = await profileApi(""); return (profile && profile.levels) || {}; }
+      catch (error) { if (error.status === 401) storage.remove(SESSION); return null; } // signed out elsewhere: stop asking
     },
 
     // Deletes the account on the server and everything saved for it in this browser.

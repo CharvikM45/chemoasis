@@ -2,6 +2,7 @@
 const express = require('express');
 const sessions = require('./sessions');
 const { InputError } = require('./auth');
+const { makeBox } = require('./crypto-box');
 
 const GAMES = ['lumen', 'starling', 'cloudpath', 'echo', 'rhythm', 'signal'];
 const FIELDS = ['answers', 'completedAt', 'skippedAt', 'useOwnPosts', 'model', 'levels', 'results'];
@@ -30,8 +31,9 @@ function cleanProfile(input) {
   return out;
 }
 
-function profileRouter({ db, isProd }) {
+function profileRouter({ db, isProd, dataKey }) {
   const router = express.Router();
+  const box = makeBox(dataKey); // encrypts each profile before it's stored, when a key is set
 
   async function signedIn(req, res) {
     const user = await sessions.findUser(db, sessions.readToken(req, isProd));
@@ -40,13 +42,14 @@ function profileRouter({ db, isProd }) {
   }
   async function load(userId) {
     const { rows } = await db.query('SELECT data, updated_at FROM profiles WHERE user_id = $1', [userId]);
-    return rows[0] || null;
+    if (!rows[0]) return null;
+    return { data: box ? box.open(rows[0].data) : rows[0].data, updated_at: rows[0].updated_at };
   }
   async function store(userId, data) {
     await db.query(
       `INSERT INTO profiles (user_id, data, updated_at) VALUES ($1, $2::jsonb, now())
        ON CONFLICT (user_id) DO UPDATE SET data = EXCLUDED.data, updated_at = now()`,
-      [userId, JSON.stringify(data)]
+      [userId, JSON.stringify(box ? box.seal(data) : data)]
     );
   }
   // Changes for one person run one at a time, so a play and a finished level arriving together
