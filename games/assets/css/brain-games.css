@@ -18,6 +18,20 @@
 .bg-modes button[aria-pressed="true"]::before { content: "✓ "; color: var(--tone); }
 .bg-modes button:focus-visible { outline: 3px solid #fff3b5; outline-offset: 3px; }
 
+/* "Picking up where you left off" line on the start card */
+.bg-carry { margin: 16px 0 0; color: #d9dcea; font-size: 15px; line-height: 1.5; }
+.bg-carry button { margin-left: 4px; padding: 4px 10px; border: 1px solid rgba(255, 250, 230, .35); border-radius: 999px; background: transparent; color: #fffaf0; font: 14px "DM Sans", sans-serif; cursor: pointer; }
+.bg-carry button:focus-visible { outline: 3px solid #fff3b5; outline-offset: 3px; }
+
+/* Keyboard hints (F, J, 1, 2...) mean nothing on a touch screen, so they hide there. */
+kbd.bg-key { font: inherit; }
+@media (hover: none) and (pointer: coarse) { .brain-game .bg-key { display: none; } }
+
+/* Story Echo (Challenge): type the words before picking them out */
+.bg-type { display: grid; gap: 8px; margin-top: 14px; color: #d9dcea; font-size: 15px; }
+.bg-type textarea { width: 100%; min-height: 96px; padding: 12px; border: 1px solid rgba(255, 250, 230, .35); border-radius: 8px; background: rgba(7, 13, 28, .6); color: #fffaf0; font: 18px/1.5 "DM Sans", sans-serif; resize: vertical; box-sizing: border-box; }
+.bg-type textarea:focus-visible { outline: 3px solid #fff3b5; outline-offset: 2px; }
+
 /* Pause screen */
 .bg-pause { position: fixed; inset: 0; z-index: 25; display: grid; place-items: center; padding: 16px; background: rgba(3, 5, 14, .8); backdrop-filter: blur(8px); }
 .bg-pause-card { width: min(440px, 100%); padding: 28px; border: 1px solid rgba(255, 248, 224, .28); background: rgba(6, 11, 25, .92); text-align: center; }

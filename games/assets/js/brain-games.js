@@ -15,7 +15,9 @@
  * safe limits, and keeps speed numbers behind "Show details". Every game can be paused.
  *
  * Opening a game: a click on any [data-game] element (the library cards, ?play= links).
- * Levels set where a session starts; results and personal bests are shown at the end.
+ * Levels set where a session starts; results and personal bests (per level and mode) are shown
+ * at the end. The next session on a level picks up one step easier than where the last one
+ * ended, unless the player chooses Start fresh. Every finished session is saved to the account.
  * three.js only draws the backdrop, so it is loaded on demand: if it can't download (offline,
  * a blocked network), the games still open on their plain background.
  */
@@ -34,20 +36,31 @@ const median = (a) => { if (!a.length) return 0; const s = a.slice().sort((x, y)
 
 // Storage keys keep the old "reframe" prefix so nobody loses their saved progress.
 const BEST = 'reframe.best';
-function bests() { try { return JSON.parse(localStorage.getItem(BEST) || '{}') || {}; } catch (_) { return {}; } }
+const readJSON = (name) => { try { return JSON.parse(localStorage.getItem(name) || '{}') || {}; } catch (_) { return {}; } };
+const writeJSON = (name, value) => { try { localStorage.setItem(name, JSON.stringify(value)); } catch (_) { /* storage unavailable */ } };
+// Bests and carried difficulty are kept per game, level and mode, so a level 1 score never
+// stands as the best to beat on level 4, and Gentle never competes with Challenge.
+const keyFor = (game, level, mode) => `${game}-L${level.index + 1}${mode ? `-${mode}` : ''}`;
 // Saves `value` if it beats the old best (higher is better unless lowerIsBetter). Returns { best, isNew }.
-function recordBest(game, value, lowerIsBetter) {
-  const all = bests();
-  const old = all[game];
+function recordBest(name, value, lowerIsBetter) {
+  const all = readJSON(BEST);
+  const old = all[name];
   const isNew = old === undefined || (lowerIsBetter ? value < old : value > old);
-  if (isNew) { all[game] = value; try { localStorage.setItem(BEST, JSON.stringify(all)); } catch (_) { /* storage unavailable */ } }
+  if (isNew) { all[name] = value; writeJSON(BEST, all); }
   return { best: isNew ? value : old, isNew };
 }
 
+// Where the adaptive difficulty ended last time (span, flash length, route length...). The next
+// session on that level starts one step easier than that, unless the player chooses Start fresh.
+const CARRY = 'chemoasis.carry';
+const carried = (name) => { const v = readJSON(CARRY)[name]; return Number.isFinite(v) ? v : undefined; };
+function saveCarry(name, value) { const all = readJSON(CARRY); all[name] = value; writeJSON(CARRY, all); }
+function forgetCarry(name) { const all = readJSON(CARRY); delete all[name]; writeJSON(CARRY, all); }
+const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+
 const MODE = 'chemoasis.mode';
-function modes() { try { return JSON.parse(localStorage.getItem(MODE) || '{}') || {}; } catch (_) { return {}; } }
-const savedMode = (game) => (modes()[game] === 'challenge' ? 'challenge' : 'gentle');
-function saveMode(game, mode) { const all = modes(); all[game] = mode; try { localStorage.setItem(MODE, JSON.stringify(all)); } catch (_) { /* storage unavailable */ } }
+const savedMode = (game) => (readJSON(MODE)[game] === 'challenge' ? 'challenge' : 'gentle');
+function saveMode(game, mode) { const all = readJSON(MODE); all[game] = mode; writeJSON(MODE, all); }
 
 /* ---------- the world around each game: a calm 3D backdrop and a panel ---------- */
 
@@ -82,6 +95,7 @@ class World {
     this.sceneTried = true;
     const T = await loadThree();
     if (!T) return; // no 3D: the game still works on its plain background
+    if (this.host.hidden) { this.sceneTried = false; return; } // closed while three.js loaded
     try {
       this.renderer = new T.WebGLRenderer({ antialias: !reduceMotion, alpha: true, powerPreference: 'high-performance' });
     } catch (_) { return; }
@@ -97,7 +111,7 @@ class World {
     this.scene3.add(key);
     this.group = new T.Group();
     this.scene3.add(this.group);
-    const geometry = {
+    const geometry = this.geometry = {
       lumen: () => new T.IcosahedronGeometry(1.1, 0),
       starling: () => new T.OctahedronGeometry(1.1),
       cloudpath: () => new T.DodecahedronGeometry(1.1),
@@ -112,7 +126,21 @@ class World {
       mesh.rotation.set(a, a * 0.7, 0);
       this.group.add(mesh);
     }
-    addEventListener('resize', () => this.resize());
+    this.onResize = () => this.resize();
+    addEventListener('resize', this.onResize);
+  }
+  // Frees the backdrop's graphics memory when the game closes; opening it again rebuilds it.
+  // Browsers only allow a handful of live WebGL contexts, so six games left open would run out.
+  dispose() {
+    if (!this.renderer) return;
+    removeEventListener('resize', this.onResize);
+    this.group.children.forEach((m) => m.material.dispose());
+    this.geometry.dispose();
+    this.renderer.dispose();
+    this.renderer.forceContextLoss();
+    this.renderer.domElement.remove();
+    this.renderer = this.scene3 = this.camera = this.group = this.geometry = this.onResize = null;
+    this.sceneTried = false;
   }
   resize() {
     if (!this.renderer || this.host.hidden) return;
@@ -192,6 +220,7 @@ class World {
     this.resume();
     this.playing = false;
     cancelAnimationFrame(this.raf);
+    this.dispose();
     GameLevels.close(this.host);
     this.host.hidden = true;
     (this.inerted || []).forEach((el) => { el.inert = false; });
@@ -205,9 +234,11 @@ class World {
 /* ---------- shared screens ---------- */
 
 // "How it works" card before a session, with the Gentle / Challenge choice for games that have
-// one. Resolves { go, mode }: go is true for Start, false for All levels.
+// one. Resolves { go, mode, startAt }: go is true for Start, false for All levels. startAt is
+// where the adaptive difficulty begins, picked up from last time (undefined: the level's start).
 function intro(world, game, level) {
   let mode = game.modes ? savedMode(game.id) : null;
+  let fresh = false;
   const panel = world.render(`<main class="world-card bg-card">
     <p class="world-note">Level ${level.index + 1} · ${esc(level.name)}</p>
     ${game.modes ? `<div class="bg-modes" role="group" aria-label="Mode">
@@ -215,27 +246,36 @@ function intro(world, game, level) {
       <button data-mode="challenge">Challenge<small>${esc(game.challengeNote)}</small></button>
     </div>` : ''}
     <ul class="bg-how" data-how></ul>
+    <p class="bg-carry" data-carry hidden><span data-carry-text></span> <button data-fresh>Start fresh</button></p>
     ${game.safety ? `<p class="bg-safety">${game.safety}</p>` : ''}
     <div class="world-controls"><button data-go class="bg-primary">Start</button><button data-levels>All levels</button></div>
   </main>`);
+  const startAt = () => {
+    const last = fresh || !game.carry ? undefined : carried(keyFor(game.id, level, mode));
+    return last === undefined ? undefined : game.carry.from(last, level, mode);
+  };
   const show = () => {
     panel.querySelector('[data-how]').innerHTML = game.how(level, mode).map((l) => `<li>${l}</li>`).join('');
     panel.querySelectorAll('[data-mode]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.mode === mode)));
+    const from = startAt();
+    panel.querySelector('[data-carry]').hidden = from === undefined;
+    if (from !== undefined) panel.querySelector('[data-carry-text]').textContent = `Picking up near where you finished last time: ${game.carry.label(from)}.`;
   };
   panel.querySelectorAll('[data-mode]').forEach((b) => { b.onclick = () => { mode = b.dataset.mode; saveMode(game.id, mode); show(); }; });
+  panel.querySelector('[data-fresh]').onclick = () => { fresh = true; show(); panel.querySelector('[data-go]').focus(); };
   show();
   return new Promise((resolve) => {
-    panel.querySelector('[data-go]').onclick = () => resolve({ go: true, mode });
+    panel.querySelector('[data-go]').onclick = () => resolve({ go: true, mode, startAt: startAt() });
     panel.querySelector('[data-levels]').onclick = () => resolve({ go: false });
     panel.querySelector('[data-go]').focus();
   });
 }
 
 // The level-complete screen. `lines` are the friendly results; `details` (speed numbers and
-// the like) sit behind "Show details". `score` (if there is one) is saved to the account for
-// the progress chart on the Your games page.
+// the like) sit behind "Show details". Every finished session is saved to the account for the
+// Your games page; `score` is null when there is no number to chart (Gentle mode keeps none).
 function finish(world, game, level, lines, bestText = '', details = [], score = null) {
-  if (score !== null && score !== undefined && window.Account && Account.auth) Account.auth.recordResult(game.id, level.index, score);
+  if (window.Account && Account.auth) Account.auth.recordResult(game.id, level.index, score, world.mode || undefined);
   GameLevels.done({
     host: world.host, game: game.id, level: level.index, levels: game.levels,
     message: [...lines, bestText, 'These scores track your practice, not your health.'].filter(Boolean).join(' '),
@@ -255,12 +295,14 @@ async function start(game, n) {
   const run = ++world.run;
   const level = { ...game.levels[n], index: n };
   const alive = () => world.run === run && !world.host.hidden;
-  const { go, mode } = await intro(world, game, level);
+  const { go, mode, startAt } = await intro(world, game, level);
   if (!alive()) return;
   if (!go) return levelsFor(game);
   world.playing = true;
+  world.mode = mode;
+  world.saveAs = keyFor(game.id, level, mode); // the name this session's best and carry use
   try {
-    await game.play(world, level, alive, mode);
+    await game.play(world, level, alive, mode, startAt);
   } finally {
     if (world.run === run) { world.playing = false; world.host.querySelector('[data-action="pause"]')?.remove(); }
   }
@@ -284,9 +326,10 @@ const lumen = {
     'Get one right and the next path is one flower longer. Miss and it gets one shorter.',
     '14 paths, about 3 minutes.'
   ],
-  async play(world, level, alive) {
+  carry: { from: (v) => clamp(v - 1, 2, 9), label: (v) => `paths of ${v} flowers` },
+  async play(world, level, alive, mode, startAt) {
     const TRIALS = 14;
-    let span = level.span, longest = 0, correct = 0;
+    let span = startAt ?? level.span, longest = 0, correct = 0;
     const cells = level.size * level.size;
     const panel = world.render(`<main class="world-card bg-card">
       <p class="world-note" data-info></p><p class="game-status" data-status></p>
@@ -328,8 +371,9 @@ const lumen = {
       await world.sleep(1000);
     }
     if (!alive()) return;
-    const { best, isNew } = recordBest('lumen', longest);
-    finish(world, lumen, level, [`Longest path you got right: ${longest} flowers${level.backward ? ' backwards' : ''}. Paths correct: ${correct} of ${TRIALS}.`], isNew ? 'That is a new personal best!' : `Personal best: ${best}.`, [], longest || null);
+    saveCarry(world.saveAs, span);
+    const { best, isNew } = longest ? recordBest(world.saveAs, longest) : { best: readJSON(BEST)[world.saveAs] };
+    finish(world, lumen, level, [`Longest path you got right: ${longest} flowers${level.backward ? ' backwards' : ''}. Paths correct: ${correct} of ${TRIALS}.`], isNew ? 'That is a new personal best on this level!' : best ? `Personal best on this level: ${best} flowers.` : '', [], longest);
   }
 };
 
@@ -355,16 +399,18 @@ const starling = {
     `Say which symbol was in the centre${l.ring ? ', then tap where the comet ☄ appeared around the edge' : ''}.`,
     'Two right in a row and the flash gets shorter; a miss makes it longer. 20 flashes.'
   ],
-  async play(world, level, alive) {
+  carry: { from: (v) => Math.round(clamp(v * 1.25, 17, 800)), label: (v) => `flashes of about ${v} ms` },
+  async play(world, level, alive, mode, startAt) {
     const TRIALS = 20;
     const SYMBOLS = [['☾', 'Moon'], ['✦', 'Star']];
-    let shown = level.start, streak = 0, right = 0;
+    const begin = startAt ?? level.start;
+    let shown = begin, streak = 0, right = 0;
     const history = [];
     const panel = world.render(`<main class="world-card bg-card">
       <p class="world-note" data-info></p>
       <div class="sky" data-sky><span class="sky-centre" data-centre>+</span>${Array.from({ length: 8 }, (_, i) => `<button class="sky-slot" data-slot="${i}" style="--a:${i * 45}deg" disabled aria-label="Edge position ${i + 1}"></button>`).join('')}<div class="sky-clutter" data-clutter></div></div>
       <p class="game-status" data-status></p>
-      <div class="world-controls bg-choices" data-choices hidden>${SYMBOLS.map(([s, n], i) => `<button data-sym="${i}">${i + 1}. ${s} ${n}</button>`).join('')}</div>
+      <div class="world-controls bg-choices" data-choices hidden>${SYMBOLS.map(([s, n], i) => `<button data-sym="${i}"><kbd class="bg-key">${i + 1}. </kbd>${s} ${n}</button>`).join('')}</div>
     </main>`);
     const $ = (sel) => panel.querySelector(sel);
     const slots = [...panel.querySelectorAll('[data-slot]')];
@@ -424,11 +470,12 @@ const starling = {
     }
     if (!alive()) return;
     const threshold = Math.round(history.slice(-6).reduce((a, b) => a + b, 0) / Math.min(6, history.length));
-    const { best, isNew } = recordBest('starling', threshold, true);
+    saveCarry(world.saveAs, threshold);
+    const { best, isNew } = recordBest(world.saveAs, threshold, true);
     finish(world, starling, level, [
       `You got ${right} of ${TRIALS} right.`,
-      threshold < level.start ? 'The flashes got shorter as you went: you were taking in more at a glance.' : 'The flashes stayed about the same length. That’s fine; it often takes a few sessions.'
-    ], '', [`Flash length it settled at: about ${threshold} ms (shorter means quicker).`, isNew ? 'That is a new personal best.' : `Personal best: ${best} ms.`], threshold);
+      threshold < begin ? 'The flashes got shorter as you went: you were taking in more at a glance.' : 'The flashes stayed about the same length. That’s fine; it often takes a few sessions.'
+    ], '', [`Flash length it settled at: about ${threshold} ms (shorter means quicker).`, isNew ? 'That is a new personal best on this level.' : `Personal best on this level: ${best} ms.`], threshold);
   }
 };
 
@@ -481,9 +528,10 @@ const cloudpath = {
     'Tap a cloud to lift its top lantern, then tap where it goes. <b>Plan the whole route first</b>: the aim is the fewest possible moves.',
     'Solve it in the fewest moves and the next puzzle needs one more. 8 puzzles.'
   ],
-  async play(world, level, alive) {
+  carry: { from: (v) => clamp(v - 1, 2, 8), label: (v) => `${v}-move puzzles` },
+  async play(world, level, alive, mode, startAt) {
     const PUZZLES = 8;
-    let target = level.target, perfect = 0, hardest = 0;
+    let target = startAt ?? level.target, perfect = 0, hardest = 0;
     for (let n = 0; n < PUZZLES && alive(); n++) {
       const startKey = pick(STATES);
       const d = distances(startKey);
@@ -538,8 +586,9 @@ const cloudpath = {
       await world.sleep(1600);
     }
     if (!alive()) return;
-    const { best, isNew } = recordBest('cloudpath', hardest);
-    finish(world, cloudpath, level, [`Perfect solutions: ${perfect} of ${PUZZLES}. Longest route solved perfectly: ${hardest || 'none yet'}${hardest ? ' moves' : ''}.`], isNew && hardest ? 'That is a new personal best!' : best ? `Personal best: ${best} moves.` : '', [], hardest || null);
+    saveCarry(world.saveAs, target);
+    const { best, isNew } = hardest ? recordBest(world.saveAs, hardest) : { best: readJSON(BEST)[world.saveAs] };
+    finish(world, cloudpath, level, [`Perfect solutions: ${perfect} of ${PUZZLES}. Longest route solved perfectly: ${hardest || 'none yet'}${hardest ? ' moves' : ''}.`], isNew ? 'That is a new personal best on this level!' : best ? `Personal best on this level: ${best} moves.` : '', [], hardest);
   }
 };
 
@@ -579,11 +628,15 @@ const echo = {
       ? `Words appear one at a time, for about ${(l.pace / 1000).toFixed(1)} seconds each. Then pick out every word you saw from a mix of old and new.`
       : 'Words appear one at a time. Press <b>Next word</b> (or Space) whenever you’re ready. Then pick out every word you saw from a mix of old and new.',
     '<b>Strategy:</b> make up a tiny story that links the words, like “the horse ate a lemon on the bridge.” The words also come in pairs from the same group, which helps.',
-    `Remember at least 85% and the next list is 2 words longer. 5 lists, starting at ${Math.min(l.words, echoMax(mode))} words.`
+    `Remember at least 85% and the next list is 2 words longer. 5 lists, starting at ${Math.min(l.words, echoMax(mode))} words.`,
+    ...(mode === 'challenge' ? ['After each list you can type the words you remember before picking them out. At the end, one last check of what stayed with you.'] : [])
   ],
-  async play(world, level, alive, mode) {
+  carry: { from: (v, l, mode) => clamp(v - 2, 4, echoMax(mode)), label: (v) => `lists of ${v} words` },
+  async play(world, level, alive, mode, startAt) {
     const LISTS = 5, gentle = mode !== 'challenge', max = echoMax(mode);
-    let n = Math.min(level.words, max), bestLen = 0, totalHits = 0, totalShown = 0;
+    let n = Math.min(startAt ?? level.words, max), bestLen = 0, totalHits = 0, totalShown = 0;
+    let typedHits = 0, typedShown = 0; // Challenge: words typed from memory, before the list
+    const seen = [], used = new Set(); // every listed word, and every word shown on any screen
     let speak = false;
     for (let list = 0; list < LISTS && alive(); list++) {
       const groups = shuffle(Object.keys(WORDS)).slice(0, Math.ceil(n / 2));
@@ -591,6 +644,8 @@ const echo = {
       groups.forEach((g) => { const w = shuffle(WORDS[g]); chosen.push(...w.slice(0, 2)); lures.push(...w.slice(2, 4)); });
       const list_ = shuffle(chosen.slice(0, n));
       const foils = shuffle(lures).slice(0, n);
+      seen.push(...list_);
+      [...list_, ...foils].forEach((w) => used.add(w));
       const panel = world.render(`<main class="world-card bg-card">
         <p class="world-note" data-info>List ${list + 1} of ${LISTS} · ${n} words</p>
         <p class="word-show" data-word aria-live="polite">Ready…</p>
@@ -623,14 +678,35 @@ const echo = {
         await world.sleep(gentle ? 150 : 250);
       }
       if (!alive()) return;
+      // Challenge: first type what you remember (recalling is harder than recognising), or skip.
+      const chosenSet = new Set();
+      if (!gentle) {
+        const typing = world.render(`<main class="world-card bg-card">
+          <p class="world-note">List ${list + 1} of ${LISTS} · type the words you remember</p>
+          <label class="bg-type"><span>Any order, separated by spaces or commas.</span>
+            <textarea data-typed rows="3" autocomplete="off" autocapitalize="none" spellcheck="false"></textarea></label>
+          <div class="world-controls"><button data-check class="bg-primary">Check</button><button data-skip>Skip to the list</button></div>
+        </main>`);
+        const box = typing.querySelector('[data-typed]');
+        box.focus({ preventScroll: true });
+        const typed = await new Promise((resolve) => {
+          typing.querySelector('[data-check]').onclick = () => resolve(box.value);
+          typing.querySelector('[data-skip]').onclick = () => resolve(null);
+        });
+        if (!alive()) return;
+        if (typed !== null) {
+          const words = new Set(typed.toLowerCase().split(/[^a-z]+/).filter(Boolean));
+          list_.filter((w) => words.has(w)).forEach((w) => chosenSet.add(w));
+          typedHits += chosenSet.size; typedShown += n;
+        }
+      }
       const options = shuffle([...list_, ...foils]);
       const recall = world.render(`<main class="world-card bg-card">
         <p class="world-note">List ${list + 1} of ${LISTS} · pick the ${n} words you saw</p>
-        <div class="word-grid">${options.map((w) => `<button data-w="${w}" aria-pressed="false">${w}</button>`).join('')}</div>
-        <p class="game-status" data-status>Selected: 0</p>
+        <div class="word-grid">${options.map((w) => `<button data-w="${w}" aria-pressed="${chosenSet.has(w)}">${w}</button>`).join('')}</div>
+        <p class="game-status" data-status>${chosenSet.size ? `You typed ${chosenSet.size}, already picked. ` : ''}Selected: ${chosenSet.size}</p>
         <div class="world-controls"><button data-done class="bg-primary">Done</button></div>
       </main>`);
-      const chosenSet = new Set();
       recall.querySelectorAll('[data-w]').forEach((b) => {
         b.onclick = () => {
           const w = b.dataset.w;
@@ -660,8 +736,33 @@ const echo = {
       await new Promise((r) => { const b = recall.querySelector('[data-done]'); b.textContent = list + 1 < LISTS ? 'Next list' : 'See results'; b.onclick = r; });
     }
     if (!alive()) return;
-    const { best, isNew } = recordBest('echo', bestLen);
-    finish(world, echo, level, [`You remembered ${totalHits} of ${totalShown} words. Longest list at 85% or better: ${bestLen || 'not yet'}${bestLen ? ' words' : ''}.`], isNew && bestLen ? 'That is a new personal best!' : best ? `Personal best: ${best} words.` : '', [], bestLen || null);
+    // Challenge: a last check a few minutes on. Which of these words were on an earlier list?
+    let later = '';
+    if (!gentle && Object.values(WORDS).flat().some((w) => !used.has(w))) {
+      // As many never-shown words as earlier ones, so guessing "all of them" doesn't pay.
+      const unseen = Object.values(WORDS).flat().filter((w) => !used.has(w));
+      const old = shuffle([...new Set(seen)]).slice(0, Math.min(8, unseen.length));
+      const fresh = shuffle(unseen).slice(0, old.length);
+      const check = world.render(`<main class="world-card bg-card">
+        <p class="world-note">One last check · which of these were on any of your lists?</p>
+        <div class="word-grid">${shuffle([...old, ...fresh]).map((w) => `<button data-w="${w}" aria-pressed="false">${w}</button>`).join('')}</div>
+        <div class="world-controls"><button data-done class="bg-primary">See results</button></div>
+      </main>`);
+      const picked = new Set();
+      check.querySelectorAll('[data-w]').forEach((b) => {
+        b.onclick = () => { const w = b.dataset.w; picked.has(w) ? picked.delete(w) : picked.add(w); b.setAttribute('aria-pressed', String(picked.has(w))); };
+      });
+      await new Promise((r) => { check.querySelector('[data-done]').onclick = r; });
+      if (!alive()) return;
+      const kept = old.filter((w) => picked.has(w)).length, wrong = fresh.filter((w) => picked.has(w)).length;
+      later = `At the end you still recognised ${kept} of ${old.length} earlier words${wrong ? ` (and picked ${wrong} that were never shown)` : ''}.`;
+    }
+    saveCarry(world.saveAs, n);
+    const { best, isNew } = bestLen ? recordBest(world.saveAs, bestLen) : { best: readJSON(BEST)[world.saveAs] };
+    finish(world, echo, level, [`You remembered ${totalHits} of ${totalShown} words. Longest list at 85% or better: ${bestLen || 'not yet'}${bestLen ? ' words' : ''}.`], isNew ? 'That is a new personal best on this level!' : best ? `Personal best on this level: ${best} words.` : '', [
+      typedShown ? `Typed from memory before picking: ${typedHits} of ${typedShown} words.` : '',
+      later
+    ], bestLen);
   }
 };
 
@@ -706,16 +807,18 @@ const rhythm = {
         : 'No timer and no speed scores. 8 short rounds of 8 lights.'
     ];
   },
-  async play(world, level, alive, mode) {
+  // Only Challenge has a pace to carry over; Gentle always waits.
+  carry: { from: (v, l, mode) => (mode === 'challenge' ? Math.round(clamp(v * 1.1, RHYTHM_FASTEST, 1400)) : undefined), label: (v) => `a light every ${(v / 1000).toFixed(1)} seconds` },
+  async play(world, level, alive, mode, startAt) {
     const gentle = mode !== 'challenge';
     const pads_ = PAD_SETS[level.pads].map((i) => PADS[i]);
     const SEQ = tapPattern(pads_.length);
     const ROUNDS = 8, RANDOM_ROUND = 6; // round 7 is mixed up, to see what the pattern taught your hands
-    let interval = Math.max(RHYTHM_FASTEST, level.interval), fastest = Infinity, hitsAll = 0;
+    let interval = Math.max(RHYTHM_FASTEST, startAt ?? level.interval), fastest = Infinity, hitsAll = 0;
     const rts = { pattern: [], random: [] };
     const panel = world.render(`<main class="world-card bg-card">
       <p class="world-note" data-info></p>
-      <div class="rhythm-row" data-count="${pads_.length}">${pads_.map(([k, icon], i) => `<button class="pad" data-pad="${i}" aria-label="Pad ${k}">${icon}<small>${k}</small></button>`).join('')}</div>
+      <div class="rhythm-row" data-count="${pads_.length}">${pads_.map(([k, icon], i) => `<button class="pad" data-pad="${i}" aria-label="Pad ${k}">${icon}<small class="bg-key">${k}</small></button>`).join('')}</div>
       <p class="game-status" data-status></p>
     </main>`);
     const pads = [...panel.querySelectorAll('[data-pad]')];
@@ -785,13 +888,14 @@ const rhythm = {
       ? 'Your hands seemed to pick up the hidden pattern: you were a little quicker on it than on the mixed-up round.'
       : 'Hands often pick up the hidden pattern over a few sessions.';
     if (gentle) return finish(world, rhythm, level, [`You tapped all ${ROUNDS * 8} lights at your own pace.`, patternLine]);
+    saveCarry(world.saveAs, Math.round(interval));
     const perMinute = fastest === Infinity ? 0 : Math.round(60000 / fastest);
-    const record = perMinute ? recordBest('rhythm-challenge', perMinute) : null;
+    const record = perMinute ? recordBest(world.saveAs, perMinute) : null;
     finish(world, rhythm, level, [`You caught ${hitsAll} of ${ROUNDS * 8} lights in time.`, patternLine], '', [
       `Average reaction: ${Math.round(mean([...rts.pattern, ...rts.random]))} ms.`,
       perMinute ? `Quickest pace you kept up with: ${perMinute} lights a minute.` : 'No round was quick enough to count toward a personal best yet.',
       learned > 30 ? `On the hidden pattern you were about ${learned} ms quicker than on the mixed-up round.` : '',
-      record ? (record.isNew ? 'That is a new Challenge personal best.' : `Challenge personal best: ${record.best} a minute.`) : ''
+      record ? (record.isNew ? 'That is a new Challenge personal best on this level.' : `Challenge personal best on this level: ${record.best} a minute.`) : ''
     ], perMinute || null);
   }
 };
@@ -821,9 +925,10 @@ const signal = {
       ? 'A bar shows your time. Get one right and you get a little less time; miss and you get more. 40 signals.'
       : 'No timer: each signal waits for your answer. 40 signals.'
   ],
-  async play(world, level, alive, mode) {
+  carry: { from: (v, l, mode) => (mode === 'challenge' ? Math.round(clamp(v * 1.1, SIGNAL_FASTEST, 4000)) : undefined), label: (v) => `${(v / 1000).toFixed(1)} seconds to answer` },
+  async play(world, level, alive, mode, startAt) {
     const TRIALS = 40, challenge = mode === 'challenge';
-    let deadline = Math.max(SIGNAL_FASTEST, level.deadline), rule = Math.random() < 0.5 ? 'shape' : 'fill';
+    let deadline = Math.max(SIGNAL_FASTEST, startAt ?? level.deadline), rule = Math.random() < 0.5 ? 'shape' : 'fill';
     let correct = 0;
     const rt = { switch: [], stay: [] };
     const panel = world.render(`<main class="world-card bg-card">
@@ -831,7 +936,7 @@ const signal = {
       <p class="switch-rule" data-rule></p>
       <div class="switch-card" data-card></div>
       ${challenge ? '<div class="switch-bar"><i data-bar></i></div>' : ''}
-      <div class="world-controls bg-choices"><button data-side="0">F · Round / Solid</button><button data-side="1">J · Pointed / Outline</button></div>
+      <div class="world-controls bg-choices"><button data-side="0"><kbd class="bg-key">F · </kbd>Round / Solid</button><button data-side="1"><kbd class="bg-key">J · </kbd>Pointed / Outline</button></div>
       <p class="game-status" data-status aria-live="polite"></p>
     </main>`);
     const $ = (s) => panel.querySelector(s);
@@ -876,13 +981,14 @@ const signal = {
     const accuracy = Math.round((correct / TRIALS) * 100);
     const lines = [`You sorted ${correct} of ${TRIALS} correctly.`, accuracy >= 85 ? 'Nicely done: you kept track of the rule as it changed.' : 'Switching rules is tricky for everyone, and it usually gets easier with practice.'];
     if (!challenge) return finish(world, signal, level, lines);
+    saveCarry(world.saveAs, Math.round(deadline));
     const all = Math.round(mean([...rt.switch, ...rt.stay]));
     const cost = rt.switch.length && rt.stay.length ? Math.round(mean(rt.switch) - mean(rt.stay)) : null;
-    const record = accuracy >= 85 ? recordBest('signal-challenge', all, true) : null; // best: fastest average with 85% right
+    const record = accuracy >= 85 ? recordBest(world.saveAs, all, true) : null; // best: fastest average with 85% right
     finish(world, signal, level, lines, '', [
       `Average answer: ${all} ms.`,
       cost === null ? '' : cost > 15 ? `Switching rules slowed you by ${cost} ms (this often shrinks with practice).` : 'No slowdown when the rule switched.',
-      record ? (record.isNew ? 'That is a new Challenge personal best.' : `Challenge personal best: ${record.best} ms with 85% or more right.`) : 'Get 85% right to set a Challenge personal best.'
+      record ? (record.isNew ? 'That is a new Challenge personal best on this level.' : `Challenge personal best on this level: ${record.best} ms with 85% or more right.`) : 'Get 85% right to set a Challenge personal best.'
     ], record ? all : null);
   }
 };
@@ -903,12 +1009,20 @@ addEventListener('click', (event) => {
   levelsFor(game);
 }, true);
 
-// Listens in the capture phase so an Escape used to leave a game stops here, instead of also
+// Listens in the capture phase so an Escape meant for a game stops here, instead of also
 // closing the games library underneath.
 addEventListener('keydown', (event) => {
   const world = Object.values(worlds).find((w) => !w.host.hidden);
   if (!world) return;
-  if (event.key === 'Escape') { event.stopImmediatePropagation(); world.close(); return; }
+  // Escape pauses a game under way (and resumes it from the pause card), so one stray key press
+  // never throws away a session. Anywhere else, it leaves the game.
+  if (event.key === 'Escape') {
+    event.stopImmediatePropagation();
+    if (world.paused) world.resume();
+    else if (world.playing) world.pause();
+    else world.close();
+    return;
+  }
   if (world.paused) return;
   if (world.keyHandler) world.keyHandler(event);
 }, true);
