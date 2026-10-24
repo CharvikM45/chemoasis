@@ -2,10 +2,12 @@
  * Shared level screens for the six home-page games.
  *   GameLevels.pick({ host, game, title, kicker, levels, about, onPick, onExit })
  *     shows "Choose a level"; levels are [{ name, desc }]. Every level is open; finished ones
- *     get a tick and the first unfinished one is marked "Up next". `about` ({ text, cite, href })
- *     says what the exercise trains and which research it is based on.
- *   GameLevels.done({ host, game, level, levels, message, onPick, onLevels, onExit, extra })
+ *     get a tick and the first unfinished one is marked "Up next". `about` ({ text, cite, href,
+ *     more }) says what the exercise practises and which research inspired it; `more` is an
+ *     optional list of extra { cite, href } sources.
+ *   GameLevels.done({ host, game, level, levels, message, details, onPick, onLevels, onExit, extra })
  *     records the level as finished and shows "Level N complete" with Next / Again / All levels.
+ *     `details` (optional list of strings) sit behind a "Show details" toggle.
  * Progress is kept in this browser (localStorage), per game, and on the account when signed in.
  */
 (() => {
@@ -64,7 +66,7 @@
     const el = overlay(host, `<p class="level-kicker">${escape(kicker)}</p>
       <h2>${escape(title)}</h2>
       <p class="level-lede">Choose a level. It adjusts as you play: harder when you're doing well, easier when you're not.</p>
-      ${about ? `<p class="level-about">${escape(about.text)} <a href="${escape(about.href)}" target="_blank" rel="noreferrer">${escape(about.cite)} ↗</a><small>Based on published research. Not yet clinically reviewed, and not a treatment.</small></p>` : ''}
+      ${about ? `<p class="level-about">${escape(about.text)} ${[about, ...(about.more || [])].map((s) => `<a href="${escape(s.href)}" target="_blank" rel="noreferrer">${escape(s.cite)} ↗</a>`).join(' · ')}<small>Inspired by tasks used in research. Not yet clinically reviewed, and not a treatment.</small></p>` : ''}
       <ol class="level-grid">${levels.map((level, i) => `<li><button data-level="${i}" class="${done.has(i) ? 'is-done' : ''} ${i === next ? 'is-next' : ''}">
         <span class="level-num">Level ${i + 1}</span><b>${escape(level.name)}</b><small>${escape(level.desc)}</small>
         <em>${done.has(i) ? '✓ Completed' : i === next ? 'Up next' : ''}</em></button></li>`).join('')}</ol>
@@ -74,12 +76,13 @@
     if (next >= 0) el.querySelector(`[data-level="${next}"]`).focus({ preventScroll: true });
   }
 
-  function done({ host, game, level, levels, message, onPick, onLevels, onExit, extra = [] }) {
+  function done({ host, game, level, levels, message, details = [], onPick, onLevels, onExit, extra = [] }) {
     complete(game, level);
     const hasNext = level + 1 < levels.length;
     const el = overlay(host, `<p class="level-kicker">Level ${level + 1} · ${escape(levels[level].name)}</p>
       <h2>Level ${level + 1} <em>complete.</em></h2>
       <p class="level-lede">${escape(message)}</p>
+      ${details.length ? `<details class="level-details"><summary>Show details</summary><ul>${details.map((d) => `<li>${escape(d)}</li>`).join('')}</ul></details>` : ''}
       <div class="level-actions">
         ${hasNext ? `<button data-go="next" class="level-primary">Next level →</button>` : ''}
         <button data-go="again">Play again</button>
