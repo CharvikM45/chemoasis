@@ -42,8 +42,11 @@ function createApp({ db, isProd = false, allowedOrigins = [], moderators = [], d
       return res.status(403).json({ error: 'This request came from another website and was blocked.' });
     }
     if (!origin) return next();
-    const own = `${req.protocol}://${req.get('host')}`;
-    if (origin === own || allowedOrigins.includes(origin)) return next();
+    // Compare the host, not the scheme: behind Railway's proxy the scheme the app sees can differ
+    // from the browser's, but a page on another site can never send this site's host as its Origin.
+    let originHost = null;
+    try { originHost = new URL(origin).host; } catch (_) { /* not a URL: treated as another site */ }
+    if (originHost === req.get('host') || allowedOrigins.includes(origin)) return next();
     audit(db, req, 'cross_site_blocked', { detail: { path: req.path, origin: origin.slice(0, 100) } });
     res.status(403).json({ error: 'This request came from another website and was blocked.' });
   });
