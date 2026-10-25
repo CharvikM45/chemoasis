@@ -1,0 +1,110 @@
+/* Research Studio page (research.html). Builds on home.css: same colours, fonts, nav, buttons and
+   steps, with no 3D brain behind it, so the content can use the full width. */
+
+.rs { background: radial-gradient(90% 60% at 85% 0%, #2a140d 0, rgba(42, 20, 13, 0) 60%) var(--bg) no-repeat; }
+.rs main { padding: 0 clamp(20px, 6vw, 96px); }
+.rs h3 { margin: 0; font: 400 21px/1.2 "Playfair Display", serif; letter-spacing: -.02em; }
+.rs a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.rs .nav-link[aria-current="page"] { color: var(--accent); }
+
+.rs-skip { position: absolute; left: 12px; top: -60px; z-index: 30; padding: 10px 14px; background: var(--accent); color: #1c120d; font: 500 12px "DM Mono", monospace; text-decoration: none; }
+.rs-skip:focus { top: 12px; }
+
+/* ---------- hero: text left, a submission as jigsaw pieces right ---------- */
+
+.rs-hero { min-height: 88vh; display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, .8fr); align-items: center; gap: clamp(32px, 5vw, 80px); padding: 140px 0 72px; max-width: 1180px; margin: 0 auto; }
+.rs-hero__copy { max-width: 660px; }
+.rs-hero h1 { font-size: clamp(44px, 5.4vw, 78px); }
+.rs-status { display: inline-flex; align-items: center; gap: 10px; margin: 26px 0 0; padding: 8px 12px; border: 1px solid rgba(231, 167, 130, .45); color: var(--accent); font: 11px "DM Mono", monospace; letter-spacing: .08em; text-transform: uppercase; }
+.rs-status span { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+
+.rs-puzzle { width: 100%; max-width: 440px; justify-self: end; overflow: visible; }
+.rs-puzzle use { stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+.rs-puzzle .p-done { stroke: var(--bg); }
+.rs-puzzle .p1 { fill: #a86c4e; }
+.rs-puzzle .p2 { fill: #d7b391; }
+.rs-puzzle .p3 { fill: #72503e; }
+.rs-puzzle .p4 { fill: #e7a782; }
+.rs-puzzle .p-next { fill: rgba(231, 167, 130, .08); stroke: var(--accent); stroke-dasharray: 5 5; }
+.rs-puzzle text { fill: #1c120d; font: 500 8px "DM Mono", monospace; letter-spacing: .04em; text-anchor: middle; text-transform: uppercase; }
+.rs-puzzle text.t-light { fill: var(--ink); }
+.rs-puzzle text.t-next { fill: var(--accent); }
+@media (prefers-reduced-motion: no-preference) {
+  .rs-puzzle .p-next { animation: rs-settle 3.6s ease-in-out infinite; }
+}
+@keyframes rs-settle { 50% { fill: rgba(231, 167, 130, .22); } }
+
+/* ---------- sections ---------- */
+
+.rs-section { max-width: 1180px; margin: 0 auto; padding: 72px 0; border-top: 1px solid var(--line); }
+.rs-section h2 { max-width: 760px; }
+.rs-body { max-width: 640px; margin: 22px 0 0; color: var(--soft); font-size: 16px; line-height: 1.65; }
+.rs-note { margin: 20px 0 0; color: var(--muted); font-size: 14px; line-height: 1.6; }
+
+.rs-tags { list-style: none; margin: 30px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 10px; max-width: 860px; }
+.rs-tags li { padding: 10px 14px; background: var(--card); border: 1px solid var(--line); color: var(--ink); font-size: 14px; }
+
+.rs-steps { max-width: 780px; }
+
+/* ---------- credit: text beside a preview of a credited activity ---------- */
+
+.rs-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, .9fr); gap: clamp(32px, 5vw, 72px); align-items: center; }
+.rs-preview { margin: 0; padding: 22px; background: var(--card); border: 1px solid rgba(231, 167, 130, .4); display: grid; gap: 14px; }
+.rs-preview figcaption { color: var(--accent-2); font: 10px "DM Mono", monospace; letter-spacing: .16em; text-transform: uppercase; }
+.rs-game { padding: 18px; border: 1px solid var(--line); background: rgba(0, 0, 0, .25); }
+.rs-game p { margin: 0; }
+.rs-game__area { color: var(--accent); font: 10px "DM Mono", monospace; letter-spacing: .14em; text-transform: uppercase; }
+.rs-game__name { margin-top: 8px !important; font: 400 24px/1.15 "Playfair Display", serif; letter-spacing: -.02em; }
+.rs-game__desc { margin-top: 8px !important; color: var(--soft); font-size: 14px; line-height: 1.5; }
+.rs-game__based { margin-top: 12px !important; color: var(--muted); font: 11px "DM Mono", monospace; letter-spacing: .04em; }
+.rs-creator { display: grid; grid-template-columns: 44px 1fr; gap: 14px; align-items: center; padding: 16px 18px; border: 1px solid var(--line); }
+.rs-creator p { margin: 0; }
+.rs-avatar { width: 44px; height: 44px; display: grid; place-items: center; background: #72503e; color: var(--ink); font: 400 20px "Playfair Display", serif; }
+.rs-creator__name { font-weight: 600; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.rs-creator__meta { margin-top: 4px !important; color: var(--muted); font-size: 13px; }
+.rs-verified { padding: 2px 7px; border: 1px solid rgba(231, 167, 130, .55); color: var(--accent); font: 500 10px "DM Mono", monospace; letter-spacing: .08em; text-transform: uppercase; }
+
+/* ---------- standards ---------- */
+
+.rs-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 34px; }
+.rs-card { display: grid; align-content: start; gap: 10px; padding: 22px; background: var(--card); border: 1px solid var(--line); }
+.rs-card p { margin: 0; color: var(--soft); font-size: 14px; line-height: 1.55; }
+
+/* ---------- agreement and questions ---------- */
+
+.rs-promises { list-style: none; counter-reset: p; margin: 24px 0 0; padding: 0; display: grid; gap: 10px; max-width: 760px; }
+.rs-promises li { counter-increment: p; display: grid; grid-template-columns: 44px 1fr; gap: 14px; padding: 16px 20px; background: var(--card); border: 1px solid var(--line); color: var(--ink); font-size: 15px; line-height: 1.55; }
+.rs-promises li::before { content: "0" counter(p); color: var(--accent); font: 12px "DM Mono", monospace; letter-spacing: .1em; padding-top: 3px; }
+
+.rs-faq { margin: 30px 0 0; max-width: 760px; }
+.rs-faq dt { padding-top: 18px; border-top: 1px solid var(--line); font: 400 20px/1.3 "Playfair Display", serif; letter-spacing: -.01em; }
+.rs-faq dt:first-child { border-top: 0; padding-top: 0; }
+.rs-faq dd { margin: 8px 0 18px; color: var(--soft); font-size: 15px; line-height: 1.6; }
+
+.rs-interest .actions { margin-top: 28px; }
+
+.rs-footer { max-width: 1180px; margin: 0 auto; padding: 40px 0 56px; border-top: 1px solid var(--line); }
+.rs-footer .disclaimer { margin: 0; }
+.rs-footer__links { display: flex; flex-wrap: wrap; gap: 10px 24px; margin-top: 22px; }
+.rs-footer__links a { color: var(--accent); font: 11px "DM Mono", monospace; letter-spacing: .08em; text-transform: uppercase; text-decoration: none; }
+.rs-footer__links a:hover { color: var(--ink); }
+
+/* ---------- narrower screens ---------- */
+
+@media (max-width: 1080px) {
+  .rs-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 899px) {
+  .rs-hero { grid-template-columns: 1fr; min-height: auto; padding: 120px 0 56px; }
+  .rs-puzzle { justify-self: start; max-width: 340px; order: -1; }
+  .rs-split { grid-template-columns: 1fr; }
+  .rs-section { padding: 56px 0; }
+}
+@media (max-width: 480px) {
+  .rs main { padding: 0 16px; }
+  .rs-hero { padding-top: 110px; }
+  .rs-puzzle { max-width: 280px; }
+  .rs-grid { grid-template-columns: 1fr; }
+  .rs-card, .rs-preview { padding: 18px 16px; }
+  .rs-promises li { grid-template-columns: 34px 1fr; padding: 14px 16px; }
+}
