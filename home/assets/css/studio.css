@@ -1,7 +1,9 @@
 /* Open Research Studio pages (research.html and the studio-*.html pages). Builds on home.css: same
    colours, fonts, nav and buttons, with no 3D brain behind it.
    One visual language throughout: dark cards with a hairline border (like the home page's
-   panels), copper only for the eyebrow, italic words, numbers, links and the main button. */
+   panels), copper for the eyebrow, italic words, links and the main button.
+   The site's added colours: a plum band behind "How it works", pink for step numbers and card
+   icons, blue for ticks, passed checks and the Verified badge. The fallbacks match home.css. */
 
 .rs { background: radial-gradient(90% 60% at 85% 0%, #2a140d 0, rgba(42, 20, 13, 0) 60%) var(--bg) no-repeat; }
 .rs main { padding: 0 clamp(20px, 6vw, 96px); }
@@ -40,6 +42,11 @@
 
 .rs-section { max-width: 1180px; margin: 0 auto; padding: 64px 0; }
 .rs-section h2 { max-width: 820px; }
+/* full-width plum band, fading in and out so it has no hard edges */
+.rs main { overflow-x: clip; }
+.rs-section--band { position: relative; isolation: isolate; }
+.rs-section--band::before { content: ""; position: absolute; z-index: -1; inset: 0 -100vw; background: linear-gradient(180deg, rgba(59, 24, 50, 0), rgba(59, 24, 50, .62) 18%, rgba(59, 24, 50, .62) 82%, rgba(59, 24, 50, 0)); }
+.rs-section--band .eyebrow { color: var(--pink, #d3a5c9); }
 .rs-body { max-width: 640px; margin: 20px 0 0; color: var(--soft); font-size: 16px; line-height: 1.65; }
 .rs-note { margin: 20px 0 0; color: var(--muted); font-size: 14px; line-height: 1.6; }
 .rs-source { color: var(--accent); }
@@ -49,12 +56,13 @@
 .rs-cards--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .rs-card { display: grid; align-content: start; gap: 10px; padding: 22px; }
 .rs-card p { margin: 0; color: var(--soft); font-size: 14px; line-height: 1.55; }
-.rs-card i { width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid rgba(231, 167, 130, .45); color: var(--accent); font-style: normal; font-size: 15px; }
+.rs-card i { width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid rgba(211, 165, 201, .45); color: var(--pink, #d3a5c9); font-style: normal; font-size: 15px; }
 
 /* how it works: four steps in a row */
 .rs-flow { list-style: none; margin: 32px 0 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
 .rs-flow li { padding: 20px; display: grid; align-content: start; gap: 8px; }
-.rs-flow span { color: var(--accent); font: 12px "DM Mono", monospace; letter-spacing: .1em; }
+.rs-flow li { border-top: 2px solid rgba(211, 165, 201, .4); }
+.rs-flow span { color: var(--pink, #d3a5c9); font: 12px "DM Mono", monospace; letter-spacing: .1em; }
 .rs-flow p { margin: 0; color: var(--soft); font-size: 14px; line-height: 1.5; }
 
 /* credit preview beside the standards */
@@ -72,11 +80,11 @@
 .rs-avatar { width: 44px; height: 44px; display: grid; place-items: center; background: #c98a66; color: #2b1610; font: 400 20px "Playfair Display", serif; }
 .rs-creator__name { font-weight: 600; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .rs-creator__meta { margin-top: 4px !important; color: var(--muted); font-size: 13px; }
-.rs-verified { padding: 2px 7px; border: 1px solid rgba(231, 167, 130, .55); color: var(--accent); font: 500 10px "DM Mono", monospace; letter-spacing: .08em; text-transform: uppercase; }
+.rs-verified { padding: 2px 7px; border: 1px solid rgba(167, 188, 221, .55); color: var(--blue, #a7bcdd); font: 500 10px "DM Mono", monospace; letter-spacing: .08em; text-transform: uppercase; }
 .rs-subhead { margin-bottom: 14px !important; }
 .rs-ticks { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
 .rs-ticks li { position: relative; padding-left: 30px; color: var(--soft); font-size: 15px; line-height: 1.55; }
-.rs-ticks li::before { content: "✓"; position: absolute; left: 0; top: 0; color: var(--accent); }
+.rs-ticks li::before { content: "✓"; position: absolute; left: 0; top: 0; color: var(--blue, #a7bcdd); }
 .rs-ticks b { color: var(--ink); font-weight: 600; }
 
 /* the fine print: questions that open */
@@ -102,7 +110,7 @@
 /* the agreement as a numbered list (studio-submit.html) */
 .rs-promises { list-style: none; counter-reset: p; margin: 0; padding: 0; display: grid; gap: 8px; }
 .rs-promises li { counter-increment: p; display: grid; grid-template-columns: 36px 1fr; gap: 12px; padding: 12px 16px; border: 1px solid var(--line); color: var(--ink); font-size: 14px; line-height: 1.55; }
-.rs-promises li::before { content: "0" counter(p); color: var(--accent); font: 12px "DM Mono", monospace; letter-spacing: .1em; padding-top: 3px; }
+.rs-promises li::before { content: "0" counter(p); color: var(--pink, #d3a5c9); font: 12px "DM Mono", monospace; letter-spacing: .1em; padding-top: 3px; }
 
 /* the library of published activities */
 .rs-library { list-style: none; margin: 30px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: 12px; }
@@ -155,7 +163,7 @@
 .rs-form { display: grid; gap: 14px; }
 .rs-step { margin: 0; padding: 24px; min-width: 0; display: grid; gap: 16px; }
 .rs-step legend { float: left; width: 100%; padding: 0; margin-bottom: 4px; font: 400 26px/1.15 "Playfair Display", serif; letter-spacing: -.02em; }
-.rs-step legend span { margin-right: 10px; color: var(--accent); font: 12px "DM Mono", monospace; letter-spacing: .1em; vertical-align: middle; }
+.rs-step legend span { margin-right: 10px; color: var(--pink, #d3a5c9); font: 12px "DM Mono", monospace; letter-spacing: .1em; vertical-align: middle; }
 .rs-step legend + * { clear: both; }
 .rs-step[disabled] { opacity: .78; }
 .rs-hint { margin: 0; color: var(--soft); font-size: 14px; line-height: 1.55; }
@@ -202,7 +210,7 @@
 .rs-check-item details { margin-top: 6px; color: var(--soft); font-size: 13px; }
 .rs-check-item summary { cursor: pointer; color: var(--accent); }
 .rs-check-item__icon { width: 26px; height: 26px; display: grid; place-items: center; border: 1px solid currentColor; font: 600 13px "DM Mono", monospace; }
-.rs-check-item--pass .rs-check-item__icon { color: #d7b391; }
+.rs-check-item--pass .rs-check-item__icon { color: var(--blue, #a7bcdd); }
 .rs-check-item--warn .rs-check-item__icon { color: var(--accent); }
 .rs-check-item--fail { border-color: rgba(228, 138, 122, .6); }
 .rs-check-item--fail .rs-check-item__icon { color: #f0a596; }
