@@ -13,7 +13,7 @@
 
   (async function start() {
     const id = new URLSearchParams(location.search).get("id");
-    if (!id) { message("No activity was chosen. Find one on the Research Studio page."); return; }
+    if (!id) { message("No activity was chosen. Find one on the Open Research Studio page."); return; }
     let activity;
     try {
       ({ activity } = await api("GET", "/published/" + encodeURIComponent(id)));
@@ -21,7 +21,7 @@
       message(error.status === 404 ? "This activity isn't published right now. Its creator may have taken it down." : error.message);
       return;
     }
-    document.title = activity.title + " · Research Studio · Chemoasis";
+    document.title = activity.title + " · Open Research Studio · Chemoasis";
     $("area").textContent = AREAS[activity.area] || "Activity";
     $("title").textContent = activity.title;
     $("summary").textContent = activity.summary;

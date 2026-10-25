@@ -261,6 +261,18 @@ test("a crisis post stays up and goes to the top of the moderators' queue", asyn
   assert(queue[0].reports.some((r) => r.reason === "support" && r.automatic));
 });
 
+test("\"Other\" is the last category and gets the same safety checks", async (F) => {
+  const ids = F.catalog.CATEGORIES.map((c) => c.id);
+  assert(ids[ids.length - 1] === "other", "Other should be listed last");
+  assert(new Set(ids).size === ids.length, "category ids must be unique");
+  const held = await F.store.createThread({ categoryId: "other", title: "Big news", body: "This game cured my brain fog." });
+  assert(held.status === "pending", "a cure claim in Other should be held like anywhere else");
+  const crisis = await F.store.createThread({ categoryId: "other", title: "Off topic", body: "I want to die some days." });
+  await F.store.switchDemoUser("u-mod");
+  const queue = await F.store.moderationQueue();
+  assert(queue[0].targetId === crisis.id && queue[0].support, "a crisis post in Other goes to the top of the queue");
+});
+
 test("people can flag that someone may need support, and it never hides the post", async (F) => {
   for (const user of ["u-river", "u-june", "u-sam"]) {
     await F.store.switchDemoUser(user);

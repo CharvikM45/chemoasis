@@ -214,7 +214,7 @@ Forum.ui = (function () {
       account = '<div class="f-account"><a href="../account/index.html?next=forum">Sign in</a></div>';
     }
 
-    // The top bar is the same as on every other page (logo left; Games, Community, Research Studio and Your games
+    // The top bar is the same as on every other page (logo left; Games, Community, Open Research Studio and Your games
     // right). The community's own links and the account sit on a bar below it, which scrolls away.
     header.innerHTML =
       '<a class="skip-link" href="#main">Skip to main content</a>' +
@@ -223,7 +223,7 @@ Forum.ui = (function () {
       '<div class="f-top__links">' +
       '<a class="f-top__link" href="../home/index.html?games=1">Games</a>' +
       '<a class="f-top__link" href="index.html" aria-current="true">Community</a>' +
-      '<a class="f-top__link" href="../home/research.html">Research Studio</a>' +
+      '<a class="f-top__link" href="../home/research.html">Open Research Studio</a>' +
       '<a class="f-top__link f-top__cta" href="../account/index.html">Your games <span aria-hidden="true">→</span></a>' +
       "</div>" +
       "</nav>";

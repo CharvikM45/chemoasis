@@ -1,4 +1,4 @@
-// /api/studio: the Research Studio, where clinicians and researchers submit activities built on
+// /api/studio: the Open Research Studio, where clinicians and researchers submit activities built on
 // published research, and reviewers decide which ones are published with the creator's credit.
 //
 //   Public:     the published activities, and each one's game in a sandbox.
@@ -170,7 +170,7 @@ function studioRouter({ db, isProd, moderators = [], limits = {}, fetchImpl = fe
 
   async function signedIn(req, res) {
     const u = await user(req);
-    if (!u) res.status(401).json({ error: 'Please sign in to use the Research Studio.' });
+    if (!u) res.status(401).json({ error: 'Please sign in to use the Open Research Studio.' });
     return u;
   }
   async function own(req, res, u) {

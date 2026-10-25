@@ -65,7 +65,7 @@ create table forum_profiles (
 
 create table forum_threads (
   id uuid primary key default gen_random_uuid(),
-  category_id text not null check (category_id in ('welcome', 'experiences', 'games', 'ask-a-professional', 'app-help', 'ideas')),
+  category_id text not null check (category_id in ('welcome', 'experiences', 'games', 'ask-a-professional', 'app-help', 'ideas', 'other')),
   author_id uuid not null references users (id) on delete cascade,
   title text not null check (char_length(title) between 4 and 120),
   body text not null check (char_length(body) between 2 and 5000),
