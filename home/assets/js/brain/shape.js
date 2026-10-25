@@ -1,7 +1,14 @@
 /*
  * The brain's shape as a signed distance field: negative inside, positive outside.
- * Smooth lobes (ellipsoids), then rounded gyri carved in by narrow sulci, a finely ridged
- * cerebellum and a smooth brainstem.
+ * Built like a real brain, not a blob with random ripples:
+ * - each hemisphere is a frontal, a parietal and an occipital part blended together, with a flat
+ *   medial side, a flattened underside and a separate temporal lobe below a deep lateral fissure;
+ * - the folds follow the real layout: the central sulcus slanting down and forward, with the
+ *   precentral and postcentral sulci parallel to it; frontal and temporal gyri running front to
+ *   back; looser, more maze-like folds in the parietal and occipital lobes;
+ * - gyri are broad and rounded, sulci narrow and deep; the two hemispheres fold a little
+ *   differently, like real ones;
+ * - a cerebellum with fine parallel folia tucked under the back, and a smooth brainstem.
  * Coordinates: x = left/right, y = up, z = toward the face. The brain fits in about ±1.
  */
 
@@ -10,9 +17,9 @@
 const GRAD = new Float32Array([1, 1, 0, -1, 1, 0, 1, -1, 0, -1, -1, 0, 1, 0, 1, -1, 0, 1, 1, 0, -1, -1, 0, -1, 0, 1, 1, 0, -1, 1, 0, 1, -1, 0, -1, -1]);
 const perm = new Uint8Array(512);
 const permMod12 = new Uint8Array(512);
+let seed = 1337;
+const rand = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
 (() => {
-  let seed = 1337;
-  const rand = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
   const p = new Uint8Array(256).map((_, i) => i);
   for (let i = 255; i > 0; i--) { const j = Math.floor(rand() * (i + 1)); [p[i], p[j]] = [p[j], p[i]]; }
   for (let i = 0; i < 512; i++) { perm[i] = p[i & 255]; permMod12[i] = perm[i] % 12; }
@@ -50,11 +57,13 @@ export function noise3(xin, yin, zin) {
   );
 }
 
-/* ---------- shapes ---------- */
+/* ---------- helpers ---------- */
 
+const TAU = Math.PI * 2;
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const smoothstep = (a, b, v) => { const t = clamp((v - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
 function smin(a, b, k) { const h = clamp(0.5 + 0.5 * (b - a) / k, 0, 1); return b + (a - b) * h - k * h * (1 - h); }
+function smax(a, b, k) { return -smin(-a, -b, k); }
 
 // Inigo Quilez's ellipsoid distance bound.
 function ellipsoid(x, y, z, rx, ry, rz) {
@@ -70,65 +79,136 @@ function capsule(x, y, z, ax, ay, az, bx, by, bz, ra, rb) {
   return Math.hypot(px - dx * h, py - dy * h, pz - dz * h) - (ra + (rb - ra) * h);
 }
 
-// One hemisphere's smooth outer shape, mirrored, with a narrow gap between the halves.
-function cortexBase(x, y, z) {
+// A maze of folds with one main spacing (band-limited noise: a sum of waves of the same
+// wavelength in random directions). Its zero lines wander, branch and stop like real secondary
+// sulci. Spread about ±1.
+const WAVES = 18;
+const waveDir = new Float32Array(WAVES * 3), wavePhase = new Float32Array(WAVES);
+for (let i = 0; i < WAVES; i++) {
+  const u = rand() * 2 - 1, a = rand() * TAU, r = Math.sqrt(1 - u * u);
+  waveDir.set([r * Math.cos(a), u, r * Math.sin(a)], i * 3);
+  wavePhase[i] = rand() * TAU;
+}
+function maze(x, y, z, wavelength) {
+  const k = TAU / wavelength;
+  let s = 0;
+  for (let i = 0; i < WAVES; i++) s += Math.cos(k * (waveDir[i * 3] * x + waveDir[i * 3 + 1] * y + waveDir[i * 3 + 2] * z) + wavePhase[i]);
+  return s / Math.sqrt(WAVES / 2);
+}
+
+// Parallel folds: a sulcus at every whole-number phase, the crown of a gyrus halfway between.
+const stripes = (phase) => Math.sin(Math.PI * phase);
+
+/* ---------- the cerebrum ---------- */
+
+// One hemisphere's smooth outer shape (ax = distance from the midline).
+function hemisphere(ax, y, z) {
+  const frontal = ellipsoid(ax - 0.33, y - 0.07, z - 0.4, 0.37, 0.46, 0.52);
+  const parietal = ellipsoid(ax - 0.36, y - 0.14, z + 0.08, 0.4, 0.52, 0.58);
+  const occipital = ellipsoid(ax - 0.3, y - 0.04, z + 0.52, 0.33, 0.4, 0.4);
+  let d = smin(smin(frontal, parietal, 0.2), occipital, 0.2);
+  d = smax(d, -0.26 + 0.1 * z - y, 0.1); // the flatter underside, rising toward the front
+  // The temporal lobe hangs below the lateral fissure, its pole pointing forward and down.
+  const temporal = ellipsoid(ax - 0.49, y + 0.22 + 0.12 * z, z - 0.03, 0.23, 0.21, 0.5);
+  d = smin(d, temporal, 0.045); // a small blend leaves a crease: the lateral fissure
+  return smax(d, 0.016 - ax, 0.035); // a flat inner side with a rounded edge: the longitudinal fissure
+}
+
+// Where the main fissures run (lateral view: z = front/back, y = height).
+// Central sulcus: from the top, just behind the middle, slanting down and forward to the lateral fissure.
+const central = (y, z) => (z - 0.2 + 0.344 * y) * 0.946; // > 0 in front of it
+// Lateral fissure: from the temporal pole back and slightly up. > 0 below it.
+const belowLateral = (y, z) => -0.1 + 0.26 * (0.4 - z) - y;
+
+// How deep the folds cut in at a point near the surface (0 = crown of a gyrus).
+function folds(x, y, z, ax) {
+  const side = x < 0 ? 31.7 : 0; // the two hemispheres fold a little differently
+  const nx = x + side;
+  const wobble = (f, o) => noise3(nx * f + o, y * f + o * 0.7, z * f - o * 0.3);
+
+  const c = central(y, z);
+  const below = belowLateral(y, z);
+
+  // How much each region's pattern applies here.
+  const back = smoothstep(-0.4, -0.62, z); // occipital lobe
+  const temporal = smoothstep(-0.005, 0.05, below) * smoothstep(-0.62, -0.38, z);
+  const upper = (1 - temporal) * (1 - back);
+  const band = 1 - smoothstep(0.17, 0.25, Math.abs(c)); // central, precentral and postcentral sulci
+  const wCentral = upper * band;
+  const wFrontal = upper * (1 - band) * (c > 0 ? 1 : 0);
+  const wParietal = upper * (1 - band) * (c > 0 ? 0 : 1);
+
+  // Sulci run along the zero lines of this pattern; the further from zero, the closer to the
+  // crown of a gyrus.
+  let n = 0;
+  if (wCentral > 0) n += wCentral * stripes(c / 0.14 + 0.16 * wobble(2.4, 3.1));
+  if (wFrontal > 0) {
+    const theta = Math.atan2(y, ax - 0.12); // around a front-to-back axis: gyri run front to back
+    n += wFrontal * stripes((theta - 0.5) / 0.4 + 0.3 * wobble(2.6, 7.7));
+  }
+  if (wParietal > 0) {
+    const theta = Math.atan2(y, ax - 0.12);
+    n += wParietal * stripes((theta - 0.85) / 0.42 + 0.4 * wobble(2.8, 11.3));
+  }
+  if (temporal > 0) {
+    const theta = Math.atan2(y + 0.24 + 0.1 * z, ax - 0.42); // around the temporal lobe's own axis
+    n += temporal * stripes((theta - 0.55) / 0.65 + 0.25 * wobble(2.6, 15.9));
+  }
+  if (back > 0) n += back * stripes(y / 0.13 + 0.45 * wobble(3, 19.1));
+
+  // Secondary folds: some maze everywhere, more in the parietal and occipital lobes, so gyri
+  // wander, branch and stop instead of running in perfect rows.
+  const w = 0.05;
+  const qx = nx + w * wobble(3.1, 23.3), qy = y + w * wobble(3.1, 29.9), qz = z + w * wobble(3.1, 37.1);
+  const m = clamp(0.32 + 0.2 * wParietal + 0.22 * back + 0.3 * (1 - wCentral - wFrontal - wParietal - temporal - back), 0, 0.8);
+  n = (n * (1 - m) + maze(qx, qy, qz, 0.25) * m) / Math.hypot(1 - m, m);
+  n = (n + 0.18 * maze(qz * 1.3, qx * 1.3, qy * 1.3, 0.14)) / 1.016; // small side branches
+
+  // Profile across a gyrus: a rounded crown, like half a tube, dropping steeply into the sulcus.
+  // 0 on a sulcus line, 1 on a crown. Folding n like this also adds a ring of sulci inside any
+  // patch where n stays large, so no gyrus grows into a wide flat plateau.
+  const f = Math.abs(Math.sin(n * (Math.PI / 2.4)));
+  const g = 1 - f;
+  let depth = 0.072 * (1 - Math.sqrt(Math.max(0, 1 - g * g)));
+  depth *= 0.45 + 0.55 * smoothstep(0.02, 0.12, ax); // gentler on the hidden inner side
+
+  // The central sulcus is a little deeper than its neighbours; the lateral fissure much deeper.
+  depth += 0.02 * Math.exp(-((c / 0.02) ** 2)) * wCentral;
+  depth += 0.085 * Math.exp(-((below / 0.03) ** 2)) * smoothstep(0.28, 0.42, ax) * smoothstep(-0.32, -0.12, z);
+  return depth;
+}
+
+function cerebrum(x, y, z) {
   const ax = Math.abs(x);
-  const front = ellipsoid(ax - 0.29, y - 0.1, z - 0.4, 0.34, 0.5, 0.56);
-  const back = ellipsoid(ax - 0.34, y - 0.13, z + 0.24, 0.39, 0.56, 0.62);
-  const temporal = ellipsoid(ax - 0.45, y + 0.24, z - 0.08, 0.23, 0.24, 0.5);
-  let d = smin(smin(front, back, 0.22), temporal, 0.28);
-  return Math.max(d, 0.022 - ax);
+  const d = hemisphere(ax, y, z);
+  if (d > 0.13 || d < -0.2) return d; // far from the surface: the folds don't matter
+  return d - 0.03 + folds(x, y, z, ax);
 }
 
-// 0..1: 1 in the middle of a sulcus. Long, wandering ridges like the gyri in a real brain:
-// vertical above the lateral fissure, running front-to-back on the temporal lobe.
-function sulcus(x, y, z) {
-  const w = 0.13;
-  const qx = x + w * noise3(x * 1.6, y * 1.6, z * 1.6);
-  const qy = y + w * noise3(x * 1.6 + 5.2, y * 1.6 + 1.3, z * 1.6);
-  const qz = z + w * noise3(x * 1.6, y * 1.6 + 9.1, z * 1.6 + 2.7);
-  const above = smoothstep(-0.06, 0.06, y + 0.1 + 0.28 * z);
-  const dir = (qy - 0.18 * qz) + ((qz + 0.25 * qy) - (qy - 0.18 * qz)) * above;
-  const s = Math.sin(dir * 23 + 3.2 * noise3(qx * 2.6, qy * 2.6, qz * 2.6));
-  const h = (s + 1) * 0.5;
-  // Where the two fold directions meet, fade the folds out; the lateral fissure takes over.
-  const calm = smoothstep(0.03, 0.13, Math.abs(y + 0.1 + 0.28 * z));
-  return Math.pow(h, 2.2) * calm; // broad, rounded gyri; narrower sulci
-}
-
-// The lateral (Sylvian) fissure: one deep groove above the temporal lobe.
-function lateralFissure(x, y, z) {
-  const ax = Math.abs(x);
-  const line = (y + 0.1 + 0.28 * z) / 1.038 + 0.02 * noise3(y * 2.6, z * 2.6, 4.1);
-  return smoothstep(0.08, 0, Math.abs(line)) * smoothstep(0.25, 0.4, ax) * smoothstep(0.55, 0.25, z);
-}
-
-const GYRI_DEPTH = 0.085;
-function cortex(x, y, z) {
-  const d = cortexBase(x, y, z);
-  if (d > 0.12 || d < -0.16) return d; // far from the surface: the folds don't matter
-  return d - 0.025 + GYRI_DEPTH * sulcus(x, y, z) + 0.05 * lateralFissure(x, y, z);
-}
+/* ---------- cerebellum and brainstem ---------- */
 
 function cerebellum(x, y, z) {
   const ax = Math.abs(x);
-  const lobe = ellipsoid(ax - 0.21, y + 0.42, z + 0.55, 0.31, 0.22, 0.29);
-  const vermis = ellipsoid(x, y + 0.42, z + 0.6, 0.12, 0.2, 0.26);
-  const d = smin(lobe, vermis, 0.08);
-  if (d > 0.06) return d;
-  const zz = z + 0.55;
-  const folia = Math.sin((y + 0.2 * zz * zz) * 70 + 1.2 * noise3(x * 3, y * 3, z * 3));
-  return d + 0.012 * smoothstep(0.2, 1, folia);
+  const lobe = ellipsoid(ax - 0.21, y + 0.47, z + 0.5, 0.28, 0.19, 0.27);
+  const vermis = ellipsoid(x, y + 0.46, z + 0.55, 0.1, 0.19, 0.24);
+  const d = smin(lobe, vermis, 0.07);
+  if (d > 0.06 || d < -0.08) return d;
+  // Folia: fine grooves curving around the cerebellum, plus one deeper horizontal fissure.
+  const r = Math.hypot(y + 0.62, (z + 0.42) * 0.9);
+  const folia = Math.sin(r * 105 + 1.5 * noise3(x * 4, y * 4, z * 4));
+  const fissure = Math.exp(-(((r - 0.27) / 0.012) ** 2));
+  return d + 0.009 * smoothstep(0.1, 1, folia) + 0.03 * fissure;
 }
 
 function brainstem(x, y, z) {
-  const stem = capsule(x, y, z, 0, -0.18, -0.14, 0, -0.84, -0.3, 0.12, 0.08);
-  const pons = ellipsoid(x, y + 0.43, z + 0.07, 0.16, 0.14, 0.13);
-  return smin(stem, pons, 0.1);
+  const stem = capsule(x, y, z, 0, -0.2, -0.12, 0, -0.86, -0.28, 0.115, 0.078);
+  const pons = ellipsoid(x, y + 0.44, z + 0.06, 0.15, 0.13, 0.12);
+  return smin(stem, pons, 0.08);
 }
 
 export function field(x, y, z) {
-  return Math.min(cortex(x, y, z), smin(cerebellum(x, y, z), brainstem(x, y, z), 0.04));
+  // Hard joins keep visible creases between the cerebrum, cerebellum and brainstem.
+  return Math.min(cerebrum(x, y, z), cerebellum(x, y, z), brainstem(x, y, z));
 }
 
-export const BOUNDS = { min: [-0.8, -0.98, -1.0], max: [0.8, 0.82, 1.05] };
+export const BOUNDS = { min: [-0.82, -0.98, -1.0], max: [0.82, 0.76, 1.0] };

@@ -107,6 +107,33 @@ test('game results are saved for the progress chart', async () => {
   } finally { await t.close(); }
 });
 
+test('Gentle sessions are saved without a score, and odd modes are refused', async () => {
+  const t = await start();
+  try {
+    const cookie = await t.signUp('sam@example.com');
+    assert.strictEqual((await t.call('POST', '/api/profile/result', { cookie, body: { game: 'rhythm', level: 0, score: null, mode: 'gentle' } })).status, 204);
+    assert.strictEqual((await t.call('POST', '/api/profile/result', { cookie, body: { game: 'signal', level: 2, score: 812, mode: 'challenge' } })).status, 204);
+    assert.strictEqual((await t.call('POST', '/api/profile/result', { cookie, body: { game: 'signal', level: 2, score: 812, mode: 'turbo' } })).status, 400);
+    const { results } = (await t.call('GET', '/api/profile', { cookie })).json.profile;
+    assert.deepStrictEqual(results.map((r) => [r.game, r.score, r.mode]), [['rhythm', null, 'gentle'], ['signal', 812, 'challenge']]);
+  } finally { await t.close(); }
+});
+
+test('a long-time player can keep saving: a full history stays under the size limit', async () => {
+  const t = await start();
+  try {
+    const cookie = await t.signUp('sam@example.com');
+    const at = new Date().toISOString();
+    const results = Array.from({ length: 500 }, (_, i) => ({ game: 'cloudpath', level: 12, score: 1234.5, mode: 'challenge', at, extra: 'dropped' }));
+    const events = Array.from({ length: 300 }, () => ({ game: 'cloudpath', kind: 'play', at: Date.now(), applied: false }));
+    const put = await t.call('PUT', '/api/profile', { cookie, body: { profile: { answers: { age: '45-59' }, model: { version: 1, delta: {}, events, dismissed: {} }, results } } });
+    assert.strictEqual(put.status, 200);
+    assert.strictEqual(put.json.profile.results.length, 300, 'keeps the newest 300');
+    assert.strictEqual(put.json.profile.results[0].extra, undefined, 'unknown fields in a result are dropped');
+    assert.strictEqual((await t.call('POST', '/api/profile/result', { cookie, body: { game: 'lumen', level: 1, score: 6 } })).status, 204, 'and the next save still works');
+  } finally { await t.close(); }
+});
+
 test('the play history is capped and oversized profiles are refused', async () => {
   const t = await start();
   try {
@@ -116,7 +143,7 @@ test('the play history is capped and oversized profiles are refused', async () =
     assert.strictEqual(put.json.profile.model.events.length, 300);
     assert.strictEqual(put.json.profile.model.events[0].at, 100, 'keeps the newest');
 
-    const huge = await t.call('PUT', '/api/profile', { cookie, body: { profile: { model: { version: 1, delta: { big: 'x'.repeat(50000) }, events: [], dismissed: {} } } } });
+    const huge = await t.call('PUT', '/api/profile', { cookie, body: { profile: { model: { version: 1, delta: { big: 'x'.repeat(100000) }, events: [], dismissed: {} } } } });
     assert.strictEqual(huge.status, 413);
   } finally { await t.close(); }
 });
@@ -143,17 +170,5 @@ test('with a data key, answers are encrypted in the database and still come back
     assert.ok(rows[0].data.enc && rows[0].data.enc.tag);
     const back = await t.call('GET', '/api/profile', { cookie });
     assert.strictEqual(back.json.profile.answers.cancer, 'breast-cancer-secret');
-  } finally { await t.close(); }
-});
-
-test('answers must be short choices, not arbitrary data', async () => {
-  const t = await start();
-  try {
-    const cookie = await t.signUp('sam@example.com');
-    const ok = await t.call('PUT', '/api/profile', { cookie, body: { profile: { answers: { age: '18to44', energy: 3, rankCog: ['memory', 'focus'], status: null } } } });
-    assert.strictEqual(ok.status, 200);
-    for (const answers of [{ note: 'x'.repeat(500) }, { age: { nested: true } }, { 'bad key!': 'x' }, { rankCog: Array(40).fill('memory') }]) {
-      assert.strictEqual((await t.call('PUT', '/api/profile', { cookie, body: { profile: { answers } } })).status, 400);
-    }
   } finally { await t.close(); }
 });

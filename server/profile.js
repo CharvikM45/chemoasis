@@ -7,8 +7,11 @@ const { makeBox } = require('./crypto-box');
 const GAMES = ['lumen', 'starling', 'cloudpath', 'echo', 'rhythm', 'signal'];
 const FIELDS = ['answers', 'completedAt', 'skippedAt', 'useOwnPosts', 'model', 'levels', 'results'];
 const MAX_EVENTS = 300;
-const MAX_RESULTS = 400;
-const MAX_BYTES = 48 * 1024;
+const MAX_RESULTS = 300;
+// Room for a full play history (300 results + 300 events is about 50 KB) with space to spare,
+// so a long-time player never reaches the limit and has their saves refused.
+const MAX_BYTES = 96 * 1024;
+const MODES = ['gentle', 'challenge'];
 
 const isObject = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
 
@@ -26,6 +29,19 @@ function cleanAnswers(answers) {
   return out;
 }
 
+// One finished session: { game, level, score, mode, at }. score is null for Gentle sessions,
+// which keep no speed scores. Anything else in an entry is dropped.
+function cleanResult(r) {
+  if (!isObject(r) || !GAMES.includes(r.game)) return null;
+  const level = Number(r.level);
+  if (!Number.isInteger(level) || level < 0 || level > 20) return null;
+  const score = r.score === null || r.score === undefined ? null : Number(r.score);
+  if (score !== null && (!Number.isFinite(score) || score < 0 || score > 100000)) return null;
+  const out = { game: r.game, level, score: score === null ? null : Math.round(score * 10) / 10, at: String(r.at || '').slice(0, 30) };
+  if (MODES.includes(r.mode)) out.mode = r.mode;
+  return out;
+}
+
 // Keeps only known fields, caps the play history, and refuses anything oversized.
 function cleanProfile(input) {
   if (!isObject(input)) throw new InputError('That profile could not be read.');
@@ -35,7 +51,7 @@ function cleanProfile(input) {
   if (out.answers !== undefined) out.answers = cleanAnswers(out.answers);
   if (out.levels !== undefined && !isObject(out.levels)) throw new InputError('Levels must be an object.');
   if (out.results !== undefined && !Array.isArray(out.results)) throw new InputError('Results must be a list.');
-  if (Array.isArray(out.results) && out.results.length > MAX_RESULTS) out.results = out.results.slice(-MAX_RESULTS);
+  if (Array.isArray(out.results)) out.results = out.results.slice(-MAX_RESULTS).map(cleanResult).filter(Boolean);
   if (out.model !== undefined && out.model !== null) {
     if (!isObject(out.model)) throw new InputError('The model must be an object.');
     if (Array.isArray(out.model.events) && out.model.events.length > MAX_EVENTS) {
@@ -126,19 +142,17 @@ function profileRouter({ db, isProd, dataKey }) {
     res.status(204).end();
   }));
 
-  // A finished game session: one point on that game's progress chart.
+  // A finished game session: one more session on the progress card, and a point on that game's
+  // chart when it has a score. Gentle sessions send no score (null).
   router.post('/result', handle(async (req, res, user) => {
     const b = req.body || {};
-    const game = String(b.game || '');
-    const level = Number(b.level);
-    const score = Number(b.score);
-    if (!GAMES.includes(game) || !Number.isInteger(level) || level < 0 || level > 20 || !Number.isFinite(score) || score < 0 || score > 100000) {
-      throw new InputError('That result could not be read.');
-    }
+    if (b.mode !== undefined && !MODES.includes(b.mode)) throw new InputError('That result could not be read.');
+    const result = cleanResult({ game: b.game, level: b.level, score: b.score, mode: b.mode, at: new Date().toISOString() });
+    if (!result) throw new InputError('That result could not be read.');
     const row = await load(user.id);
     const data = (row && row.data) || {};
     const results = Array.isArray(data.results) ? data.results : [];
-    results.push({ game, level, score: Math.round(score * 10) / 10, at: new Date().toISOString() });
+    results.push(result);
     await store(user.id, cleanProfile({ ...data, results }));
     res.status(204).end();
   }));

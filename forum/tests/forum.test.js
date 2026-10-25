@@ -91,6 +91,35 @@ test("common crisis phrases show the 988 Lifeline and alert moderators", (F) => 
   }
 });
 
+test("more ways people say they want to die are caught too", (F) => {
+  const phrases = [
+    "Honestly I want to take my own life some days.",
+    "I don't want to be alive anymore.",
+    "I dont want to exist.",
+    "There is no point in living like this.",
+    "Sometimes I want to unalive myself.",
+    "kms, honestly",
+    "I'd rather be dead than do another round.",
+    "I just want it all to end."
+  ];
+  for (const body of phrases) {
+    const result = F.safety.review({ body });
+    assert(result.alert && result.notes.some((n) => /988/.test(n.message)), "missed: " + body);
+  }
+  for (const body of ["I want to end the chemo on a good note.", "I want this week to end.", "She takes my life advice too seriously."]) {
+    assert(!F.safety.review({ body }).alert, "false alarm: " + body);
+  }
+});
+
+test("a claim that something cures is held, but talking about a cure is not", (F) => {
+  for (const body of ["This game cured my brain fog.", "Starling cures chemo brain.", "This will cure your neuropathy.", "Turmeric is a cure for cancer."]) {
+    assert(F.safety.review({ body }).hold, "should hold: " + body);
+  }
+  for (const body of ["I hope they find a cure one day.", "My oncologist said I am cured!", "There's no cure for chemo brain, but these helped.", "I hope they find a cure for cancer."]) {
+    assert(!F.safety.review({ body }).hold, "should not hold: " + body);
+  }
+});
+
 test("a fever or a temperature of 100.4°F / 38°C shows the chemo fever warning", (F) => {
   const fever = (body) => F.safety.review({ body }).notes.some((n) => n.id === "fever");
   for (const body of ["I've had a fever since last night", "My temp was 100.6 this morning", "38.4 C after my infusion", "It hit 101°F"]) {
@@ -162,6 +191,23 @@ test("three different reporters hide a post until a moderator decides", async (F
   }
   await F.store.switchDemoUser("u-jordan");
   assert(!(await F.store.listThreads()).some((t) => t.id === "t-seated"));
+});
+
+test("reports from accounts under 2 days old don't count toward hiding a post", async (F) => {
+  for (const user of ["u-river", "u-sam", "u-jordan"]) { // u-jordan's account is 1 day old
+    await F.store.switchDemoUser(user);
+    await F.store.report("thread", "t-seated", "spam", "");
+  }
+  assert((await F.store.listThreads()).some((t) => t.id === "t-seated"), "a new account's report shouldn't hide the post");
+  await F.store.switchDemoUser("u-mod");
+  const item = (await F.store.moderationQueue()).find((i) => i.targetId === "t-seated");
+  assert(item && item.reports.length === 3, "every report still reaches the moderators");
+});
+
+test("a post can only be a thread or a reply", async (F) => {
+  await rejects(F.store.report("anything", "r-foggy-1", "spam", ""), "no longer exists");
+  await rejects(F.store.editMyPost("anything", "t-hello", { body: "Changed" }), "your own posts");
+  await rejects(F.store.deleteMyPost("anything", "t-hello"), "your own posts");
 });
 
 test("the same person can't report a post twice", async (F) => {

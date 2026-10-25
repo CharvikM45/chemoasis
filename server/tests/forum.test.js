@@ -58,7 +58,7 @@ test('reading and posting need an account; signed out, the forum only says nobod
     const maya = await t.signUp('maya@example.com', 'Maya');
     const list = await t.forum('listThreads', [{}], maya);
     assert.strictEqual(list.status, 200);
-    assert.ok(list.json.result.length > 0, 'the example posts are there');
+    assert.deepStrictEqual(list.json.result, [], 'the live forum starts empty: example posts are for the demo only');
     assert.strictEqual((await t.forum('resetDemo', [])).status, 404, 'demo-only methods are not reachable');
     assert.strictEqual((await t.forum('switchDemoUser', ['u-river'])).status, 404);
   } finally { await t.close(); }
@@ -113,7 +113,8 @@ test('deleting an account takes its posts down', async () => {
     const maya = await t.signUp('maya@example.com', 'Maya');
     const sam = await t.signUp('sam@example.com', 'Sam');
     const made = await t.forum('createThread', [{ categoryId: 'welcome', title: 'Goodbye post', body: 'Testing deletion' }], maya);
-    await t.forum('report', ['thread', 't-hello', 'other', 'my private note'], maya);
+    const sams = await t.forum('createThread', [{ categoryId: 'welcome', title: 'Hello from Sam', body: 'Hi everyone' }], sam);
+    await t.forum('report', ['thread', sams.json.result.id, 'other', 'my private note'], maya);
     await t.call('DELETE', '/api/auth/me', { cookie: maya });
     const after = await t.forum('getThread', [made.json.result.id], sam);
     assert.strictEqual(after.status, 400, 'the post is gone');
@@ -126,16 +127,38 @@ test('deleting an account takes its posts down', async () => {
   } finally { await t.close(); }
 });
 
-test('example posts saved by an earlier version are updated: no made-up verified nurse', async () => {
-  const t = await start((db) => db.query('INSERT INTO forum_state (id, data) VALUES (1, $1::jsonb)', [JSON.stringify(olderExampleForum())]));
+test('example posts saved by an earlier version are taken off the live forum', async () => {
+  const older = olderExampleForum();
+  older.replies.push({ id: 'r-real', threadId: 't-foggy', authorId: '00000000-0000-4000-8000-000000000001', body: 'Same here.', label: 'experience', status: 'visible', anonymous: false, createdAt: new Date().toISOString() });
+  older.profiles.push({ id: '00000000-0000-4000-8000-000000000001', displayName: 'Member 0001', type: 'member', bio: '', showBio: false, createdAt: new Date().toISOString() });
+  const t = await start((db) => db.query('INSERT INTO forum_state (id, data) VALUES (1, $1::jsonb)', [JSON.stringify(older)]));
   try {
     const maya = await t.signUp('maya@example.com', 'Maya');
+    const threads = (await t.forum('listThreads', [{}], maya)).json.result;
+    assert.deepStrictEqual(threads.map((x) => x.id), ['t-foggy'], 'only the example conversation a real member replied to stays');
     const thread = (await t.forum('getThread', ['t-foggy'], maya)).json.result;
-    const reply = thread.replies.find((r) => r.id === 'r-foggy-1');
-    assert.strictEqual(reply.label, 'info', 'general information, not professional guidance');
-    assert.strictEqual(reply.author.id, 'u-mod');
+    assert.deepStrictEqual(thread.replies.map((r) => r.id), ['r-real'], 'example replies are gone; the real reply stays');
     assert.strictEqual((await t.forum('getProfile', ['u-nurse'], maya)).status, 400, 'the example nurse is gone');
     const { rows } = await t.db.query('SELECT data FROM forum_state WHERE id = 1');
-    assert.ok(rows[0].data.profiles.filter((p) => p.id.startsWith('u-')).every((p) => p.example), 'example accounts are marked');
+    const data = rows[0].data;
+    assert.deepStrictEqual(data.profiles.filter((p) => p.id.startsWith('u-')).map((p) => p.id), ['u-alex'], 'only the author of the kept conversation stays');
+    assert.ok(data.reports.every((r) => !r.reporterId.startsWith('u-')), 'reports filed by example accounts are gone');
   } finally { await t.close(); }
+});
+
+test('a post from someone who may need support writes an alert to the server log, without its words', async () => {
+  const t = await start();
+  const lines = [];
+  const original = console.error;
+  console.error = (line) => lines.push(String(line));
+  try {
+    const maya = await t.signUp('maya@example.com', 'Maya');
+    const made = await t.forum('createThread', [{ categoryId: 'experiences', title: 'Rough week', body: 'Some days I want to take my own life.' }], maya);
+    const alerts = lines.filter((l) => l.includes('support_needed'));
+    assert.strictEqual(alerts.length, 1);
+    assert.ok(alerts[0].includes(made.json.result.id), 'names the post');
+    assert.ok(!alerts[0].includes('take my own life') && !alerts[0].includes('Rough week'), 'never the words');
+    await t.forum('createThread', [{ categoryId: 'experiences', title: 'Good day', body: 'Played Lumen Garden today.' }], maya);
+    assert.strictEqual(lines.filter((l) => l.includes('support_needed')).length, 1, 'ordinary posts send no alert');
+  } finally { console.error = original; await t.close(); }
 });

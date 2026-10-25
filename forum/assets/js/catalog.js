@@ -25,9 +25,11 @@ Forum.catalog = (function () {
       blurb: "How activities felt: difficulty, enjoyment, accessibility and tips."
     },
     {
+      // The id stays the same so older conversations keep their category. It was "Ask a
+      // professional" until there's a real way to check a professional's credentials.
       id: "ask-a-professional",
-      name: "Ask a professional",
-      blurb: "General questions answered by verified professionals. Not personal medical advice."
+      name: "Questions for the community",
+      blurb: "Ask what has worked for others. Answers come from members, not medical professionals: your care team is the place for advice about you."
     },
     {
       id: "app-help",

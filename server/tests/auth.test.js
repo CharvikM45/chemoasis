@@ -184,3 +184,23 @@ test('creating an account needs agreement to the privacy notice', async () => {
     assert.match(res.json.error, /privacy notice/);
   } finally { await t.close(); }
 });
+
+test('pages and the API send security headers; other sites cannot frame them', async () => {
+  const t = await start();
+  try {
+    for (const path of ['/account/index.html', '/api/health']) {
+      const res = await fetch(t.base + path);
+      const policy = res.headers.get('content-security-policy') || '';
+      assert.match(policy, /frame-ancestors 'none'/, path);
+      assert.match(policy, /object-src 'none'/, path);
+      assert.strictEqual(res.headers.get('x-frame-options'), 'DENY', path);
+      assert.strictEqual(res.headers.get('x-content-type-options'), 'nosniff', path);
+      assert.strictEqual(res.headers.get('strict-transport-security'), null, 'HTTPS-only is sent only in production');
+    }
+  } finally { await t.close(); }
+  const prod = await start({ isProd: true });
+  try {
+    const res = await fetch(prod.base + '/api/health');
+    assert.match(res.headers.get('strict-transport-security') || '', /max-age=\d+/);
+  } finally { await prod.close(); }
+});

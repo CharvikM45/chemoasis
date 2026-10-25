@@ -7,7 +7,7 @@
   const R = Account.recommender;
   const auth = Account.auth;
   const TINT = { lumen: '#e9dcf3', starling: '#dce5f2', cloudpath: '#e2ebee', echo: '#f4e3c6', rhythm: '#dfe8d2', signal: '#f0dff6' };
-  const VIEWS = ['signinView', 'introView', 'questionView', 'resultsView'];
+  const VIEWS = ['offlineView', 'signinView', 'introView', 'questionView', 'resultsView'];
 
   let user = null;
   let data = null;
@@ -353,14 +353,40 @@
     return `<svg viewBox="0 0 200 52" class="spark" aria-hidden="true"><polyline points="${line}" /><circle cx="${x(pts.length - 1).toFixed(1)}" cy="${y(pts[pts.length - 1]).toFixed(1)}" r="3.5" /></svg>`;
   }
 
+  // Seven quiet dots for the last seven days: filled on days with at least one finished game.
+  // No streaks and nothing for a missed day.
+  function renderWeek(results) {
+    const box = $('week');
+    const dayKey = (d) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+    const played = new Set(results.map((r) => new Date(r.at)).filter((d) => !isNaN(d)).map(dayKey));
+    const days = [];
+    for (let i = 6; i >= 0; i--) { const d = new Date(); d.setDate(d.getDate() - i); days.push(d); }
+    const count = days.filter((d) => played.has(dayKey(d))).length;
+    box.innerHTML = `<p class="week-label">Last 7 days</p><ol class="week-days">${days.map((d) => {
+      const on = played.has(dayKey(d));
+      const name = d.toLocaleDateString(undefined, { weekday: 'short' });
+      return `<li class="${on ? 'on' : ''}"><span class="week-dot" aria-hidden="true"></span><small>${esc(name.slice(0, 2))}</small><span class="sr-only">${esc(name)}: ${on ? 'played' : 'not played'}</span></li>`;
+    }).join('')}</ol><p class="week-note">${count ? `You played on ${count} of the last 7 days.` : 'Nothing yet this week. Any day is a fine day to start.'}</p>`;
+  }
+
+  const MODE_NAME = { gentle: 'Gentle', challenge: 'Challenge' };
+  const esc = (v) => String(v).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+
   function renderProgress(results) {
     const box = $('progress');
     box.innerHTML = '';
+    renderWeek(results);
     for (const game of R.GAMES) {
       const m = MEASURE[game.id];
-      const values = results.filter((r) => r.game === game.id).map((r) => r.score);
+      const all = results.filter((r) => r.game === game.id);
+      const latest = all[all.length - 1];
+      // One level (and mode) at a time: levels start at different difficulties, so a line mixing
+      // them would rise or fall just from switching levels.
+      const same = latest ? all.filter((r) => r.level === latest.level && (r.mode || null) === (latest.mode || null)) : [];
+      const values = same.map((r) => r.score).filter((v) => typeof v === 'number' && isFinite(v));
       const best = values.length ? (m.lower ? Math.min(...values) : Math.max(...values)) : null;
       const last = values[values.length - 1];
+      const where = latest ? `Level ${Number(latest.level) + 1}${latest.mode ? ` · ${MODE_NAME[latest.mode]}` : ''}` : '';
       let trend = '';
       if (values.length >= 4) {
         const half = Math.floor(values.length / 2);
@@ -379,10 +405,14 @@
       card.querySelector('h3').textContent = game.name;
       card.querySelector('.prog-area').textContent = game.area;
       const body = card.querySelector('.prog-body');
-      if (!values.length) body.innerHTML = '<p class="prog-empty">Not played yet.</p>';
-      else {
-        body.innerHTML = `${sparkline(values, m.lower)}<dl><div><dt>${m.label}</dt><dd>${last} ${m.unit}</dd></div><div><dt>Best</dt><dd>${best} ${m.unit}</dd></div><div><dt>Sessions</dt><dd>${values.length}</dd></div></dl>${trend ? `<p class="prog-trend">${trend}</p>` : ''}`;
-        card.setAttribute('aria-label', `${game.name}: ${values.length} sessions, latest ${m.label.toLowerCase()} ${last} ${m.unit}, best ${best} ${m.unit}${trend ? ', ' + trend.toLowerCase() : ''}.`);
+      const sessions = `${all.length} session${all.length === 1 ? '' : 's'}`;
+      if (!all.length) body.innerHTML = '<p class="prog-empty">Not played yet.</p>';
+      else if (!values.length) {
+        body.innerHTML = `<p class="prog-level">${esc(where)}</p><p class="prog-empty">${sessions}, played at your own pace. Gentle mode keeps no speed scores.</p>`;
+        card.setAttribute('aria-label', `${game.name}: ${sessions}, latest at ${where}, played at your own pace.`);
+      } else {
+        body.innerHTML = `${sparkline(values, m.lower)}<p class="prog-level">${esc(where)}</p><dl><div><dt>${m.label}</dt><dd>${esc(last)} ${m.unit}</dd></div><div><dt>Best at this level</dt><dd>${esc(best)} ${m.unit}</dd></div><div><dt>Sessions</dt><dd>${all.length}</dd></div></dl>${trend ? `<p class="prog-trend">${trend}</p>` : ''}`;
+        card.setAttribute('aria-label', `${game.name}: ${sessions}. At ${where}, latest ${m.label.toLowerCase()} ${last} ${m.unit}, best ${best} ${m.unit}${trend ? ', ' + trend.toLowerCase() : ''}.`);
       }
       card.querySelector('.prog-play').addEventListener('click', () => play(game.id));
       card.querySelector('.prog-play').setAttribute('aria-label', `Play ${game.name}`);
@@ -444,9 +474,26 @@
 
   /* ---------- Start ---------- */
 
+  // Anything that fails after the page has loaded (a save, a delete) says so instead of failing silently.
+  let toastTimer;
+  window.addEventListener('unhandledrejection', (event) => {
+    const toast = $('errorToast');
+    toast.textContent = (event.reason && event.reason.message) || 'Something went wrong. Please try again.';
+    toast.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { toast.hidden = true; }, 7000);
+  });
+
+  $('retryAccount').addEventListener('click', () => location.reload());
+
   (async () => {
-    user = await auth.currentUser();
-    if (user) await afterSignIn();
-    else { setMode('create'); show('signinView'); }
+    try {
+      user = await auth.currentUser();
+      if (user) await afterSignIn();
+      else { setMode('create'); show('signinView'); }
+    } catch (_) {
+      // No account server (for example, the site opened as plain files), or it isn't answering.
+      show('offlineView');
+    }
   })();
 })();

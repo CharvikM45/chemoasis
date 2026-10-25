@@ -9,6 +9,8 @@
   --accent-2: #d9a07d;
   --card: rgba(14, 11, 14, .84);
   --line: rgba(255, 236, 220, .13);
+  --wall: #e7a782; /* the opening wall; brain/intro.js uses the same colour */
+  --wall-ink: #1c120d;
 }
 
 /* The games library and its launch button (games/assets/css/*) use the light palette. */
@@ -34,6 +36,24 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: "DM San
 .scene { position: fixed; inset: 0 0 auto; height: 100vh; height: 100lvh; z-index: 0; background: var(--bg); }
 #brain { display: block; width: 100%; height: 100%; opacity: 0; transition: opacity 1.2s ease; }
 .no-brain #brain { display: none; }
+
+/* The opening wall: the page starts on one solid colour that turns out to be a jigsaw (brain/intro.js).
+   Until the 3D wall is drawn, the hero itself is the wall, so it never flashes dark first. */
+.wall:not(.no-brain) .hero { background: var(--wall); transition: background-color .5s ease; }
+.wall.wall-live:not(.no-brain) .hero { background: transparent; }
+.wall:not(.no-brain) .hero h1 { color: var(--wall-ink); text-shadow: none; }
+.wall:not(.no-brain) .hero h1 em { color: #7d3a20; }
+.wall:not(.no-brain) .hero .eyebrow { color: #6a3520; }
+.wall:not(.no-brain) .hero .lede { color: #3d2318; text-shadow: none; }
+.wall:not(.no-brain) .hero .button { background: transparent; border-color: rgba(28, 18, 13, .5); color: var(--wall-ink); }
+.wall:not(.no-brain) .hero .button:hover,
+.wall:not(.no-brain) .hero .button:focus-visible { background: rgba(255, 244, 236, .22); border-color: var(--wall-ink); color: var(--wall-ink); }
+.wall:not(.no-brain) .hero .button.primary { background: var(--wall-ink); border-color: var(--wall-ink); color: var(--ink); }
+.wall:not(.no-brain) .hero .button.primary:hover,
+.wall:not(.no-brain) .hero .button.primary:focus-visible { background: #3a2419; border-color: #3a2419; color: var(--ink); }
+.wall:not(.no-brain) .hero .scroll-cue { color: #5c3322; }
+.wall:not(.no-brain) .hero .scroll-cue b { background: linear-gradient(#5c3322, transparent); }
+.wall:not(.no-brain) .vignette { opacity: 0; }
 .no-brain .scene { background: radial-gradient(70% 60% at 70% 40%, #2a140d, var(--bg)); }
 .vignette { position: fixed; inset: 0; z-index: 1; pointer-events: none; background: linear-gradient(90deg, rgba(7, 6, 9, .82) 0, rgba(7, 6, 9, .55) 38%, rgba(7, 6, 9, 0) 56%), radial-gradient(120% 95% at 60% 45%, transparent 45%, rgba(0, 0, 0, .55) 100%); }
 @media (max-width: 899px) { .vignette { background: radial-gradient(120% 95% at 50% 35%, transparent 45%, rgba(0, 0, 0, .55) 100%); } }
@@ -59,7 +79,7 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: "DM San
 .brand-mark i:nth-child(3) { background: #72503e; }
 .brand-mark i:nth-child(4) { background: #ead5c0; }
 .nav-links { display: flex; align-items: center; gap: clamp(14px, 2.6vw, 34px); }
-.nav-link { color: var(--ink); text-decoration: none; font: 11px "DM Mono", monospace; letter-spacing: .11em; text-transform: uppercase; }
+.nav-link { color: var(--ink); text-decoration: none; font: 11px "DM Mono", monospace; letter-spacing: .11em; text-transform: uppercase; white-space: nowrap; }
 .nav-link { background: none; border: 0; padding: 0; cursor: pointer; }
 .nav-link:hover { color: var(--accent); }
 .nav-calm[aria-pressed="true"] { color: var(--accent); }
@@ -84,7 +104,7 @@ main { position: relative; z-index: 2; }
 .eyebrow { margin: 0 0 20px; color: var(--accent-2); font: 11px "DM Mono", monospace; letter-spacing: .19em; text-transform: uppercase; }
 h1, h2 { margin: 0; font-family: "Playfair Display", serif; font-weight: 400; letter-spacing: -.045em; }
 h1 { font-size: clamp(48px, 7vw, 96px); line-height: .95; text-shadow: 0 2px 40px rgba(0, 0, 0, .6); }
-h2 { font-size: clamp(32px, 4vw, 52px); line-height: 1.03; }
+h2 { font-size: clamp(32px, 4vw, 52px); line-height: 1.03; text-shadow: 0 2px 30px rgba(0, 0, 0, .7); }
 h1 em, h2 em { color: var(--accent); }
 .lede { margin: 24px 0 0; max-width: 520px; color: var(--soft); font-size: 17px; line-height: 1.6; text-shadow: 0 1px 18px rgba(0, 0, 0, .7); }
 
@@ -164,13 +184,22 @@ h1 em, h2 em { color: var(--accent); }
   .hero .lede { margin-left: auto; margin-right: auto; }
   .hero .actions { justify-content: center; }
   .band { min-height: auto; padding-top: 90px; padding-bottom: 90px; }
-  .band .copy { padding: 26px 20px; background: rgba(6, 5, 7, .62); }
-  .closing { min-height: 100vh; }
+  .band .copy { padding: 26px 20px; background: rgba(6, 5, 7, .8); } /* the brain's pieces pass behind it */
+  .closing { min-height: 100vh; padding-bottom: 24px; } /* low, so the finished brain shows above it */
 }
 @media (max-width: 640px) {
   .nav { padding: 16px 16px; }
   .nav-links { gap: 14px; }
-  .nav-links .nav-calm { display: none; }
+  .nav-long { display: none; } /* "Calm mode" becomes "Calm", so the switch stays on phones */
+}
+/* Small phones: smaller links, and they wrap to a second row rather than spill off the screen. */
+@media (max-width: 480px) {
+  .nav { gap: 12px; }
+  .brand { font-size: 18px; }
+  .nav-links { gap: 12px; flex-wrap: wrap; justify-content: flex-end; row-gap: 6px; }
+  .nav-link { font-size: 10px; letter-spacing: .06em; }
+  .nav-cta { padding: 6px 8px; }
+  .nav-cta span { display: none; }
   .hero, .band { padding-left: 16px; padding-right: 16px; }
   .band .copy { padding: 22px 16px; }
   .stats, .features { grid-template-columns: 1fr; }
