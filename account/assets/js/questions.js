@@ -30,7 +30,7 @@ Account.questions = (function () {
       id: "cancer",
       part: 1,
       type: "single",
-      title: "What type of cancer were you treated for?",
+      title: "What type of cancer is your treatment for?",
       options: [
         { id: "breast", label: "Breast" },
         { id: "blood", label: "Blood (leukemia, lymphoma, myeloma)" },
@@ -47,7 +47,7 @@ Account.questions = (function () {
       id: "drugs",
       part: 1,
       type: "multi",
-      title: "Which chemotherapy drugs did you receive?",
+      title: "Which chemotherapy drugs have you received?",
       help: "Select all that apply.",
       exclusive: ["unsure"],
       options: [
