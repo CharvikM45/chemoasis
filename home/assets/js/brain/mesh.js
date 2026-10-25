@@ -10,7 +10,7 @@
  */
 import { field, BOUNDS } from './shape.js';
 
-export const PUZZLE_N = 6;
+export const PUZZLE_N = 12;
 // Stretch the brain to a rounder shape before choosing cells, so pieces come out about the same size.
 export const PUZZLE_SCALE = [1 / 0.74, 1 / 0.78, 1];
 export const PUZZLE_SHIFT_Y = 0.1;
@@ -37,13 +37,32 @@ export function buildBrainMesh({ step = 0.017 } = {}) {
   const nz = Math.ceil((max[2] - min[2]) / step) + 1;
   const at = (i, j, k) => i + nx * (j + ny * k);
 
-  // 1. Sample the field on a grid.
+  // 1. Sample the field on a grid. A coarse pass first (every 4th point); the full field is only
+  //    worked out near the surface, and elsewhere the coarse values are blended, which is all the
+  //    grooves' shading needs out there. About half the time, with the same surface.
+  const C = 4, BAND = 0.1;
+  const cx = Math.ceil((nx - 1) / C) + 1, cy = Math.ceil((ny - 1) / C) + 1, cz = Math.ceil((nz - 1) / C) + 1;
+  const G = new Float32Array(cx * cy * cz);
+  const cat = (i, j, k) => i + cx * (j + cy * k);
+  for (let k = 0; k < cz; k++) {
+    for (let j = 0; j < cy; j++) {
+      for (let i = 0; i < cx; i++) G[cat(i, j, k)] = field(min[0] + i * C * step, min[1] + j * C * step, min[2] + k * C * step);
+    }
+  }
   const F = new Float32Array(nx * ny * nz);
   for (let k = 0; k < nz; k++) {
-    const z = min[2] + k * step;
+    const z = min[2] + k * step, k0 = Math.min(Math.floor(k / C), cz - 2), tz = k / C - k0;
     for (let j = 0; j < ny; j++) {
-      const y = min[1] + j * step;
-      for (let i = 0; i < nx; i++) F[at(i, j, k)] = field(min[0] + i * step, y, z);
+      const y = min[1] + j * step, j0 = Math.min(Math.floor(j / C), cy - 2), ty = j / C - j0;
+      for (let i = 0; i < nx; i++) {
+        const i0 = Math.min(Math.floor(i / C), cx - 2), tx = i / C - i0;
+        const a = G[cat(i0, j0, k0)], b = G[cat(i0 + 1, j0, k0)], c = G[cat(i0, j0 + 1, k0)], d = G[cat(i0 + 1, j0 + 1, k0)];
+        const e = G[cat(i0, j0, k0 + 1)], f = G[cat(i0 + 1, j0, k0 + 1)], g = G[cat(i0, j0 + 1, k0 + 1)], h = G[cat(i0 + 1, j0 + 1, k0 + 1)];
+        const near = (a + (b - a) * tx) * (1 - ty) + (c + (d - c) * tx) * ty;
+        const far = (e + (f - e) * tx) * (1 - ty) + (g + (h - g) * tx) * ty;
+        const rough = near + (far - near) * tz;
+        F[at(i, j, k)] = Math.abs(rough) < BAND ? field(min[0] + i * step, y, z) : rough;
+      }
     }
   }
 

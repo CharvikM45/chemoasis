@@ -1,14 +1,13 @@
 /*
- * Home page brain: a soft, glossy brain made of jigsaw pieces.
- * Scroll story ("your way back"): the page opens on one solid wall of colour behind the headline.
- * The first scroll shows the wall's seams: it is a jigsaw. Piece by piece, from the bottom of the
- * screen up, the pieces lift off and fly back, and as you read down the page they click together
- * into a brain, whole at the very bottom. It only ever comes together, never bursts apart, which
- * would be a heavy image for people living with "chemo brain". Once a piece is in place its seam
- * fades away, so the finished brain reads as one thing.
- * With reduced motion there is no wall: the brain is shown finished and still.
- * The mesh is built in a worker (build-worker.js) and all piece motion runs on the GPU, so the
- * page only updates a few numbers per frame.
+ * Home page brain: a soft, glossy brain made of small jigsaw pieces.
+ * Scroll story ("your way back"): the brain is there from the first moment, its pieces drifting
+ * just apart from each other. As you read down the page they click together, whole at the very
+ * bottom. It only ever comes together, never bursts apart, which would be a heavy image for people
+ * living with "chemo brain". Once a piece is in place its seam fades away, so the finished brain
+ * reads as one thing.
+ * With reduced motion the brain is shown whole and still.
+ * The mesh is built in a worker (build-worker.js), a rough one first so the brain shows at once,
+ * and all piece motion runs on the GPU, so the page only updates a few numbers per frame.
  */
 import * as THREE from 'three';
 import { PUZZLE_N, PUZZLE_SCALE, PUZZLE_SHIFT_Y } from './mesh.js';
@@ -19,7 +18,6 @@ const lerp = (a, b, t) => a + (b - a) * t;
 const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 const canvas = document.querySelector('#brain');
-const vignette = document.querySelector('.vignette');
 if (window.__brainFallen) throw new Error('No 3D on this device.');
 
 // Chromebooks and older phones: a lighter brain, no antialiasing, normal resolution.
@@ -123,19 +121,11 @@ stage.add(dust);
 /* ---------- the brain ---------- */
 
 const SPREAD = 1.1; // how staggered the pieces are, in units of the whole assembly
-const WALL_DISTANCE = 3; // how far in front of the camera the opening wall stands
-// The wall's colour: the site's accent, the same as the hero background in home.css (--wall).
-const WALL_COLOR = new THREE.Vector3(231 / 255, 167 / 255, 130 / 255);
 const uniforms = {
   uAssemble: { value: 1 },
   uTime: { value: 0 },
   uShards: { value: null },
-  uHero: { value: still ? 99 : 0 }, // how many screens down the page we are (the wall reads this)
-  uSeams: { value: 0 },
-  uWall: { value: new THREE.Vector4(0.1, WALL_DISTANCE, 18, 12) }, // tile size, distance, columns, rows
-  uBlocks: { value: new THREE.Vector2(3, 2) }, // how the cube's six faces are laid out on the wall
-  uView: { value: new THREE.Vector2(1, 1) }, // half the view's width and height at the wall
-  uWallColor: { value: WALL_COLOR },
+  uIntro: { value: still ? 1 : 0 }, // 0 → 1 as the brain first fades in: the pieces gather from a little further out
   // Where pieces fade into the background, in canvas pixels: right edge of the text column, the
   // top bar's lower edge (counted from the bottom), and the width of the soft edge.
   uFade: { value: new THREE.Vector3(-1e5, 1e5, 60) }
@@ -143,6 +133,7 @@ const uniforms = {
 const brain = new THREE.Group();
 stage.add(brain);
 let ready = false;
+let material = null, brainMesh = null;
 
 function seeded(n) { const x = Math.sin(n * 91.7) * 43758.5; return x - Math.floor(x); }
 
@@ -197,22 +188,6 @@ const PUZZLE_GLSL = `
   }
 `;
 
-// Where a point of the brain sits on its own cube face's grid (0..PN across and up), even when
-// the point itself leans a little toward a neighbouring face. Used to lay the pieces out flat.
-const FACE_GLSL = `
-  vec2 faceGrid(vec3 p, float face) {
-    vec3 q = puzzleSpace(p);
-    vec2 uv;
-    if (face < 0.5) uv = vec2(-q.z, q.y) / max(q.x, 0.05);
-    else if (face < 1.5) uv = vec2(q.z, q.y) / max(-q.x, 0.05);
-    else if (face < 2.5) uv = vec2(q.x, -q.z) / max(q.y, 0.05);
-    else if (face < 3.5) uv = vec2(q.x, q.z) / max(-q.y, 0.05);
-    else if (face < 4.5) uv = vec2(q.x, q.y) / max(q.z, 0.05);
-    else uv = vec2(-q.x, q.y) / max(-q.z, 0.05);
-    return clamp((uv + 1.0) * 0.5 * PN, -0.5, PN + 0.5);
-  }
-`;
-
 function addMesh(m) {
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(m.position, 3));
@@ -221,29 +196,36 @@ function addMesh(m) {
   geo.setAttribute('aAO', new THREE.BufferAttribute(m.ao, 1));
   geo.setIndex(new THREE.BufferAttribute(m.index, 1));
 
-  // Per piece, 3 texels: [centre, delay] [loose position, turn] [turn axis, when it leaves the wall].
+  // Per piece, 3 texels: [centre, delay] [loose position, turn] [turn axis, unused].
   const W = 3;
   const data = new Float32Array(m.shards * W * 4);
   for (let s = 0; s < m.shards; s++) {
     const cx = m.centre[s * 3], cy = m.centre[s * 3 + 1], cz = m.centre[s * 3 + 2];
     const ox = m.out[s * 3], oy = m.out[s * 3 + 1], oz = m.out[s * 3 + 2];
-    // Loose pieces float close to their place, so the cloud already reads as a brain in pieces.
-    const dist = 0.3 + 0.6 * seeded(s + 1);
+    // Loose pieces float just off their place, so the cloud always reads as a brain.
+    const dist = 0.025 + 0.05 * seeded(s + 1);
     const swirl = (Math.atan2(cz, cx) + Math.PI) / (Math.PI * 2);
     const ax = seeded(s + 5) - 0.5, ay = seeded(s + 6) - 0.5, az = seeded(s + 7) - 0.5;
     const al = Math.hypot(ax, ay, az) || 1;
     data.set([
       cx, cy, cz, (0.65 * swirl + 0.35 * seeded(s + 9)) * SPREAD,
-      cx + ox * dist + (seeded(s + 2) - 0.5) * 0.3, cy + oy * dist + (seeded(s + 3) - 0.5) * 0.3, cz + oz * dist + (seeded(s + 4) - 0.5) * 0.3,
-      (0.5 + 1.3 * seeded(s + 8)) * (seeded(s + 10) < 0.5 ? -1 : 1),
-      ax / al, ay / al, az / al, seeded(s + 11)
+      cx + ox * dist + (seeded(s + 2) - 0.5) * 0.015, cy + oy * dist + (seeded(s + 3) - 0.5) * 0.015, cz + oz * dist + (seeded(s + 4) - 0.5) * 0.015,
+      (0.06 + 0.14 * seeded(s + 8)) * (seeded(s + 10) < 0.5 ? -1 : 1),
+      ax / al, ay / al, az / al, 0
     ], s * W * 4);
   }
   const tex = new THREE.DataTexture(data, W, m.shards, THREE.RGBAFormat, THREE.FloatType);
   tex.needsUpdate = true;
+  if (uniforms.uShards.value) uniforms.uShards.value.dispose();
   uniforms.uShards.value = tex;
 
-  const material = new THREE.MeshPhysicalMaterial({
+  // The detailed brain replaces the rough one in place, with the same material.
+  if (brainMesh) {
+    brainMesh.geometry.dispose();
+    brainMesh.geometry = geo;
+    return;
+  }
+  material = new THREE.MeshPhysicalMaterial({
     color: '#eba38e',
     roughness: 0.46,
     metalness: 0,
@@ -253,17 +235,14 @@ function addMesh(m) {
     sheenRoughness: 0.55,
     sheenColor: new THREE.Color('#ffc9b8'),
     envMapIntensity: 0.55,
-    side: THREE.DoubleSide
+    side: THREE.DoubleSide // through the gaps between loose pieces you see their darker insides
   });
   material.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, uniforms);
     shader.vertexShader = `attribute float aShard; attribute float aAO;
-      uniform float uAssemble; uniform float uTime; uniform sampler2D uShards;
-      uniform float uHero; uniform vec4 uWall; uniform vec2 uBlocks; uniform vec2 uView;
-      varying float vLoose; varying float vSnap; varying vec3 vRest; varying float vShard; varying float vAO; varying float vWall;
+      uniform float uAssemble; uniform float uTime; uniform sampler2D uShards; uniform float uIntro;
+      varying float vLoose; varying float vSnap; varying vec3 vRest; varying float vShard; varying float vAO;
       vec3 rotAxis(vec3 v, vec3 axis, float a) { float c = cos(a), s = sin(a); return v * c + cross(axis, v) * s + axis * dot(axis, v) * (1.0 - c); }
-      ${PUZZLE_SPACE}
-      ${FACE_GLSL}
       ` + shader.vertexShader
       .replace('#include <beginnormal_vertex>', `
         int row = int(aShard + 0.5);
@@ -272,95 +251,57 @@ function addMesh(m) {
         vec4 sC = texelFetch(uShards, ivec2(2, row), 0);
         // How settled this piece is in the brain: 0 = loose, 1 = in place.
         float k = clamp(uAssemble * (1.0 + ${SPREAD.toFixed(2)}) - sA.w, 0.0, 1.0);
-        vSnap = smoothstep(0.72, 0.96, k) * (1.0 - smoothstep(0.96, 1.0, k)); // flash as it clicks in
+        vSnap = smoothstep(0.72, 0.96, k) * (1.0 - smoothstep(0.96, 1.0, k)); // a soft glow as it clicks in
         k = k * k * (3.0 - 2.0 * k);
-        float turn = (sB.w + uTime * 0.2 * sign(sB.w)) * (1.0 - k);
+        float turn = (sB.w + sin(uTime * 0.5 + sA.w * 20.0) * 0.04) * (1.0 - k); // a slow sway while loose
         vec3 objectNormal = rotAxis(normal, sC.xyz, turn);
         vLoose = 1.0 - k;
         vRest = position;
         vShard = aShard;
-        vAO = aAO;
-
-        // The opening wall: each cube face is a block of PN x PN pieces, the blocks side by side.
-        float face = floor(aShard / (PN * PN) + 0.01);
-        float cell = aShard - face * PN * PN;
-        vec2 block = vec2(mod(face, uBlocks.x), floor(face / uBlocks.x + 0.01));
-        vec2 grid = uWall.zw;
-        vec2 wallXY = (block * PN + faceGrid(position, face) - grid * 0.5) * uWall.x;
-        vec2 pieceXY = (block * PN + vec2(mod(cell, PN), floor(cell / PN + 0.01)) + 0.5 - grid * 0.5) * uWall.x;
-        // Pieces leave from the bottom of the screen up, just ahead of the next section's text.
-        float fromTop = 0.5 - pieceXY.y / (2.0 * uView.y);
-        float leave = max(0.035, 0.7 - fromTop + 0.14 * sC.w);
-        float w = 1.0 - smoothstep(leave, leave + 0.24, uHero); // 1 = still in the wall
-        vWall = w;
-        float lift = 1.0 - w;
-        lift = lift * lift * (3.0 - 2.0 * lift);`)
-      .replace('#include <normal_vertex>', `#include <normal_vertex>
-        vNormal = normalize(mix(vNormal, vec3(0.0, 0.0, 1.0), 1.0 - lift));`)
+        vAO = aAO;`)
       .replace('#include <begin_vertex>', `
-        vec3 local = (position - sA.xyz) * mix(0.92, 1.0, k); // small gaps between loose pieces
-        vec3 transformed = mix(sB.xyz, sA.xyz, k) + rotAxis(local, sC.xyz, turn);`)
-      .replace('#include <project_vertex>', `#include <project_vertex>
-        if (w > 0.0) {
-          // Outer layers sit a hair in front of inner ones, so the wall draws cleanly.
-          vec3 onWall = vec3(wallXY, -uWall.y + 0.02 * length(puzzleSpace(position)));
-          // Lift toward the viewer as it lets go, then fly back to its place in the brain.
-          vec3 arc = vec3(0.0, 0.0, 0.7) * sin(3.14159 * lift);
-          mvPosition = vec4(mix(onWall, mvPosition.xyz, lift) + arc, 1.0);
-          gl_Position = projectionMatrix * mvPosition;
-        }`);
-    shader.fragmentShader = `varying float vLoose; varying float vSnap; varying vec3 vRest; varying float vShard; varying float vAO; varying float vWall;
-      uniform float uSeams; uniform vec3 uWallColor; uniform vec3 uFade;
+        // On first load the loose pieces gather in from a little further out.
+        float gather = 1.0 - uIntro;
+        vec3 loosePos = sA.xyz + (sB.xyz - sA.xyz) * (1.0 + 8.0 * gather * gather);
+        vec3 local = (position - sA.xyz) * mix(0.965, 1.0, k); // small gaps between loose pieces
+        vec3 transformed = mix(loosePos, sA.xyz, k) + rotAxis(local, sC.xyz, turn);`);
+    shader.fragmentShader = `varying float vLoose; varying float vSnap; varying vec3 vRest; varying float vShard; varying float vAO;
+      uniform vec3 uFade;
       ${PUZZLE_SPACE}
       ${PUZZLE_GLSL}
-      ${FACE_GLSL}
       ` + shader.fragmentShader
       .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>
         // Keep only the part of this copy that is really inside its piece: exact jigsaw outlines.
-        float inWall = smoothstep(0.9, 1.0, vWall); // still part of the flat wall
         float seam;
         float piece = pieceAt(vRest, seam);
-        float seamWidth = 0.025 + fwidth(seam) * 1.5;
-        if (abs(piece - vShard) > 0.5) {
-          // In the wall, a piece on the edge of its cube face may reach a hair past it, so the six
-          // blocks of the wall meet without hairline cracks.
-          float face = floor(vShard / (PN * PN) + 0.01);
-          vec2 g = abs(faceGrid(vRest, face) - PN * 0.5);
-          if (inWall < 0.999 || floor(piece / (PN * PN) + 0.01) == face || max(g.x, g.y) > PN * 0.5 + 0.06) discard;
-          seam = 9.0;
-        }
-        float line = 1.0 - smoothstep(0.0, seamWidth, seam);
-        // A piece sitting in the wall is just its plain colour, with the seams drawn in once they
-        // show: skip the lighting, since the wall covers the whole screen.
-        if (inWall > 0.999) { gl_FragColor = vec4(uWallColor * (1.0 - 0.3 * line * uSeams), 1.0); return; }`)
+        if (abs(piece - vShard) > 0.5) discard;
+        float line = 1.0 - smoothstep(0.0, 0.03 + fwidth(seam) * 1.5, seam);`)
       .replace('#include <color_fragment>', `#include <color_fragment>
         if (!gl_FrontFacing) diffuseColor.rgb *= 0.4; // the inside of a piece is darker
         diffuseColor.rgb *= mix(vec3(0.46, 0.2, 0.2), vec3(1.0), vAO); // deep, rosy grooves
-        diffuseColor.rgb *= 1.0 - 0.45 * line * vLoose; // seams show only while a piece is loose`)
+        diffuseColor.rgb *= 1.0 - 0.35 * line * vLoose; // seams show only while a piece is loose`)
       .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
         // A soft glow at the edges, as light passes through the surface (subsurface scattering).
         float facing = max(dot(normal, normalize(vViewPosition)), 0.0);
         totalEmissiveRadiance += vec3(0.75, 0.24, 0.2) * pow(1.0 - facing, 3.0) * 0.22 * vAO;
-        // Blue edges while the pieces are loose, a flash as each one locks into place, then nothing.
-        vec3 glow = vec3(0.3, 0.78, 1.0);
-        totalEmissiveRadiance += (glow * line * (2.2 * vLoose + 2.5 * vSnap) + glow * 0.35 * vSnap) * (1.0 - inWall);`)
+        // Faint warm edges while the pieces are loose, a soft glow as each one clicks in, then nothing.
+        vec3 glow = vec3(1.0, 0.62, 0.48);
+        totalEmissiveRadiance += glow * (line * (0.35 * vLoose + 0.9 * vSnap) + 0.12 * vSnap);`)
       .replace('#include <aomap_fragment>', `#include <aomap_fragment>
         reflectedLight.indirectDiffuse *= vAO;
         reflectedLight.indirectSpecular *= mix(0.15, 1.0, vAO);
         reflectedLight.directSpecular *= mix(0.25, 1.0, vAO);`)
       .replace('#include <dithering_fragment>', `#include <dithering_fragment>
-        // Pieces still in the wall are its plain colour, with the seams drawn in once they show.
-        gl_FragColor.rgb = mix(gl_FragColor.rgb, uWallColor * (1.0 - 0.3 * line * uSeams), inWall);
-        // Loose pieces (off the wall, not yet in the brain) fade into the background while they pass
-        // behind the text column or the top bar, so the words stay easy to read.
+        // Loose pieces fade into the background while they pass behind the text column or the top
+        // bar, so the words stay easy to read.
         float hide = max(1.0 - smoothstep(uFade.x - uFade.z * 0.4, uFade.x + uFade.z, gl_FragCoord.x),
                          smoothstep(uFade.y - uFade.z * 0.3, uFade.y, gl_FragCoord.y));
-        hide *= (1.0 - inWall) * smoothstep(0.0, 0.25, vLoose);
+        hide *= smoothstep(0.0, 0.25, vLoose);
         gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(0.027, 0.024, 0.035), 0.9 * hide);`);
   };
-  const mesh = new THREE.Mesh(geo, material);
-  mesh.frustumCulled = false; // pieces move in the shader, so the box three.js knows about is wrong
-  brain.add(mesh);
+  brainMesh = new THREE.Mesh(geo, material);
+  brainMesh.frustumCulled = false; // pieces move in the shader, so the box three.js knows about is wrong
+  brain.add(brainMesh);
   ready = true;
   document.body.classList.add('brain-ready');
 }
@@ -368,10 +309,11 @@ function addMesh(m) {
 function build() {
   const step = lowPower ? 0.023 : 0.017;
   try {
-    const worker = new Worker(new URL('./build-worker.js?v=6', import.meta.url), { type: 'module' });
-    worker.onmessage = (e) => { addMesh(e.data); worker.terminate(); };
-    worker.onerror = () => { worker.terminate(); buildHere(step); };
-    worker.postMessage({ step });
+    const worker = new Worker(new URL('./build-worker.js?v=7', import.meta.url), { type: 'module' });
+    let got = 0;
+    worker.onmessage = (e) => { addMesh(e.data); if (++got === 2) worker.terminate(); };
+    worker.onerror = () => { worker.terminate(); if (!got) buildHere(step); };
+    worker.postMessage({ step, preview: 0.04 });
   } catch (_) {
     buildHere(step);
   }
@@ -405,16 +347,6 @@ function resize() {
   camera.aspect = width / height;
   camera.updateProjectionMatrix();
 
-  // Lay the wall out to cover the whole screen: the cube's six faces as 3 x 2 blocks of pieces on
-  // wide screens, 2 x 3 on tall ones.
-  const halfH = WALL_DISTANCE * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
-  const halfW = halfH * camera.aspect;
-  const tall = camera.aspect < 1;
-  const cols = (tall ? 2 : 3) * PUZZLE_N, rows = (tall ? 3 : 2) * PUZZLE_N;
-  uniforms.uBlocks.value.set(tall ? 2 : 3, tall ? 3 : 2);
-  uniforms.uWall.value.set(Math.max((2 * halfW) / cols, (2 * halfH) / rows), WALL_DISTANCE, cols, rows);
-  uniforms.uView.value.set(halfW, halfH);
-
   // Size the brain to the free space right of the text (at most 40% of the screen's width and 70%
   // of its height), with the camera looking straight ahead, and centre it in that space.
   const copy = document.querySelector('.hero .copy');
@@ -435,17 +367,16 @@ function resize() {
 }
 
 // How assembled the brain is (0 = every piece loose, 1 = whole) at scroll position p (0 to 1):
-// it starts building as the first pieces leave the wall and is whole at the very bottom.
+// it is whole at the very bottom.
 function assembleAt(p) {
-  return smooth(0.04, 0.94, p);
+  return smooth(0.02, 0.94, p);
 }
 
 const pointer = { x: 0, y: 0, tx: 0, ty: 0 };
-let smoothP = 0, smoothHero = 0;
+let smoothP = 0;
 let lastTime = performance.now();
-let appear = 0;
+let appear = 0, intro = still ? 1 : 0;
 let slowFrames = 0;
-let vignetteShown = -1;
 
 // A game or the games library covers the page: no need to draw the brain underneath.
 const covered = () => document.body.style.overflow === 'hidden';
@@ -476,27 +407,20 @@ function frame(now) {
 
   const ease = still ? 1 : Math.min(1, dt * 9);
   smoothP += (clamp(scrollY / maxScroll, 0, 1) - smoothP) * ease;
-  smoothHero += (scrollY / Math.max(1, innerHeight) - smoothHero) * ease;
   const assemble = still ? 1 : assembleAt(smoothP);
   const loose = 1 - assemble;
-  if (ready) appear = Math.min(1, appear + dt * 0.9);
+  if (ready) {
+    appear = Math.min(1, appear + dt * 2.5);
+    intro = Math.min(1, intro + dt * 0.8);
+  }
   pointer.x += (pointer.tx - pointer.x) * Math.min(1, dt * 3);
   pointer.y += (pointer.ty - pointer.y) * Math.min(1, dt * 3);
 
-  // How much of the wall is still up (1 at the top of the page, 0 once it has all lifted off).
-  const wall = still ? 0 : 1 - smooth(0.1, 1.05, smoothHero);
   uniforms.uAssemble.value = assemble;
   uniforms.uTime.value = t;
-  if (!still) {
-    uniforms.uHero.value = smoothHero;
-    uniforms.uSeams.value = smooth(0, 0.05, smoothHero);
-  }
-  dust.material.uniforms.uOpacity.value = 0.55 * appear * (1 - wall);
+  uniforms.uIntro.value = 1 - (1 - intro) ** 3;
+  dust.material.uniforms.uOpacity.value = 0.55 * appear;
   dust.material.uniforms.uSize.value = 22 * pixelRatio;
-  // The dark edge shading only makes sense once the wall has (nearly) gone: on the wall it would
-  // just muddy the colour behind the headline.
-  const shown = Math.round(smooth(0.5, 1, 1 - wall) * 50) / 50;
-  if (shown !== vignetteShown && vignette) { vignette.style.opacity = String(shown); vignetteShown = shown; }
 
   // Wide screens: the brain sits right of the text. Narrow: in the upper part of the screen,
   // with the camera far enough back that the whole brain fits the width.
@@ -512,13 +436,11 @@ function frame(now) {
   brain.position.y = still ? 0 : Math.sin(t * 0.6) * 0.02;
   shell.rotation.set(t * 0.03, t * 0.05 + smoothP * 1.2, 0);
   ring.rotation.set(-t * 0.02, -t * 0.03 - smoothP * 0.8, 0.3);
-  shell.material.opacity = 0.16 * appear * (1 - wall);
-  ring.material.opacity = 0.08 * appear * (1 - wall);
+  shell.material.opacity = 0.16 * appear;
+  ring.material.opacity = 0.08 * appear;
   dust.rotation.y = t * 0.02 + smoothP * 0.6;
 
   canvas.style.opacity = String(appear);
-  // Once the 3D wall is fully showing, the hero's flat stand-in colour can go.
-  if (appear === 1 && !document.body.classList.contains('wall-live')) document.body.classList.add('wall-live');
   renderer.render(scene, camera);
 }
 
@@ -533,5 +455,4 @@ addEventListener('pointermove', (e) => {
 measure();
 resize();
 smoothP = clamp(scrollY / maxScroll, 0, 1);
-smoothHero = scrollY / Math.max(1, innerHeight);
 requestAnimationFrame(frame);
