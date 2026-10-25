@@ -1,5 +1,5 @@
 /*
- * Research Studio pages: what the submit, review, play and Research Studio pages share.
+ * Open Research Studio pages: what the submit, review, play and Open Research Studio pages share.
  * Talks to /api/studio (server/studio.js). On a host without the server (plain files, a static
  * preview) every call fails with a friendly message, and the pages say the Studio isn't
  * available there.
@@ -33,11 +33,11 @@ window.Studio = (function () {
         body: body !== undefined ? JSON.stringify(body) : undefined
       });
     } catch (_) {
-      throw new Error("We can't reach the Research Studio right now. Check your connection and try again.");
+      throw new Error("We can't reach the Open Research Studio right now. Check your connection and try again.");
     }
     const data = await res.json().catch(() => null);
     if (!res.ok || !data) {
-      const error = new Error((data && data.error) || "The Research Studio isn't available here.");
+      const error = new Error((data && data.error) || "The Open Research Studio isn't available here.");
       error.status = res.status;
       error.missing = data && data.missing;
       throw error;

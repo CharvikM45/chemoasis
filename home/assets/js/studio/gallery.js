@@ -1,5 +1,5 @@
 /*
- * The Research Studio page's "In the library" section: published activities with their
+ * The Open Research Studio page's "In the library" section: published activities with their
  * creators. It stays hidden when nothing is published yet, or the server isn't there.
  */
 (function () {
