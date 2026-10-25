@@ -18,6 +18,10 @@
   --line-strong: rgba(255, 236, 220, .28);
   --sage: #9fbf95;
   --danger: #f08a73;
+  /* the site's added colours: plum glow, pink for what you told us, blue for games */
+  --plum: #3b1832;
+  --pink: #d3a5c9;
+  --blue: #a7bcdd;
   color-scheme: dark;
 }
 
@@ -27,7 +31,7 @@ html { background: var(--cream); }
 body {
   margin: 0;
   min-height: 100vh;
-  background: var(--cream);
+  background: radial-gradient(70% 50% at 90% 0%, rgba(59, 24, 50, .7), rgba(59, 24, 50, 0) 70%) var(--cream) no-repeat;
   color: var(--ink);
   font: 18px/1.55 "DM Sans", sans-serif;
 }
@@ -166,7 +170,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 
 .promises { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
 .promises li { padding: 14px 0; border-bottom: 1px solid var(--line); color: var(--soft); }
-.promises b { margin-right: 14px; font: 11px "DM Mono"; color: var(--clay); }
+.promises b { margin-right: 14px; font: 11px "DM Mono"; color: var(--pink); }
 
 /* Questions */
 .q-head { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
@@ -237,7 +241,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
   font-size: 15px;
   color: var(--soft);
 }
-.heard span::before { content: "We heard · "; font: 10px "DM Mono"; letter-spacing: .1em; text-transform: uppercase; color: var(--clay); }
+.heard span::before { content: "We heard · "; font: 10px "DM Mono"; letter-spacing: .1em; text-transform: uppercase; color: var(--pink); }
 
 .picks { list-style: none; margin: 28px 0 0; padding: 0; display: grid; gap: 16px; }
 .pick {
@@ -278,7 +282,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
   color: var(--on-clay);
   font: 600 14px "DM Sans";
 }
-.pick-area { margin: 0; font: 11px "DM Mono"; letter-spacing: .14em; text-transform: uppercase; color: var(--clay); }
+.pick-area { margin: 0; font: 11px "DM Mono"; letter-spacing: .14em; text-transform: uppercase; color: var(--blue); }
 .pick h3 { margin: 4px 0 4px; font: 400 clamp(26px, 3vw, 32px)/1.1 "Playfair Display", serif; letter-spacing: -.03em; color: var(--espresso); }
 .pick-blurb { margin: 0; color: var(--soft); }
 .pick-body { grid-column: 2; }
@@ -377,7 +381,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 .prog-head { display: flex; gap: 12px; align-items: center; }
 .prog-icon { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 10px; background: rgba(255, 236, 220, .08); font-size: 20px; }
 .prog h3 { margin: 0; font: 400 20px/1.15 "Playfair Display", serif; }
-.prog-area { margin: 2px 0 0; color: var(--clay); font: 11px "DM Mono", monospace; letter-spacing: .08em; text-transform: uppercase; }
+.prog-area { margin: 2px 0 0; color: var(--blue); font: 11px "DM Mono", monospace; letter-spacing: .08em; text-transform: uppercase; }
 .prog-empty { margin: 0; color: var(--muted); font-size: 14px; }
 .prog dl { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 0; }
 .prog dt { color: var(--muted); font-size: 11px; line-height: 1.3; }
