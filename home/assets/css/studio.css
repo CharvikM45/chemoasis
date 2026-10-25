@@ -97,7 +97,7 @@
 .rs-game--link .rs-game__based { color: var(--accent); }
 .rs-creator__links { display: flex; gap: 14px; }
 .rs-creator__links a, .rs-studies-public a { color: var(--accent); }
-.rs-quote { margin: 30px 0 0; padding: 22px 24px; max-width: 760px; border-left: 2px solid var(--accent); background: var(--card); color: var(--ink); font: italic 400 clamp(20px, 2vw, 24px)/1.4 "Playfair Display", serif; }
+.rs-source { color: var(--accent-2); font-size: 14px; }
 
 /* ---------- the studio pages (studio-submit, studio-review, studio-play) ---------- */
 
@@ -237,6 +237,7 @@
 }
 @media (max-width: 640px) {
   .rs-grid2 { grid-template-columns: 1fr; }
+  .rs-frame, .rs-frame--play { aspect-ratio: 3 / 4; max-height: 80vh; }
   .rs-dl__row { grid-template-columns: 1fr; gap: 4px; }
   .rs-step, .rs-checks, .rs-review, .rs-panel { padding: 18px 16px; }
   .rs-savebar__actions .button { flex: 1 1 auto; justify-content: center; }

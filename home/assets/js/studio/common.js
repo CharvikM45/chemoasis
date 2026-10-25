@@ -76,7 +76,7 @@ window.Studio = (function () {
       el("span", { class: "rs-avatar", "aria-hidden": "true", text: initial }),
       el("div", {},
         el("p", { class: "rs-creator__name" },
-          [creator.name, creator.credentials].filter(Boolean).join(", "),
+          creator.credentials && !(creator.name || "").includes(creator.credentials) ? creator.name + ", " + creator.credentials : creator.name,
           creator.verified ? el("span", { class: "rs-verified", title: "Credentials checked against a public registry", text: "✓ Verified" }) : null),
         meta ? el("p", { class: "rs-creator__meta", text: meta }) : null,
         links.length ? el("p", { class: "rs-creator__meta rs-creator__links" }, links) : null));
