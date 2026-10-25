@@ -65,7 +65,10 @@
     $('who').hidden = false;
     $('whoName').textContent = user.name;
     // Came here from the forum's "Sign in to post": go back once signed in.
-    if (new URLSearchParams(location.search).get('next') === 'forum') { location.href = '../forum/index.html'; return; }
+    const next = new URLSearchParams(location.search).get('next');
+    if (next === 'forum') { location.href = '../forum/index.html'; return; }
+    // Came from the Research Studio's "Sign in to start": back to their studio.
+    if (next === 'studio') { location.href = '../home/studio-submit.html'; return; }
     // New accounts go straight to the questionnaire.
     if (!data.completedAt && !data.skippedAt) show('introView');
     else await renderResults();
