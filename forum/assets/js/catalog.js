@@ -40,6 +40,12 @@ Forum.catalog = (function () {
       id: "ideas",
       name: "Ideas and feedback",
       blurb: "Suggest new activities or changes to the questionnaire and the app."
+    },
+    {
+      // Catch-all, kept last. Posts here get the same safety check and moderation as every other category.
+      id: "other",
+      name: "Other",
+      blurb: "Anything that doesn't fit the categories above."
     }
   ];
 
