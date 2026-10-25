@@ -32,30 +32,42 @@ function loadForum(storage) {
   return context.Forum;
 }
 
-// Example data saved by an earlier version of the forum is brought in line with seed.js. Example
-// accounts are marked, so they never count as real members' topics, and the made-up "verified"
-// nurse is gone: what it wrote now comes from the example moderator as general information.
-// Real accounts have UUIDs and are never touched. Returns true if anything changed.
-function updateExamples(state) {
-  let changed = false;
-  for (const profile of state.profiles) {
-    if (String(profile.id).startsWith('u-') && !profile.example) { profile.example = true; changed = true; }
+// The live forum is for real members only. The made-up example accounts and their posts (seed.js)
+// belong to the demo, so they're taken out of a forum saved by an earlier version. Example
+// accounts have ids like "u-river"; real accounts have UUIDs and are never touched. An example
+// conversation that real members have replied to stays, so nobody's reply disappears.
+// Returns true if anything changed.
+function removeExamples(state) {
+  const isExample = (id) => String(id).startsWith('u-');
+  const before = JSON.stringify([state.profiles.length, state.threads.length, state.replies.length, state.reports.length]);
+  state.replies = state.replies.filter((r) => !isExample(r.authorId));
+  const realReplies = new Set(state.replies.map((r) => r.threadId));
+  state.threads = state.threads.filter((t) => !isExample(t.authorId) || realReplies.has(t.id));
+  const kept = new Set([...state.threads, ...state.replies].map((item) => item.id));
+  state.replies = state.replies.filter((r) => kept.has(r.threadId));
+  state.reports = state.reports.filter((r) => !isExample(r.reporterId) && kept.has(r.targetId));
+  for (const id of Object.keys(state.helpful)) {
+    if (!kept.has(id)) delete state.helpful[id];
+    else state.helpful[id] = state.helpful[id].filter((who) => !isExample(who));
   }
-  const nurse = state.profiles.findIndex((p) => p.id === 'u-nurse');
-  if (nurse >= 0) {
-    state.profiles.splice(nurse, 1);
-    delete state.settings['u-nurse'];
-    for (const item of [...state.threads, ...state.replies]) {
-      if (item.authorId !== 'u-nurse') continue;
-      item.authorId = 'u-mod';
-      if (item.label === 'professional') item.label = 'info';
-    }
-    for (const settings of Object.values(state.settings)) {
-      if (settings.muted) settings.muted = settings.muted.filter((id) => id !== 'u-nurse');
-    }
-    changed = true;
+  for (const id of Object.keys(state.settings)) {
+    if (isExample(id)) delete state.settings[id];
+    else if (state.settings[id].muted) state.settings[id].muted = state.settings[id].muted.filter((who) => !isExample(who));
   }
-  return changed;
+  const authors = new Set([...state.threads, ...state.replies].map((item) => item.authorId));
+  state.profiles = state.profiles.filter((p) => !isExample(p.id) || authors.has(p.id));
+  return JSON.stringify([state.profiles.length, state.threads.length, state.replies.length, state.reports.length]) !== before;
+}
+
+// A new live forum starts empty: no example accounts, posts or reports.
+function emptyForum(Forum) {
+  return { ...Forum.seed(), currentUserId: null, profiles: [], threads: [], replies: [], reports: [], helpful: {}, settings: {} };
+}
+
+// One line in the server log (Railway keeps these) when a post may come from someone who needs
+// support, so the team can set up an alert on it. It names the post only, never its words or author.
+function supportAlert(postId) {
+  console.error(JSON.stringify({ type: 'safety', level: 'alert', at: new Date().toISOString(), event: 'support_needed', postId: String(postId).slice(0, 40) }));
 }
 
 function forumRouter({ db, isProd, moderators = [], limits = {} }) {
@@ -80,16 +92,9 @@ function forumRouter({ db, isProd, moderators = [], limits = {} }) {
       const { rows } = await db.query('SELECT data FROM forum_state WHERE id = 1');
       if (rows[0]) {
         state = rows[0].data;
-        // The app is called Chemoasis: fix example posts saved under its earlier working name.
-        // Example accounts have ids like "u-river"; real accounts have UUIDs and are never touched.
-        for (const item of [...state.threads, ...state.replies]) {
-          if (String(item.authorId).startsWith('u-') && /Reframe/.test(item.body)) { item.body = item.body.replace(/Reframe/g, 'Chemoasis'); dirty = true; }
-        }
-        if (updateExamples(state)) dirty = true;
-        if (dirty) await persist();
+        if (removeExamples(state)) await persist();
       } else {
-        state = Forum.seed();
-        state.currentUserId = null;
+        state = emptyForum(Forum);
         await persist();
       }
     })().catch((error) => { loading = null; throw error; }); // a failed first load is retried next time
@@ -108,6 +113,11 @@ function forumRouter({ db, isProd, moderators = [], limits = {} }) {
       [snapshot]
     ));
     return saving;
+  }
+
+  // Posts with an open "may need support" report, from the safety check or from a person.
+  function openSupportReports() {
+    return new Set(state.reports.filter((r) => r.reason === 'support' && r.status === 'open').map((r) => r.targetId));
   }
 
   // Every account gets a forum profile the first time it uses the forum. It starts with a neutral
@@ -155,8 +165,10 @@ function forumRouter({ db, isProd, moderators = [], limits = {} }) {
       // so no other request can change who "currentUserId" is in the middle of one.
       state.currentUserId = user ? user.id : null;
       let result, error;
+      const supportBefore = openSupportReports();
       try { result = await Forum.store[method](...args); } catch (e) { error = e; }
       state.currentUserId = null;
+      if (!error) for (const postId of openSupportReports()) if (!supportBefore.has(postId)) supportAlert(postId);
       if (dirty) await persist();
 
       // Moderation decisions are recorded, so there's a history of who hid or removed what.
@@ -210,4 +222,4 @@ function forumRouter({ db, isProd, moderators = [], limits = {} }) {
   return { router, forgetUser };
 }
 
-module.exports = { forumRouter };
+module.exports = { forumRouter, removeExamples };
