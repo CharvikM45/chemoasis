@@ -3,13 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Research Studio: clinicians and researchers who study recovery after chemotherapy can turn their research into Chemoasis activities, published with their name." />
+    <meta name="description" content="Research Studio: clinicians and researchers who study recovery during and after chemotherapy turn their research into Chemoasis activities, published with their name." />
     <title>Research Studio · Chemoasis</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&family=Playfair+Display:ital,wght@0,400;0,500;1,400;1,500&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="assets/css/home.css?v=8" />
-    <link rel="stylesheet" href="assets/css/studio.css?v=1" />
+    <link rel="stylesheet" href="assets/css/home.css?v=10" />
+    <link rel="stylesheet" href="assets/css/studio.css?v=2" />
   </head>
   <body class="rs">
     <a class="rs-skip" href="#main">Skip to main content</a>
@@ -28,11 +28,11 @@
         <div class="rs-hero__copy">
           <p class="eyebrow">Research Studio</p>
           <h1 id="rs-title">Turn your research into something <em>people can play.</em></h1>
-          <p class="lede">For clinicians and researchers who study recovery after chemotherapy. Bring an idea and the evidence behind it. If it passes review, it joins the Chemoasis library with your name and credentials on it, so the people it helps can find you.</p>
-          <p class="rs-status"><span aria-hidden="true"></span>Opening soon. We aren't taking submissions yet.</p>
+          <p class="lede">For clinicians and researchers who study recovery during and after chemotherapy. Bring an idea and the evidence behind it. If it passes review, it joins the Chemoasis library with your name and credentials on it, so patients anywhere can find you, not just where they're treated.</p>
+          <p class="rs-status"><span aria-hidden="true"></span>Now in preview. Every activity is reviewed by a person.</p>
           <div class="actions">
-            <a class="button primary" href="#how">How it works</a>
-            <a class="button" href="#interest">Register your interest</a>
+            <a class="button primary" href="studio-submit.html">Start in your studio <span aria-hidden="true">→</span></a>
+            <a class="button" href="#how">How it works</a>
           </div>
         </div>
         <!-- Each piece is one part of a submission; the dashed piece is the one still to be placed. -->
@@ -55,6 +55,19 @@
         </svg>
       </header>
 
+      <section class="rs-section" id="why" aria-labelledby="why-title">
+        <p class="eyebrow">Why it matters</p>
+        <h2 id="why-title">Research from experts anywhere, <em>not just where you're treated.</em></h2>
+        <p class="rs-body">During chemotherapy, so much runs on other people's schedules: appointments, infusions, the days treatment knocks you down. Brain fog, often called "chemo brain", can start during treatment, not only after it. The time between treatments and next steps is where neuroscience and technology can help.</p>
+        <p class="rs-body">Research Studio lets patients take some control back, during and after chemotherapy, with activities built on published research by experts anywhere. And it lets the people doing that research reach patients far beyond their own clinic.</p>
+      </section>
+
+      <section class="rs-section" id="library" aria-labelledby="library-title" hidden>
+        <p class="eyebrow">In the library</p>
+        <h2 id="library-title">Activities built on <em>published research.</em></h2>
+        <ul class="rs-library" id="libraryList"></ul>
+      </section>
+
       <section class="rs-section" id="who" aria-labelledby="who-title">
         <p class="eyebrow">Who it's for</p>
         <h2 id="who-title">People who know recovery <em>from the evidence.</em></h2>
@@ -74,7 +87,7 @@
         <p class="eyebrow">How it works</p>
         <h2 id="how-title">From a study <em>to the library.</em></h2>
         <ol class="steps rs-steps">
-          <li><span>01</span><div><b>Sketch the idea</b><p>Describe the activity, who it's for and what it practices. A design assistant will help turn your description into a visual mock-up you can refine.</p></div></li>
+          <li><span>01</span><div><b>Sketch the idea</b><p>Describe the activity, who it's for and what it practices. A design assistant turns your description into a visual mock-up you can refine.</p></div></li>
           <li><span>02</span><div><b>Show the research</b><p>Link the published studies the activity is built on, by DOI or PubMed link, and say plainly what they found, including what they didn't.</p></div></li>
           <li><span>03</span><div><b>Confirm who you are</b><p>Add your ORCID iD, your institution and, for US clinicians, your NPI number. We check them against the public registries.</p></div></li>
           <li><span>04</span><div><b>Share a prototype</b><p>A playable prototype or a detailed spec. Submitted games run in a sealed-off sandbox, kept apart from players' accounts and data.</p></div></li>
@@ -143,7 +156,7 @@
           <li>You keep ownership of your work, and you can ask us to take it down at any time.</li>
           <li>The activity doesn't collect personal or health information from players.</li>
         </ol>
-        <p class="rs-note">This is a draft. It will be reviewed before submissions open.</p>
+        <p class="rs-note">This agreement is in preview. It will be reviewed again before we invite researchers widely.</p>
       </section>
 
       <section class="rs-section" id="faq" aria-labelledby="faq-title">
@@ -162,23 +175,26 @@
       </section>
 
       <section class="rs-section rs-interest" id="interest" aria-labelledby="interest-title">
-        <p class="eyebrow">Register your interest</p>
+        <p class="eyebrow">Get started</p>
         <h2 id="interest-title">Want to be one of <em>the first?</em></h2>
-        <p class="rs-body">Submissions aren't open yet. Until they are, tell us what you'd like to build in the community's Ideas and feedback space. Create a free account, then start a conversation there.</p>
+        <p class="rs-body">Create a free account and start an activity in your studio. Save as you go, and send it for review when it's ready. Questions or ideas first? Ask in the community's Ideas and feedback space.</p>
         <div class="actions">
-          <a class="button primary" href="../forum/new.html?category=ideas">Post in Ideas and feedback <span aria-hidden="true">→</span></a>
-          <a class="button" href="../forum/guidelines.html">Community guidelines</a>
+          <a class="button primary" href="studio-submit.html">Start in your studio <span aria-hidden="true">→</span></a>
+          <a class="button" href="../forum/new.html?category=ideas">Post in Ideas and feedback</a>
         </div>
       </section>
 
       <footer class="rs-footer">
-        <p class="disclaimer">Chemoasis is a supportive platform, not a diagnostic tool or a replacement for oncology, mental health, rehabilitation or other clinical care. Activities in the library practice skills. They are not treatments. If you're struggling with low mood, please talk to your care team. If you're thinking about harming yourself, call or text 988 in the US, or your local emergency number.</p>
+        <p class="disclaimer">Chemoasis is a supportive platform, not a diagnostic tool or a replacement for oncology, rehabilitation or other clinical care. For new, severe or worsening symptoms, contact your care team. In a crisis, call or text 988 in the US, or your local emergency number.</p>
         <nav class="rs-footer__links" aria-label="Footer">
           <a href="index.html">Home</a>
+          <a href="studio-submit.html">Your studio</a>
           <a href="../forum/guidelines.html">Community guidelines</a>
           <a href="../account/privacy.html">Privacy</a>
         </nav>
       </footer>
     </main>
+    <script src="assets/js/studio/common.js?v=1"></script>
+    <script src="assets/js/studio/gallery.js?v=1"></script>
   </body>
 </html>

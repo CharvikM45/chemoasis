@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Research Studio review queue for Chemoasis reviewers." />
+    <meta name="robots" content="noindex" />
+    <title>Review queue · Research Studio · Chemoasis</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&family=Playfair+Display:ital,wght@0,400;0,500;1,400;1,500&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="assets/css/home.css?v=10" />
+    <link rel="stylesheet" href="assets/css/studio.css?v=2" />
+  </head>
+  <body class="rs rs-app">
+    <a class="rs-skip" href="#main">Skip to main content</a>
+    <nav class="nav" aria-label="Primary navigation">
+      <a href="index.html" class="brand"><span class="brand-mark"><i></i><i></i><i></i><i></i></span>chemoasis</a>
+      <div class="nav-links">
+        <a class="nav-link" href="index.html?games=1">Games</a>
+        <a class="nav-link" href="../forum/index.html">Community</a>
+        <a class="nav-link" href="research.html" aria-current="page">Research Studio</a>
+        <a class="nav-link nav-cta" href="../account/index.html">Your games <span aria-hidden="true">→</span></a>
+      </div>
+    </nav>
+
+    <main id="main">
+      <header class="rs-app__head">
+        <p class="eyebrow"><a href="research.html">Research Studio</a> / Review queue</p>
+        <h1>Review <em>queue.</em></h1>
+        <p class="lede">Every activity is published by a person. The automatic checks and the advisory read are there to help you look; they never decide.</p>
+      </header>
+
+      <p class="rs-banner" id="message" role="status" hidden></p>
+
+      <section class="rs-panel" id="notReviewer" hidden>
+        <h2 class="rs-panel__title">Reviewers only</h2>
+        <p>This page is for the Chemoasis team members who review Research Studio submissions.</p>
+        <div class="actions"><a class="button" href="studio-submit.html">Go to your studio</a></div>
+      </section>
+
+      <section id="queueView" hidden aria-labelledby="queue-title">
+        <h2 class="rs-panel__title" id="queue-title">Waiting for review</h2>
+        <p class="rs-note" id="emptyQueue" hidden>Nothing is waiting. New submissions appear here.</p>
+        <div id="queue"></div>
+        <h2 class="rs-panel__title rs-gap" id="published-title">Published</h2>
+        <p class="rs-note" id="emptyPublished" hidden>Nothing is published yet.</p>
+        <div id="published"></div>
+      </section>
+
+      <section class="rs-panel rs-gap" aria-labelledby="checklist-title">
+        <h2 class="rs-panel__title" id="checklist-title">Before you publish</h2>
+        <ul class="rs-plain">
+          <li>The credentials belong to this person. If a registry didn't match, confirm another way (an institution web page, or their institution's email address).</li>
+          <li>The studies exist and support what the listing says, for people during or after chemotherapy. Read the abstracts.</li>
+          <li>No promises to treat, cure or reverse anything. Small or mixed results are described as such.</li>
+          <li>Gentle by default: no forced timer, a pause at any moment, short rounds.</li>
+          <li>Accessible: big targets, nothing that relies on colour alone, no required dragging, calm motion.</li>
+          <li>Private: it doesn't ask players for personal or health information.</li>
+        </ul>
+      </section>
+
+      <footer class="rs-footer">
+        <p class="disclaimer">Chemoasis is a supportive platform, not a diagnostic tool or a replacement for oncology, rehabilitation or other clinical care. For new, severe or worsening symptoms, contact your care team. In a crisis, call or text 988 in the US, or your local emergency number.</p>
+        <nav class="rs-footer__links" aria-label="Footer">
+          <a href="research.html">Research Studio</a>
+          <a href="../forum/guidelines.html">Community guidelines</a>
+          <a href="../account/privacy.html">Privacy</a>
+        </nav>
+      </footer>
+    </main>
+    <script src="assets/js/studio/common.js?v=1"></script>
+    <script src="assets/js/studio/review.js?v=1"></script>
+  </body>
+</html>
