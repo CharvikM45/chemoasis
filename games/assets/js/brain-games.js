@@ -3,7 +3,7 @@
  * people after cancer treatment. Most adapt as you play: harder after you succeed and easier
  * after you miss. Sessions are a few minutes long.
  *
- *   lumen      Lumen Garden            spatial working memory span (forward, then backward)
+ *   lumen      Lumen Garden            spatial working memory span
  *   starling   Starling Observatory    speed of processing (brief flashes, centre + periphery)
  *   cloudpath  Cloudpath Cartographer  planning (Tower of London puzzles)
  *   echo       Story Echo              verbal memory (word lists, linking strategy)
@@ -44,7 +44,7 @@ const BEST = 'reframe.best';
 const readJSON = (name) => { try { return JSON.parse(localStorage.getItem(name) || '{}') || {}; } catch (_) { return {}; } };
 const writeJSON = (name, value) => { try { localStorage.setItem(name, JSON.stringify(value)); } catch (_) { /* storage unavailable */ } };
 // Bests and carried difficulty are kept per game, level and mode, so a level 1 score never
-// stands as the best to beat on level 4, and Gentle never competes with Challenge.
+// stands as the best to beat on level 3, and Gentle never competes with Challenge.
 const keyFor = (game, level, mode) => `${game}-L${level.index + 1}${mode ? `-${mode}` : ''}`;
 // Saves `value` if it beats the old best (higher is better unless lowerIsBetter). Returns { best, isNew }.
 function recordBest(name, value, lowerIsBetter) {
@@ -411,13 +411,12 @@ const lumen = {
   id: 'lumen', title: 'Lumen Garden', kicker: 'Working memory', tone: '#c58cff',
   about: { text: 'Practises working memory: holding a short sequence in mind and replaying it. Inspired by span tasks used in research. A small pilot with childhood cancer survivors found gains on similar tasks; results in adults after cancer are early and mixed, and this game itself hasn’t been studied.', cite: 'Hardy et al., Psycho-Oncology 2013', href: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC4820841/' },
   levels: [
-    { name: 'Forward paths', desc: '3 × 3 garden. Sequences start at 3 lights.', size: 3, span: 3, on: 650, backward: false },
-    { name: 'Longer paths', desc: '3 × 3 garden. Starts at 4 lights, a little faster.', size: 3, span: 4, on: 520, backward: false },
-    { name: 'Bigger garden', desc: '4 × 4 garden. Starts at 5 lights.', size: 4, span: 5, on: 480, backward: false },
-    { name: 'Backwards', desc: '4 × 4 garden. Tap the path in reverse order.', size: 4, span: 4, on: 520, backward: true }
+    { name: 'Forward paths', desc: '3 × 3 garden. Sequences start at 3 lights.', size: 3, span: 3, on: 650 },
+    { name: 'Longer paths', desc: '3 × 3 garden. Starts at 4 lights, a little faster.', size: 3, span: 4, on: 520 },
+    { name: 'Bigger garden', desc: '4 × 4 garden. Starts at 5 lights.', size: 4, span: 5, on: 480 }
   ],
-  summary: ['Watch the flowers light up, one at a time.', 'Then tap them in the same order. On the last level, tap them backwards.'],
-  how: (l) => ['Watch the flowers light up, one at a time.', `Then tap them in the <b>${l.backward ? 'reverse' : 'same'}</b> order${l.backward ? ' (last one first)' : ''}.`],
+  summary: ['Watch the flowers light up, one at a time.', 'Then tap them in the same order.'],
+  how: () => ['Watch the flowers light up, one at a time.', 'Then tap them in the <b>same</b> order.'],
   meta: () => '14 paths · about 3 minutes · each right answer adds a flower',
   carry: { from: (v) => clamp(v - 1, 2, 9), label: (v) => `paths of ${v} flowers` },
   async play(world, level, alive, mode, startAt) {
@@ -431,7 +430,7 @@ const lumen = {
     const buttons = [...panel.querySelectorAll('[data-cell]')];
     const status = (t) => { panel.querySelector('[data-status]').textContent = t; };
     for (let trial = 0; trial < TRIALS && alive(); trial++) {
-      panel.querySelector('[data-info]').textContent = `Path ${trial + 1} of ${TRIALS} · ${span} flowers${level.backward ? ' · backwards' : ''}`;
+      panel.querySelector('[data-info]').textContent = `Path ${trial + 1} of ${TRIALS} · ${span} flowers`;
       world.progress(trial, TRIALS);
       const seq = [];
       while (seq.length < span) { const c = Math.floor(Math.random() * cells); if (c !== seq[seq.length - 1]) seq.push(c); }
@@ -445,8 +444,7 @@ const lumen = {
         buttons[c].classList.remove('lit');
         await world.sleep(220);
       }
-      const want = level.backward ? seq.slice().reverse() : seq;
-      status(level.backward ? 'Your turn: tap them in reverse order.' : 'Your turn: tap them in the same order.');
+      status('Your turn: tap them in the same order.');
       buttons.forEach((b) => { b.disabled = false; });
       const ok = await new Promise((resolve) => {
         let step = 0;
@@ -454,8 +452,8 @@ const lumen = {
           b.onclick = () => {
             b.classList.add('tap');
             setTimeout(() => b.classList.remove('tap'), 180);
-            if (i !== want[step]) { buttons[want[step]].classList.add('hint'); resolve(false); return; }
-            if (++step === want.length) resolve(true);
+            if (i !== seq[step]) { buttons[seq[step]].classList.add('hint'); resolve(false); return; }
+            if (++step === seq.length) resolve(true);
           };
         });
       });
@@ -467,7 +465,7 @@ const lumen = {
     if (!alive()) return;
     saveCarry(world.saveAs, span);
     const { best, isNew } = longest ? recordBest(world.saveAs, longest) : { best: readJSON(BEST)[world.saveAs] };
-    finish(world, lumen, level, [`Longest path you got right: ${longest} flowers${level.backward ? ' backwards' : ''}. Paths correct: ${correct} of ${TRIALS}.`], isNew ? 'That is a new personal best on this level!' : best ? `Personal best on this level: ${best} flowers.` : '', [], longest);
+    finish(world, lumen, level, [`Longest path you got right: ${longest} flowers. Paths correct: ${correct} of ${TRIALS}.`], isNew ? 'That is a new personal best on this level!' : best ? `Personal best on this level: ${best} flowers.` : '', [], longest);
   }
 };
 
@@ -476,8 +474,7 @@ lumen.w3 = {
   levels: [
     { name: 'Two lights', desc: 'Remember 2 plants in order. 15 seconds to look.', count: 2, secs: 15 },
     { name: 'Three lights', desc: 'Remember 3 plants in order. 10 seconds to look.', count: 3, secs: 10 },
-    { name: 'Four lights', desc: 'Remember 4 plants in order. 12 seconds to look.', count: 4, secs: 12 },
-    { name: 'Five lights', desc: 'Remember all 5 plants in order. 12 seconds to look.', count: 5, secs: 12 }
+    { name: 'Four lights', desc: 'Remember 4 plants in order. 12 seconds to look.', count: 4, secs: 12 }
   ],
   summary: ['Remember the plants shown at the top, in order. Then they hide.', 'Walk to each plant and click it, in that order.'],
   how: (l) => [`Remember the ${l.count} plants shown at the top, in order. They hide after ${l.secs} seconds.`, 'Walk up to each plant and click it, in that order.'],
@@ -503,8 +500,7 @@ const starling = {
   levels: [
     { name: 'Centre', desc: 'Name the symbol that flashes in the centre.', ring: false, clutter: false, start: 400 },
     { name: 'Centre and edge', desc: 'Name the centre symbol and find the comet at the edge.', ring: true, clutter: false, start: 450 },
-    { name: 'Busy sky', desc: 'As before, with look-alike stars in the way.', ring: true, clutter: true, start: 500 },
-    { name: 'Lightning sky', desc: 'Busy sky, starting with much shorter flashes.', ring: true, clutter: true, start: 260 }
+    { name: 'Busy sky', desc: 'As before, with look-alike stars in the way.', ring: true, clutter: true, start: 500 }
   ],
   summary: ['Keep your eyes on the + in the middle. A symbol flashes there for a moment.', 'Pick which symbol it was. On later levels, also tap where the comet ☄ flashed at the edge.'],
   how: (l) => ['Keep your eyes on the + in the middle. A symbol flashes there for a moment.', `Pick which symbol it was${l.ring ? ', then tap where the comet ☄ flashed around the edge' : ''}.`],
@@ -595,8 +591,7 @@ starling.w3 = {
   levels: [
     { name: 'One object', desc: 'Find 1 named object in the sky.', count: 1 },
     { name: 'Two objects', desc: 'Find 2 objects, one after the other.', count: 2 },
-    { name: 'Three objects', desc: 'Find 3 objects, one after the other.', count: 3 },
-    { name: 'Four objects', desc: 'Find 4 objects, one after the other.', count: 4 }
+    { name: 'Three objects', desc: 'Find 3 objects, one after the other.', count: 3 }
   ],
   summary: ['The box at the top names an object in the observatory sky.', 'Look around, aim the crosshair at it and click.'],
   how: (l) => [`The box at the top names an object in the sky${l.count > 1 ? `, ${l.count} in turn` : ''}.`, 'Look around, aim the crosshair at it and click.'],
@@ -652,8 +647,7 @@ const cloudpath = {
   levels: [
     { name: 'Short routes', desc: 'Puzzles that take 2 to 3 moves.', target: 3 },
     { name: 'Four moves', desc: 'Puzzles that take 4 moves.', target: 4 },
-    { name: 'Five moves', desc: 'Puzzles that take 5 moves.', target: 5 },
-    { name: 'Long routes', desc: 'Puzzles that take 6 to 7 moves.', target: 6 }
+    { name: 'Five moves', desc: 'Puzzles that take 5 moves.', target: 5 }
   ],
   summary: ['Make your clouds match the Goal. Tap a cloud to lift its top lantern, then tap another cloud to drop it.', 'Clouds hold 3, 2 and 1 lanterns. Plan ahead and use as few moves as you can.'],
   how: () => ['Make your clouds match the <b>Goal</b>. Tap a cloud to lift its top lantern, then tap another cloud to drop it.', 'Clouds hold 3, 2 and 1 lanterns. <b>Plan first</b> and use as few moves as you can.'],
@@ -728,8 +722,7 @@ cloudpath.w3 = {
   levels: [
     { name: 'To the Falls', desc: 'Plan a route from Harbor to Falls.', must: [], end: 'Falls', goal: 'Harbor to Falls', fewest: 2 },
     { name: 'To the Beacon', desc: 'Plan a route from Harbor all the way to Beacon.', must: [], end: 'Beacon', goal: 'Harbor to Beacon', fewest: 3 },
-    { name: 'Through Moss', desc: 'Visit Moss on your way to Beacon.', must: ['Moss'], end: 'Beacon', goal: 'Harbor to Beacon, through Moss', fewest: 3 },
-    { name: 'Both sides', desc: 'Visit Moss and Wind before you reach Beacon.', must: ['Moss', 'Wind'], end: 'Beacon', goal: 'Harbor to Beacon, through Moss and Wind', fewest: 5 }
+    { name: 'Through Moss', desc: 'Visit Moss on your way to Beacon.', must: ['Moss'], end: 'Beacon', goal: 'Harbor to Beacon, through Moss', fewest: 3 }
   ],
   summary: ['Plan a route across the sky bridges, from Harbor to the island named at the top.', 'Click each next island’s beacon. The ones you can reach next glow brightest.'],
   how: (l) => [`Plan a route across the sky bridges: <b>${esc(l.goal)}</b>.`, 'Click each next island’s beacon. The ones you can reach next glow brightest.'],
@@ -769,8 +762,7 @@ const echo = {
   levels: [
     { name: 'Short lists', desc: 'Lists start at 6 words.', words: 6, pace: 1700 },
     { name: 'Longer lists', desc: 'Lists start at 8 words.', words: 8, pace: 1600 },
-    { name: 'Long lists', desc: 'Lists start at 10 words.', words: 10, pace: 1500 },
-    { name: 'Long and quick', desc: 'Lists start at 12 words. In Challenge, words show faster.', words: 12, pace: 1150 }
+    { name: 'Long lists', desc: 'Lists start at 10 words.', words: 10, pace: 1500 }
   ],
   summary: ['Words appear one at a time. Try to remember them all.', 'Then tap every word you saw, from a mix of old and new.'],
   how: (l, mode) => [
@@ -944,8 +936,7 @@ const rhythm = {
   levels: [
     { name: 'Two pads', desc: 'Two big pads: F and J.', pads: 2, interval: 1100 },
     { name: 'Three pads', desc: 'Three pads: D, F and J.', pads: 3, interval: 950 },
-    { name: 'Four pads', desc: 'All four pads: D, F, J and K.', pads: 4, interval: 800 },
-    { name: 'Four pads, brisk', desc: 'All four pads. Challenge starts a little quicker.', pads: 4, interval: 650 }
+    { name: 'Four pads', desc: 'All four pads: D, F, J and K.', pads: 4, interval: 800 }
   ],
   how: (l, mode) => {
     const keys = PAD_SETS[l.pads].map((i) => PADS[i][0]);
@@ -1065,8 +1056,7 @@ const signal = {
   levels: [
     { name: 'One rule at a time', desc: 'The rule changes every 10 signals.', switchEvery: 10, p: 0, deadline: 3000 },
     { name: 'Some switches', desc: 'The rule changes about 1 time in 3.', p: 0.3, deadline: 2500 },
-    { name: 'Frequent switches', desc: 'The rule changes about half the time.', p: 0.5, deadline: 2000 },
-    { name: 'Fast switching', desc: 'Half the time. In Challenge, with less time to answer.', p: 0.5, deadline: 1300 }
+    { name: 'Frequent switches', desc: 'The rule changes about half the time.', p: 0.5, deadline: 2000 }
   ],
   summary: ['The word at the top says how to sort each shape: by <b>SHAPE</b> or by <b>FILL</b>.', '<b>SHAPE</b>: round goes left, pointed goes right. <b>FILL</b>: solid goes left, outline goes right.'],
   how: () => [
