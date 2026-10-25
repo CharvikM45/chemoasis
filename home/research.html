@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&family=Playfair+Display:ital,wght@0,400;0,500;1,400;1,500&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="assets/css/home.css?v=11" />
-    <link rel="stylesheet" href="assets/css/studio.css?v=2" />
+    <link rel="stylesheet" href="assets/css/studio.css?v=3" />
   </head>
   <body class="rs">
     <a class="rs-skip" href="#main">Skip to main content</a>
@@ -28,8 +28,8 @@
         <div class="rs-hero__copy">
           <p class="eyebrow">Research Studio</p>
           <h1 id="rs-title">Turn your research into something <em>people can play.</em></h1>
-          <p class="lede">For clinicians and researchers who study recovery during and after chemotherapy. Bring an idea and the evidence behind it. If it passes review, it joins the Chemoasis library with your name and credentials on it, so patients anywhere can find you, not just where they're treated.</p>
-          <p class="rs-status"><span aria-hidden="true"></span>Now in preview. Every activity is reviewed by a person.</p>
+          <p class="lede">For clinicians and researchers who study recovery during and after chemotherapy. Build an activity from your work, and patients anywhere can play it, with your name on it.</p>
+          <p class="rs-status"><span aria-hidden="true"></span>Now in preview · every activity is reviewed by a person</p>
           <div class="actions">
             <a class="button primary" href="studio-submit.html">Start in your studio <span aria-hidden="true">→</span></a>
             <a class="button" href="#how">How it works</a>
@@ -42,13 +42,13 @@
           </defs>
           <use href="#rs-piece" class="p-done p1" x="0" y="0" />
           <use href="#rs-piece" class="p-done p2" x="100" y="0" />
-          <use href="#rs-piece" class="p-done p3" x="200" y="0" />
-          <use href="#rs-piece" class="p-done p4" x="0" y="100" />
+          <use href="#rs-piece" class="p-done p1" x="200" y="0" />
+          <use href="#rs-piece" class="p-done p2" x="0" y="100" />
           <use href="#rs-piece" class="p-done p1" x="100" y="100" />
           <use href="#rs-piece" class="p-next" x="200" y="100" />
           <text x="50" y="56">Idea</text>
           <text x="150" y="56">Research</text>
-          <text x="250" y="56" class="t-light">Credentials</text>
+          <text x="250" y="56">Credentials</text>
           <text x="50" y="156">Prototype</text>
           <text x="150" y="156">Review</text>
           <text x="250" y="156" class="t-next">Your name</text>
@@ -58,129 +58,98 @@
       <section class="rs-section" id="why" aria-labelledby="why-title">
         <p class="eyebrow">Why it matters</p>
         <h2 id="why-title">Research from experts anywhere, <em>not just where you're treated.</em></h2>
-        <p class="rs-body">During chemotherapy, so much runs on other people's schedules: appointments, infusions, the days treatment knocks you down. Brain fog, often called "chemo brain", can start during treatment, not only after it (<a class="rs-source" href="https://www.cancer.gov/about-cancer/treatment/side-effects/memory" rel="noopener" target="_blank">National Cancer Institute ↗</a>). The time between treatments and next steps is a chance to start working on it.</p>
-        <p class="rs-body">Research Studio lets patients take some control back, during and after chemotherapy, with activities built on published research by experts anywhere. And it lets the people doing that research reach patients far beyond their own clinic.</p>
+        <p class="rs-body">Chemo brain can start during treatment, not only after it (<a class="rs-source" href="https://www.cancer.gov/about-cancer/treatment/side-effects/memory" rel="noopener" target="_blank">National Cancer Institute ↗</a>). Your work can help patients take some control back, wherever they are.</p>
+        <div class="rs-cards rs-cards--3">
+          <article class="rs-card">
+            <i aria-hidden="true">◎</i>
+            <h3>Reach patients anywhere</h3>
+            <p>Your activity is open to everyone on Chemoasis, during and after chemotherapy.</p>
+          </article>
+          <article class="rs-card">
+            <i aria-hidden="true">✓</i>
+            <h3>Your name on your work</h3>
+            <p>Every activity carries your credit, checked against ORCID or the NPI registry.</p>
+          </article>
+          <article class="rs-card">
+            <i aria-hidden="true">✎</i>
+            <h3>No code needed</h3>
+            <p>A written plan is enough. A design assistant can sketch the screen for you.</p>
+          </article>
+        </div>
       </section>
 
       <section class="rs-section" id="library" aria-labelledby="library-title" hidden>
         <p class="eyebrow">In the library</p>
-        <h2 id="library-title">Activities built on <em>published research.</em></h2>
+        <h2 id="library-title">Built on <em>published research.</em></h2>
         <ul class="rs-library" id="libraryList"></ul>
-      </section>
-
-      <section class="rs-section" id="who" aria-labelledby="who-title">
-        <p class="eyebrow">Who it's for</p>
-        <h2 id="who-title">People who know recovery <em>from the evidence.</em></h2>
-        <ul class="rs-tags">
-          <li>Oncologists</li>
-          <li>Oncology nurses</li>
-          <li>Occupational therapists</li>
-          <li>Physical therapists</li>
-          <li>Neuropsychologists</li>
-          <li>Rehabilitation specialists</li>
-          <li>Researchers studying life after cancer treatment</li>
-        </ul>
-        <p class="rs-note">You don't need to know how to code. A clear written plan or a mock-up is enough to start.</p>
       </section>
 
       <section class="rs-section" id="how" aria-labelledby="how-title">
         <p class="eyebrow">How it works</p>
         <h2 id="how-title">From a study <em>to the library.</em></h2>
-        <ol class="steps rs-steps">
-          <li><span>01</span><div><b>Sketch the idea</b><p>Describe the activity, who it's for and what it practices. A design assistant turns your description into a visual mock-up you can refine.</p></div></li>
-          <li><span>02</span><div><b>Show the research</b><p>Link the published studies the activity is built on, by DOI or PubMed link, and say plainly what they found, including what they didn't.</p></div></li>
-          <li><span>03</span><div><b>Confirm who you are</b><p>Add your ORCID iD, your institution and, for US clinicians, your NPI number. We check them against the public registries.</p></div></li>
-          <li><span>04</span><div><b>Share a prototype</b><p>A playable prototype or a detailed spec. Submitted games run in a sealed-off sandbox, kept apart from players' accounts and data.</p></div></li>
-          <li><span>05</span><div><b>Two-stage review</b><p>Automatic checks come first: do the registries match, do the studies exist and say what the submission says, does the activity meet our accessibility rules. Then a person reviews it and decides. Software never approves an activity on its own.</p></div></li>
-          <li><span>06</span><div><b>Published, with your name</b><p>The activity joins the library with a short description, the research behind it and your credit card. Players can discuss it in the community.</p></div></li>
+        <ol class="rs-flow">
+          <li><span>01</span><h3>Sketch it</h3><p>Describe the activity. The design assistant draws a mock-up.</p></li>
+          <li><span>02</span><h3>Show the evidence</h3><p>Link studies by DOI or PubMed, and say what they found and didn't.</p></li>
+          <li><span>03</span><h3>Get checked</h3><p>Your credentials and every study are checked against public registries.</p></li>
+          <li><span>04</span><h3>A person decides</h3><p>A reviewer publishes it with your credit. Software never approves.</p></li>
         </ol>
-      </section>
-
-      <section class="rs-section rs-split" id="credit" aria-labelledby="credit-title">
-        <div>
-          <p class="eyebrow">Your credit</p>
-          <h2 id="credit-title">Your name travels <em>with your work.</em></h2>
-          <p class="rs-body">Every published activity carries a creator card. You choose what it shows: your name and credentials always, plus your specialty, institution and general location if you agree. Players can follow the research links back to your published work.</p>
-          <p class="rs-body">A "Verified" badge means we checked the credentials listed against a public registry. It doesn't mean every statement in the activity has been checked, and being a creator on its own isn't a medical qualification.</p>
-        </div>
-        <figure class="rs-preview" aria-label="Example of how a published activity is credited. Every value is a placeholder.">
-          <figcaption>How a published activity is credited</figcaption>
-          <div class="rs-game">
-            <p class="rs-game__area">Working memory</p>
-            <p class="rs-game__name">Your activity's name</p>
-            <p class="rs-game__desc">A one-paragraph description of what the player does and what it practices.</p>
-            <p class="rs-game__based">Based on: <u>your published study</u> ↗</p>
-          </div>
-          <div class="rs-creator">
-            <span class="rs-avatar" aria-hidden="true">Y</span>
-            <div>
-              <p class="rs-creator__name">Your Name, PhD <span class="rs-verified">✓ Verified</span></p>
-              <p class="rs-creator__meta">Your specialty · Your institution · Your state or country</p>
-              <p class="rs-creator__meta">ORCID iD and research links</p>
+        <div class="rs-split">
+          <figure class="rs-preview" aria-label="Example of how a published activity is credited. Every value is a placeholder.">
+            <figcaption>How you're credited</figcaption>
+            <div class="rs-game">
+              <p class="rs-game__area">Working memory</p>
+              <p class="rs-game__name">Your activity's name</p>
+              <p class="rs-game__based">Based on: <u>your published study</u> ↗</p>
             </div>
+            <div class="rs-creator">
+              <span class="rs-avatar" aria-hidden="true">Y</span>
+              <div>
+                <p class="rs-creator__name">Your Name, PhD <span class="rs-verified">✓ Verified</span></p>
+                <p class="rs-creator__meta">Specialty · Institution · Location, if you choose</p>
+              </div>
+            </div>
+          </figure>
+          <div>
+            <h3 class="rs-subhead">Every activity is</h3>
+            <ul class="rs-ticks">
+              <li><b>Honest.</b> It claims only what the research shows, and never to treat a condition.</li>
+              <li><b>Gentle.</b> No forced timer, a pause at any moment, short rounds.</li>
+              <li><b>Accessible.</b> Big targets, no colour-only cues, no required dragging.</li>
+              <li><b>Private.</b> It runs sealed off from accounts and never collects personal or health information.</li>
+            </ul>
           </div>
-        </figure>
-      </section>
-
-      <section class="rs-section" id="standards" aria-labelledby="standards-title">
-        <p class="eyebrow">Review standards</p>
-        <h2 id="standards-title">What every activity <em>has to meet.</em></h2>
-        <div class="rs-grid">
-          <article class="rs-card">
-            <h3>Honest claims</h3>
-            <p>The description says only what the research supports. An activity is never described as treating or improving a medical condition unless research on that activity shows it. If the studies were small or mixed, the listing says so.</p>
-          </article>
-          <article class="rs-card">
-            <h3>Gentle by default</h3>
-            <p>No timer unless the player turns on a challenge, a pause at any moment, and short rounds. Speed and pressure are always the player's choice.</p>
-          </article>
-          <article class="rs-card">
-            <h3>Accessible</h3>
-            <p>Large tap targets, nothing that depends on colour alone, no required dragging, and a calm version for people who turn off motion.</p>
-          </article>
-          <article class="rs-card">
-            <h3>Private</h3>
-            <p>Activities can't see players' accounts, and they never collect personal or health information. No leaderboards and no health scores.</p>
-          </article>
         </div>
       </section>
 
-      <section class="rs-section" id="agreement" aria-labelledby="agreement-title">
-        <p class="eyebrow">The submission agreement</p>
-        <h2 id="agreement-title">Five promises, <em>in plain words.</em></h2>
-        <p class="rs-body">There's nothing to license and no fee. When you submit, you tick one box confirming that:</p>
-        <ol class="rs-promises">
-          <li>You made this activity, or you have permission to share it.</li>
-          <li>The credentials and research you list are real and are yours to cite.</li>
-          <li>Chemoasis may host the activity for players free of charge, and adjust it for accessibility or safety, always crediting you.</li>
-          <li>You keep ownership of your work, and you can ask us to take it down at any time.</li>
-          <li>The activity doesn't collect personal or health information from players.</li>
-        </ol>
-        <p class="rs-note">This agreement is in preview. It will be reviewed again before we invite researchers widely.</p>
+      <section class="rs-section" id="fine-print" aria-labelledby="fine-title">
+        <p class="eyebrow">The fine print</p>
+        <h2 id="fine-title">Free, and <em>yours to keep.</em></h2>
+        <div class="rs-faq">
+          <details>
+            <summary>What do I agree to?</summary>
+            <p>One checkbox, five promises: you made it or may share it; your credentials and research are real; we may host it free and adjust it for accessibility or safety, always crediting you; you keep ownership and can take it down at any time; it collects no personal or health information. This agreement is in preview and will be reviewed again before we invite researchers widely.</p>
+          </details>
+          <details>
+            <summary>Does it cost anything?</summary>
+            <p>No. Submitting and publishing are free, and players never pay to play.</p>
+          </details>
+          <details>
+            <summary>Is publishing the same as running a study?</summary>
+            <p>No. Any research use of how people play would need their consent, proper oversight and ethics review first.</p>
+          </details>
+          <details>
+            <summary>What if it doesn't pass?</summary>
+            <p>You'll get the reasons, and you can change it and send it again.</p>
+          </details>
+        </div>
       </section>
 
-      <section class="rs-section" id="faq" aria-labelledby="faq-title">
-        <p class="eyebrow">Questions</p>
-        <h2 id="faq-title">Before <em>you start.</em></h2>
-        <dl class="rs-faq">
-          <dt>Does it cost anything?</dt>
-          <dd>No. Submitting and publishing are free, and players never pay to play.</dd>
-          <dt>Who owns the activity?</dt>
-          <dd>You do. You give Chemoasis permission to host it, and you can withdraw that permission at any time.</dd>
-          <dt>Is publishing an activity the same as running a study?</dt>
-          <dd>No. Any research use of how people play would need their consent, proper oversight and ethics review first, and that's separate from publishing.</dd>
-          <dt>What if my activity doesn't pass?</dt>
-          <dd>You'll get the reasons, and you can change it and submit again.</dd>
-        </dl>
-      </section>
-
-      <section class="rs-section rs-interest" id="interest" aria-labelledby="interest-title">
-        <p class="eyebrow">Get started</p>
-        <h2 id="interest-title">Want to be one of <em>the first?</em></h2>
-        <p class="rs-body">Create a free account and start an activity in your studio. Save as you go, and send it for review when it's ready. Questions or ideas first? Ask in the community's Ideas and feedback space.</p>
+      <section class="rs-cta" aria-labelledby="cta-title">
+        <h2 id="cta-title">Want to be one of <em>the first?</em></h2>
+        <p class="rs-body">Create a free account, start an activity, and send it for review when it's ready.</p>
         <div class="actions">
           <a class="button primary" href="studio-submit.html">Start in your studio <span aria-hidden="true">→</span></a>
-          <a class="button" href="../forum/new.html?category=ideas">Post in Ideas and feedback</a>
+          <a class="button" href="../forum/new.html?category=ideas">Ask a question first</a>
         </div>
       </section>
 
