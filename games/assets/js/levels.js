@@ -1,13 +1,18 @@
 /*
  * Shared level screens for the six home-page games.
- *   GameLevels.pick({ host, game, title, kicker, levels, about, onPick, onExit })
+ *   GameLevels.pick({ host, game, title, kicker, levels, how, views, lede, note, about, onPick, onExit })
  *     shows "Choose a level"; levels are [{ name, desc }]. Every level is open; finished ones
- *     get a tick and the first unfinished one is marked "Up next". `about` ({ text, cite, href,
- *     more }) says what the exercise practises and which research inspired it; `more` is an
- *     optional list of extra { cite, href } sources.
- *   GameLevels.done({ host, game, level, levels, message, details, onPick, onLevels, onExit, extra })
+ *     get a tick and the first unfinished one is marked "Up next". `how` (a few short lines) is
+ *     the "How to play" box at the top. `views` ({ current, off, onChange }) adds the 2D / 3D
+ *     choice; `off` is the reason 3D can't be picked right now ('' when it can). `note` is the
+ *     one-line honesty note under the levels, and `about` ({ text, cite, href, more }) says what
+ *     the exercise practises and which research inspired it, behind "About the research".
+ *   GameLevels.done({ host, game, level, levels, message, details, sync, onPick, onLevels, onExit, extra })
  *     records the level as finished and shows "Level N complete" with Next / Again / All levels.
- *     `details` (optional list of strings) sit behind a "Show details" toggle.
+ *     `details` (optional list of strings) sit behind a "Show details" toggle. sync: false keeps
+ *     the tick in this browser only (the 3D worlds, which the account doesn't track).
+ *   GameLevels.howBox(lines, meta) is the "How to play" box, shared with brain-games.js so it
+ *     looks the same and sits in the same place on every screen.
  * Progress is kept in this browser (localStorage), per game, and on the account when signed in.
  */
 (() => {
@@ -20,11 +25,11 @@
   function saveAll(all) {
     try { localStorage.setItem(STORE, JSON.stringify(all)); } catch (_) { /* storage unavailable */ }
   }
-  function complete(game, index) {
+  function complete(game, index, sync = true) {
     const all = load();
     all[game] = [...new Set([...(all[game] || []), index])];
     saveAll(all);
-    if (window.Account && Account.auth) Account.auth.recordLevel(game, index);
+    if (sync && window.Account && Account.auth) Account.auth.recordLevel(game, index);
   }
   // Signed in: bring in levels finished on other devices.
   if (window.Account && Account.auth) {
@@ -60,24 +65,40 @@
   }
   function close(host) { host.querySelector(':scope > .level-screen')?.remove(); }
 
-  function pick({ host, game, title, kicker, levels, about, onPick, onExit }) {
+  // `lines` and `meta` are written in the game code (they may hold <b>), never typed by a player.
+  function howBox(lines, meta) {
+    return `<section class="howto" aria-label="How to play"><h3>How to play</h3><ol>${lines.map((l) => `<li>${l}</li>`).join('')}</ol>${meta ? `<p class="howto-meta">${meta}</p>` : ''}</section>`;
+  }
+  const NOTE = 'Inspired by tasks used in research. Not yet clinically reviewed, and not a treatment.';
+
+  function pick({ host, game, title, kicker, levels, how, views, lede = 'Each level adapts as you play.', note = NOTE, about, onPick, onExit, focusView }) {
     const done = finished(game);
     const next = upNext(game, levels.length);
+    const view = (id, name, small, off) => `<button data-view="${id}" aria-pressed="${views.current === id}" ${off ? 'disabled' : ''}><b>${name}</b><small>${small}</small></button>`;
+    const sources = about ? [about, ...(about.more || [])].filter((s) => s.href) : [];
     const el = overlay(host, `<p class="level-kicker">${escape(kicker)}</p>
       <h2>${escape(title)}</h2>
-      <p class="level-lede">Choose a level. It adjusts as you play: harder when you're doing well, easier when you're not.</p>
-      ${about ? `<p class="level-about">${escape(about.text)} ${[about, ...(about.more || [])].map((s) => `<a href="${escape(s.href)}" target="_blank" rel="noreferrer">${escape(s.cite)} ↗</a>`).join(' · ')}<small>Inspired by tasks used in research. Not yet clinically reviewed, and not a treatment.</small></p>` : ''}
+      ${how ? howBox(how) : ''}
+      ${views ? `<div class="level-views" role="group" aria-label="Play in 2D or 3D">
+        ${view('2d', '2D board', 'Tap or click. Easiest on the hands.')}
+        ${view('3d', '3D world', 'Walk around with a keyboard and mouse.', views.off)}
+      </div>${views.off ? `<p class="level-view-note">${escape(views.off)}</p>` : ''}` : ''}
+      <h3 class="level-heading">Choose a level <small>${escape(lede)}</small></h3>
       <ol class="level-grid">${levels.map((level, i) => `<li><button data-level="${i}" class="${done.has(i) ? 'is-done' : ''} ${i === next ? 'is-next' : ''}">
         <span class="level-num">Level ${i + 1}</span><b>${escape(level.name)}</b><small>${escape(level.desc)}</small>
         <em>${done.has(i) ? '✓ Completed' : i === next ? 'Up next' : ''}</em></button></li>`).join('')}</ol>
+      <p class="level-fine">${escape(note)}</p>
+      ${about ? `<details class="level-about"><summary>About the research</summary><p>${escape(about.text)}</p>${sources.length ? `<p>${sources.map((s) => `<a href="${escape(s.href)}" target="_blank" rel="noreferrer">${escape(s.cite)} ↗</a>`).join(' · ')}</p>` : ''}</details>` : ''}
       <div class="level-actions"><button data-exit>Exit game</button></div>`);
     el.querySelectorAll('[data-level]').forEach((button) => button.onclick = () => { close(host); onPick(+button.dataset.level); });
+    el.querySelectorAll('[data-view]').forEach((button) => button.onclick = () => { if (button.dataset.view !== views.current) views.onChange(button.dataset.view); });
     el.querySelector('[data-exit]').onclick = () => { close(host); onExit(); };
-    if (next >= 0) el.querySelector(`[data-level="${next}"]`).focus({ preventScroll: true });
+    if (focusView) el.querySelector(`[data-view="${views.current}"]`)?.focus({ preventScroll: true });
+    else if (next >= 0) el.querySelector(`[data-level="${next}"]`).focus({ preventScroll: true });
   }
 
-  function done({ host, game, level, levels, message, details = [], onPick, onLevels, onExit, extra = [] }) {
-    complete(game, level);
+  function done({ host, game, level, levels, message, details = [], sync = true, onPick, onLevels, onExit, extra = [] }) {
+    complete(game, level, sync);
     const hasNext = level + 1 < levels.length;
     const el = overlay(host, `<p class="level-kicker">Level ${level + 1} · ${escape(levels[level].name)}</p>
       <h2>Level ${level + 1} <em>complete.</em></h2>
@@ -99,5 +120,5 @@
     el.querySelectorAll('[data-extra]').forEach((button) => button.onclick = go(extra[+button.dataset.extra].onClick));
   }
 
-  window.GameLevels = { pick, done, close, complete, finished };
+  window.GameLevels = { pick, done, close, complete, finished, howBox };
 })();

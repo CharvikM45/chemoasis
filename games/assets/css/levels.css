@@ -1,4 +1,5 @@
-/* Level select and level complete screens (games/assets/js/levels.js), shared by all six games. */
+/* Level select and level complete screens (games/assets/js/levels.js), shared by all six games.
+   Colours, fonts and the square buttons follow the rest of the site (home/assets/css/home.css). */
 
 .level-screen {
   position: fixed;
@@ -8,9 +9,9 @@
   place-items: center;
   padding: 24px 16px;
   overflow-y: auto;
-  background: rgba(3, 5, 14, .72);
+  background: rgba(6, 5, 7, .74);
   backdrop-filter: blur(10px);
-  color: #fffaf0;
+  color: var(--ink, #f4ebe2);
   font-family: "DM Sans", sans-serif;
   text-shadow: none;
   animation: level-in .35s ease both;
@@ -19,84 +20,120 @@
 @keyframes level-rise { from { opacity: 0; transform: translateY(12px); } }
 
 .level-panel {
+  position: relative;
   width: min(760px, 100%);
   padding: clamp(22px, 4vw, 40px);
-  border: 1px solid rgba(255, 248, 224, .26);
-  background: rgba(6, 11, 25, .78);
-  box-shadow: 0 24px 90px rgba(0, 0, 0, .55);
+  border: 1px solid var(--line, rgba(255, 236, 220, .13));
+  border-top: 2px solid var(--tone, #e7a782);
+  background: rgba(14, 11, 14, .94);
+  box-shadow: 0 24px 90px rgba(0, 0, 0, .6);
   animation: level-rise .45s cubic-bezier(.2, .7, .2, 1) both;
 }
-.level-kicker { margin: 0 0 10px; color: #f0ce88; font: 500 11px "DM Mono", monospace; letter-spacing: .15em; text-transform: uppercase; }
+.level-kicker { margin: 0 0 12px; color: var(--accent-2, #d9a07d); font: 11px "DM Mono", monospace; letter-spacing: .19em; text-transform: uppercase; }
 .level-panel h2 { margin: 0; font: 400 clamp(32px, 4.4vw, 52px)/1 "Playfair Display", serif; letter-spacing: -.045em; }
-.level-panel h2 em { color: #f0ce88; }
-.level-lede { margin: 14px 0 0; max-width: 520px; color: #d9dcea; font-size: 16px; line-height: 1.55; }
-.level-note { margin: 18px 0 0; color: #b9bdd0; font-size: 14px; }
-.level-about { margin: 16px 0 0; padding: 12px 14px; max-width: 620px; border-left: 2px solid #f0ce88; background: rgba(240, 206, 136, .07); color: #d9dcea; font-size: 14px; line-height: 1.55; }
-.level-about a { color: #f0ce88; }
-.level-about small { display: block; margin-top: 6px; color: #9fa4ba; font-size: 12px; }
+.level-panel h2 em { color: var(--accent, #e7a782); }
+.level-lede { margin: 14px 0 0; max-width: 540px; color: var(--soft, #cdbcae); font-size: 16px; line-height: 1.6; }
+.level-note { margin: 18px 0 0; color: var(--muted, #a8978a); font-size: 14px; }
+
+/* "How to play": the same box, in the same place (right under the title), on every game screen:
+   the level list, the start card and the pause card, in 2D and in 3D. */
+.howto { margin: 20px 0 0; padding: 14px 18px 13px; border: 1px solid var(--line, rgba(255, 236, 220, .13)); border-left: 3px solid var(--tone, #e7a782); background: rgba(255, 236, 220, .05); color: var(--ink, #f4ebe2); text-align: left; text-shadow: none; }
+.howto h3 { margin: 0 0 7px; color: var(--accent, #e7a782); font: 500 11px "DM Mono", monospace; letter-spacing: .16em; text-transform: uppercase; }
+.howto ol { margin: 0; padding-left: 22px; display: grid; gap: 5px; font-size: 17px; line-height: 1.5; }
+.howto li::marker { color: var(--accent, #e7a782); font: 500 14px "DM Mono", monospace; }
+.howto b { color: #fff3e6; font-weight: 600; }
+.howto .howto-meta { margin: 9px 0 0; color: var(--muted, #a8978a); font-size: 13px; line-height: 1.45; }
+.howto .howto-meta b { color: var(--soft, #cdbcae); }
+
+/* 2D board or 3D world (Lumen, Starling and Cloudpath, on computers) */
+.level-views { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 14px 0 0; }
+.level-views button { min-height: 70px; padding: 12px 14px; border: 1px solid rgba(255, 236, 220, .28); background: rgba(10, 8, 10, .6); color: var(--ink, #f4ebe2); font: inherit; text-align: left; cursor: pointer; transition: background .2s ease, border-color .2s ease; }
+.level-views b { display: block; font: 500 12px "DM Mono", monospace; letter-spacing: .1em; text-transform: uppercase; }
+.level-views small { display: block; margin-top: 5px; color: var(--soft, #cdbcae); font-size: 14px; line-height: 1.4; }
+.level-views button:hover:not(:disabled), .level-views button:focus-visible { border-color: var(--accent, #e7a782); outline: none; }
+.level-views button:focus-visible { box-shadow: 0 0 0 3px rgba(231, 167, 130, .45); }
+.level-views button[aria-pressed="true"] { border: 1px solid var(--accent, #e7a782); box-shadow: inset 0 0 0 1px var(--accent, #e7a782); background: rgba(231, 167, 130, .1); }
+.level-views button[aria-pressed="true"] b { color: var(--accent, #e7a782); }
+.level-views button[aria-pressed="true"] b::before { content: "● "; }
+.level-views button:disabled { opacity: .45; cursor: not-allowed; }
+.level-view-note { margin: 8px 0 0; color: var(--muted, #a8978a); font-size: 13px; line-height: 1.45; }
+
+.level-heading { margin: 28px 0 0; color: var(--accent-2, #d9a07d); font: 11px "DM Mono", monospace; letter-spacing: .19em; text-transform: uppercase; }
+.level-heading small { margin-left: 10px; color: var(--muted, #a8978a); font: 14px "DM Sans", sans-serif; letter-spacing: 0; text-transform: none; }
+.level-fine { margin: 16px 0 0; color: var(--muted, #a8978a); font-size: 12px; line-height: 1.5; }
+.level-about { margin: 2px 0 0; max-width: 620px; color: var(--soft, #cdbcae); font-size: 14px; line-height: 1.6; }
+.level-about summary { display: inline-block; min-height: 40px; padding: 9px 0; color: var(--accent-2, #d9a07d); font: 11px "DM Mono", monospace; letter-spacing: .1em; text-transform: uppercase; cursor: pointer; }
+.level-about summary:focus-visible { outline: 3px solid rgba(231, 167, 130, .6); outline-offset: 3px; }
+.level-about p { margin: 2px 0 8px; }
+.level-about a { color: var(--accent, #e7a782); }
 
 .level-grid {
   list-style: none;
-  margin: 26px 0 0;
+  margin: 12px 0 0;
   padding: 0;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 12px;
+  gap: 1px;
+  border: 1px solid var(--line, rgba(255, 236, 220, .13));
+  background: var(--line, rgba(255, 236, 220, .13));
 }
 .level-grid button {
   position: relative;
   width: 100%;
   height: 100%;
-  min-height: 132px;
+  min-height: 128px;
   display: grid;
   align-content: start;
   gap: 6px;
   padding: 16px;
   text-align: left;
-  border: 1px solid rgba(255, 250, 230, .3);
-  border-radius: 4px;
-  background: rgba(255, 255, 255, .04);
-  color: #fffaf0;
+  border: 0;
+  background: #0e0b0e;
+  color: var(--ink, #f4ebe2);
   font: inherit;
   cursor: pointer;
-  transition: background .2s ease, border-color .2s ease, transform .2s ease;
+  transition: background .2s ease, box-shadow .2s ease;
 }
-.level-grid button:hover, .level-grid button:focus-visible { background: rgba(240, 206, 136, .14); border-color: #f0ce88; transform: translateY(-2px); outline: none; }
-.level-grid .level-num { color: #f0ce88; font: 500 10px "DM Mono", monospace; letter-spacing: .14em; text-transform: uppercase; }
-.level-grid b { font: 400 21px/1.1 "Playfair Display", serif; letter-spacing: -.02em; }
-.level-grid small { color: #c3c7d8; font-size: 13px; line-height: 1.45; }
-.level-grid em { margin-top: auto; padding-top: 6px; font: normal 10px "DM Mono", monospace; letter-spacing: .12em; text-transform: uppercase; color: #9fe3c4; }
-.level-grid button.is-next { border-color: #f0ce88; box-shadow: 0 0 0 1px #f0ce88 inset; }
-.level-grid button.is-next em { color: #f0ce88; }
+.level-grid button:hover, .level-grid button:focus-visible { background: #1a1316; box-shadow: inset 0 -2px 0 var(--accent, #e7a782); outline: none; }
+.level-grid button:focus-visible { box-shadow: inset 0 0 0 2px var(--accent, #e7a782); }
+.level-grid .level-num { color: var(--accent-2, #d9a07d); font: 10px "DM Mono", monospace; letter-spacing: .16em; text-transform: uppercase; }
+.level-grid b { font: 400 22px/1.1 "Playfair Display", serif; letter-spacing: -.03em; }
+.level-grid small { color: var(--soft, #cdbcae); font-size: 13px; line-height: 1.45; }
+.level-grid em { margin-top: auto; padding-top: 6px; font: normal 10px "DM Mono", monospace; letter-spacing: .12em; text-transform: uppercase; color: #a9d8b8; }
+.level-grid button.is-next { box-shadow: inset 0 0 0 1px var(--accent, #e7a782); }
+.level-grid button.is-next em { color: var(--accent, #e7a782); }
 
-.level-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 26px; }
+.level-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 28px; }
 .level-actions button {
-  min-height: 46px;
-  padding: 10px 15px;
-  border: 1px solid rgba(255, 250, 230, .55);
-  border-radius: 3px;
-  background: rgba(7, 13, 28, .72);
-  color: #fffaf0;
-  font: 500 11px "DM Mono", monospace;
-  letter-spacing: .06em;
+  min-height: 48px;
+  padding: 12px 18px;
+  border: 1px solid rgba(255, 236, 220, .4);
+  background: rgba(10, 8, 10, .6);
+  color: var(--ink, #f4ebe2);
+  font: 500 12px "DM Mono", monospace;
+  letter-spacing: .08em;
   text-transform: uppercase;
   cursor: pointer;
+  transition: border-color .2s, color .2s, background .2s;
 }
-.level-actions button:hover, .level-actions button:focus-visible { background: #f0ce88; border-color: #f0ce88; color: #172033; outline: none; }
-.level-actions .level-primary { background: #f0ce88; border-color: #f0ce88; color: #172033; }
+.level-actions button:hover, .level-actions button:focus-visible { border-color: var(--accent, #e7a782); color: var(--accent, #e7a782); outline: none; }
+.level-actions .level-primary, .level-actions .level-primary:hover, .level-actions .level-primary:focus-visible { background: var(--accent, #e7a782); border-color: var(--accent, #e7a782); color: #1c120d; }
+.level-actions .level-primary:hover, .level-actions .level-primary:focus-visible { background: #f2c2a3; border-color: #f2c2a3; }
 
 @media (max-width: 620px) {
-  .level-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .howto ol { font-size: 16px; }
+  .level-heading small { display: block; margin: 6px 0 0; }
+  .level-grid { grid-template-columns: 1fr 1fr; }
   .level-grid button { min-height: 118px; padding: 13px; }
   .level-grid b { font-size: 18px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .level-screen, .level-panel { animation: none; }
-  .level-grid button { transition: none; }
+  .level-grid button, .level-views button, .level-actions button { transition: none; }
 }
 
 /* "Show details" on the level-complete screen: speed numbers stay tucked away unless asked for. */
-.level-details { margin: 14px 0 0; max-width: 560px; color: #c9cde0; font-size: 15px; }
-.level-details summary { display: inline-block; min-height: 44px; padding: 10px 0; color: #f0ce88; cursor: pointer; }
-.level-details summary:focus-visible { outline: 3px solid #fff3b5; outline-offset: 3px; }
+.level-details { margin: 14px 0 0; max-width: 560px; color: var(--soft, #cdbcae); font-size: 15px; }
+.level-details summary { display: inline-block; min-height: 44px; padding: 10px 0; color: var(--accent, #e7a782); cursor: pointer; }
+.level-details summary:focus-visible { outline: 3px solid rgba(231, 167, 130, .6); outline-offset: 3px; }
 .level-details ul { margin: 4px 0 0; padding-left: 20px; display: grid; gap: 6px; line-height: 1.5; }
