@@ -1,0 +1,113 @@
+/* Open dev page (open.html). Builds on home.css: same colours, fonts, nav, buttons and panels,
+   with no 3D brain behind it, so the content can use the full width. */
+
+.od { background: radial-gradient(90% 60% at 85% 0%, #2a140d 0, rgba(42, 20, 13, 0) 60%) var(--bg) no-repeat; }
+.od main { padding: 0 clamp(20px, 6vw, 96px); }
+.od h3 { margin: 0; font: 400 21px/1.2 "Playfair Display", serif; letter-spacing: -.02em; }
+.od a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.od .nav-link[aria-current="page"] { color: var(--accent); }
+
+.od-skip { position: absolute; left: 12px; top: -60px; z-index: 30; padding: 10px 14px; background: var(--accent); color: #1c120d; font: 500 12px "DM Mono", monospace; text-decoration: none; }
+.od-skip:focus { top: 12px; }
+
+/* ---------- hero: text left, the roadmap jigsaw right ---------- */
+
+.od-hero { min-height: 88vh; display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, .75fr); align-items: center; gap: clamp(32px, 5vw, 80px); padding: 140px 0 72px; max-width: 1180px; margin: 0 auto; }
+.od-hero__copy { max-width: 680px; }
+.od-hero h1 { font-size: clamp(44px, 5.4vw, 80px); }
+.od-puzzle { width: 100%; max-width: 460px; justify-self: end; overflow: visible; }
+.od-puzzle use { stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+.od-puzzle .p-done { stroke: var(--bg); }
+.od-puzzle .p1 { fill: #a86c4e; }
+.od-puzzle .p2 { fill: #d7b391; }
+.od-puzzle .p3 { fill: #72503e; }
+.od-puzzle .p4 { fill: #e7a782; }
+.od-puzzle .p-next { fill: rgba(231, 167, 130, .08); stroke: var(--accent); stroke-dasharray: 5 5; }
+.od-puzzle .p-later { fill: none; stroke: rgba(255, 236, 220, .16); }
+@media (prefers-reduced-motion: no-preference) {
+  .od-puzzle .p-next { animation: od-settle 3.6s ease-in-out infinite; }
+  .od-puzzle .p-next:nth-of-type(7) { animation-delay: .6s; }
+  .od-puzzle .p-next:nth-of-type(10) { animation-delay: 1.2s; }
+}
+@keyframes od-settle { 50% { fill: rgba(231, 167, 130, .2); } }
+
+/* ---------- sections ---------- */
+
+.od-section { max-width: 1180px; margin: 0 auto; padding: 72px 0; border-top: 1px solid var(--line); }
+.od-section > h2 { max-width: 760px; }
+.od-updated { margin: 14px 0 0; color: var(--muted); font: 11px "DM Mono", monospace; letter-spacing: .08em; }
+
+.od-grid { display: grid; gap: 12px; margin-top: 34px; }
+.od-grid--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.od-grid--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.od-card { display: grid; align-content: start; gap: 10px; padding: 22px; background: var(--card); border: 1px solid var(--line); }
+.od-card i { width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid rgba(231, 167, 130, .45); color: var(--accent); font: normal 14px "DM Mono", monospace; }
+.od-card p { margin: 0; color: var(--soft); font-size: 14px; line-height: 1.55; }
+.od-card--tall { grid-template-rows: auto auto 1fr auto; }
+.od-card .od-who { color: var(--accent-2); font: 10px "DM Mono", monospace; letter-spacing: .16em; text-transform: uppercase; }
+.od-link { margin-top: 8px; color: var(--accent); font: 500 12px "DM Mono", monospace; letter-spacing: .06em; text-transform: uppercase; text-decoration: none; }
+.od-link:hover { color: var(--ink); }
+
+/* ---------- roadmap: three lanes keyed to the jigsaw ---------- */
+
+.od-roadmap { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 30px; align-items: start; }
+.od-lane { padding: 22px; background: var(--card); border: 1px solid var(--line); }
+.od-lane h3 { display: flex; align-items: center; gap: 10px; font: 500 11px "DM Mono", monospace; letter-spacing: .16em; text-transform: uppercase; color: var(--ink); }
+.od-key { width: 14px; height: 14px; flex: none; }
+.od-lane--done .od-key { background: #a86c4e; }
+.od-lane--next { border-color: rgba(231, 167, 130, .55); border-style: dashed; }
+.od-lane--next .od-key { border: 1px dashed var(--accent); background: rgba(231, 167, 130, .12); }
+.od-lane--later .od-key { border: 1px solid rgba(255, 236, 220, .3); }
+.od-lane--later { background: rgba(14, 11, 14, .5); }
+.od-lane ul { list-style: none; margin: 18px 0 0; padding: 0; display: grid; gap: 14px; }
+.od-lane li { color: var(--soft); font-size: 14px; line-height: 1.55; padding-top: 14px; border-top: 1px solid var(--line); }
+.od-lane li:first-child { padding-top: 0; border-top: 0; }
+.od-lane b { color: var(--ink); font-weight: 600; }
+
+/* ---------- process and rules ---------- */
+
+.od-steps { max-width: 760px; }
+.od-rules { list-style: none; margin: 30px 0 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 32px; max-width: 980px; }
+.od-rules li { position: relative; padding: 16px 0 16px 30px; border-bottom: 1px solid var(--line); color: var(--soft); font-size: 15px; line-height: 1.55; }
+.od-rules li::before { content: "×"; position: absolute; left: 2px; top: 14px; color: var(--accent); font: 18px "DM Mono", monospace; }
+
+/* ---------- help ---------- */
+
+.od-run { max-width: 760px; margin-top: 12px; }
+.od-run pre { margin: 4px 0 0; padding: 16px; overflow-x: auto; background: rgba(0, 0, 0, .45); border: 1px solid var(--line); }
+.od-run code { color: var(--ink); font: 13px/1.7 "DM Mono", monospace; }
+
+/* ---------- open questions ---------- */
+
+.od-questions { margin: 30px 0 0; padding: 0; list-style: none; counter-reset: q; display: grid; gap: 10px; max-width: 760px; }
+.od-questions li { counter-increment: q; display: grid; grid-template-columns: 44px 1fr; gap: 14px; padding: 18px 20px; background: var(--card); border: 1px solid var(--line); color: var(--ink); font: 400 19px/1.35 "Playfair Display", serif; letter-spacing: -.01em; }
+.od-questions li::before { content: "Q" counter(q); color: var(--accent); font: 12px "DM Mono", monospace; letter-spacing: .1em; padding-top: 5px; }
+.od-invite { margin: 22px 0 0; color: var(--soft); font-size: 15px; }
+.od-invite a, .od-footer a { color: var(--accent); }
+.od-invite a:hover, .od-footer a:hover { color: var(--ink); }
+
+.od-footer { max-width: 1180px; margin: 0 auto; padding: 40px 0 56px; border-top: 1px solid var(--line); }
+.od-footer .disclaimer { margin: 0; }
+.od-footer__links { display: flex; flex-wrap: wrap; gap: 10px 24px; margin-top: 22px; }
+.od-footer__links a { font: 11px "DM Mono", monospace; letter-spacing: .08em; text-transform: uppercase; text-decoration: none; }
+
+/* ---------- narrower screens ---------- */
+
+@media (max-width: 1080px) {
+  .od-grid--4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 899px) {
+  .od-hero { grid-template-columns: 1fr; min-height: auto; padding: 120px 0 56px; }
+  .od-puzzle { justify-self: start; max-width: 320px; order: -1; }
+  .od-roadmap, .od-grid--3 { grid-template-columns: 1fr; }
+  .od-rules { grid-template-columns: 1fr; }
+  .od-section { padding: 56px 0; }
+}
+@media (max-width: 480px) {
+  .od main { padding: 0 16px; }
+  .od-hero { padding-top: 110px; }
+  .od-puzzle { max-width: 240px; }
+  .od-grid--4 { grid-template-columns: 1fr; }
+  .od-card, .od-lane { padding: 18px 16px; }
+  .od-questions li { grid-template-columns: 34px 1fr; padding: 16px; font-size: 17px; }
+}
