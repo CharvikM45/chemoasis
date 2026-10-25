@@ -19,6 +19,15 @@
     <link rel="stylesheet" href="../games/assets/css/brain-games.css?v=3" />
   </head>
   <body>
+    <script>
+      // Before the first paint: open on the solid wall (assets/js/brain/intro.js), unless Calm
+      // mode or reduced motion is on.
+      (function () {
+        var calm = null;
+        try { calm = localStorage.getItem('reframe.calm'); } catch (e) {}
+        if (calm !== '1' && !matchMedia('(prefers-reduced-motion: reduce)').matches) document.body.classList.add('wall');
+      })();
+    </script>
     <div class="scene" aria-hidden="true"><canvas id="brain"></canvas></div>
     <div class="vignette" aria-hidden="true"></div>
 
@@ -155,7 +164,7 @@
         if (saved === '1') { window.brainFallback(); return; }
         var s = document.createElement('script');
         s.type = 'module';
-        s.src = 'assets/js/brain/intro.js?v=18';
+        s.src = 'assets/js/brain/intro.js?v=19';
         s.onerror = window.brainFallback;
         document.body.appendChild(s);
       })();
