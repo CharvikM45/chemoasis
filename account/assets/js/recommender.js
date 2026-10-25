@@ -87,7 +87,7 @@ Account.recommender = (function () {
     taxane: "You listed taxanes, which are often linked to numbness in the hands and feet",
     vinca: "You listed vincristine, which is often linked to numbness in the hands and feet",
     methotrexate: "You listed methotrexate; some people notice thinking changes after it",
-    anthracycline: "You listed anthracyclines; many people notice memory changes after chemotherapy"
+    anthracycline: "You listed anthracyclines; many people notice memory changes during or after chemotherapy"
   };
   const DX_TEXT = {
     neuropathy: "A doctor has told you about peripheral neuropathy",
