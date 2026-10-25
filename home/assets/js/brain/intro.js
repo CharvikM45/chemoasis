@@ -144,6 +144,7 @@ const uniforms = {
   // where it goes (in front of the camera, in view space) and how much bigger it gets there.
   uFeature: { value: -1 },
   uFeatureT: { value: 0 },
+  uFeatureDetail: { value: 0 }, // 1 = the featured piece is drawn by its own fine-detail copy
   uFeaturePos: { value: new THREE.Vector3(0, 0, -4) },
   uFeatureScale: { value: 4 },
   uMaskOnly: { value: 0 }, // 1 = draw only the featured piece (to measure where its quote fits)
@@ -156,6 +157,8 @@ stage.add(brain);
 let ready = false;
 let material = null, brainMesh = null;
 let pieceSize = null; // per piece: how far its farthest point is from its centre
+let pieceBox = null; // per piece: the box around it, [min x, y, z, max x, y, z]
+let detailMaterial = null;
 let featured = []; // the clean pieces that can come forward: [right side, left side], best first
 
 function seeded(n) { const x = Math.sin(n * 91.7) * 43758.5; return x - Math.floor(x); }
@@ -172,6 +175,8 @@ const PUZZLE_SPACE = `
 const PUZZLE_GLSL = `
   float edgeHash(vec3 p) { return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) * 43758.5453); }
   float pieceOnFace(float face, vec2 st, out float seam);
+  vec2 seamGrid; // where the last point was on its face's grid: smooth, so its fwidth sizes the seam lines
+  float seamWidth(float base) { vec2 w = fwidth(seamGrid); return base + 1.5 * max(w.x, w.y); }
   float pieceAt(vec3 p, out float seam) {
     vec3 q = puzzleSpace(p);
     vec3 a = abs(q);
@@ -183,30 +188,34 @@ const PUZZLE_GLSL = `
   }
   float pieceOnFace(float face, vec2 st, out float seam) {
     st = clamp(st, 0.0, PN - 1e-4);
+    seamGrid = st;
     vec2 cell = floor(st), f = st - cell, piece = cell;
     const float R = 0.18, C = 0.14, NECK = 0.11; // tab radius, how far its centre sits past the edge, half its neck
     seam = 9.0;
+    float tabSeam = -1.0; // inside a tab: how far in from the tab's round edge
     bool tab; float d;
     if (cell.x < PN - 1.0) { // right edge: tab owned by this piece (true) or the one on the right
       tab = edgeHash(vec3(face, cell.x + 1.0, cell.y)) < 0.5;
       d = length(f - vec2(tab ? 1.0 + C : 1.0 - C, 0.5));
-      if (!tab) { if (d < R) piece.x += 1.0; seam = min(seam, abs(d - R)); }
+      if (!tab) { if (d < R) { piece.x += 1.0; tabSeam = R - d; } seam = min(seam, abs(d - R)); }
     }
     if (cell.x > 0.0) { // left edge: tab owned by the piece on the left (true) or this one
       tab = edgeHash(vec3(face, cell.x, cell.y)) < 0.5;
       d = length(f - vec2(tab ? C : -C, 0.5));
-      if (tab) { if (d < R) piece.x -= 1.0; seam = min(seam, abs(d - R)); }
+      if (tab) { if (d < R) { piece.x -= 1.0; tabSeam = R - d; } seam = min(seam, abs(d - R)); }
     }
     if (cell.y < PN - 1.0) { // top edge
       tab = edgeHash(vec3(face + 10.0, cell.x, cell.y + 1.0)) < 0.5;
       d = length(f - vec2(0.5, tab ? 1.0 + C : 1.0 - C));
-      if (!tab) { if (d < R) piece.y += 1.0; seam = min(seam, abs(d - R)); }
+      if (!tab) { if (d < R) { piece.y += 1.0; tabSeam = R - d; } seam = min(seam, abs(d - R)); }
     }
     if (cell.y > 0.0) { // bottom edge
       tab = edgeHash(vec3(face + 10.0, cell.x, cell.y)) < 0.5;
       d = length(f - vec2(0.5, tab ? C : -C));
-      if (tab) { if (d < R) piece.y -= 1.0; seam = min(seam, abs(d - R)); }
+      if (tab) { if (d < R) { piece.y -= 1.0; tabSeam = R - d; } seam = min(seam, abs(d - R)); }
     }
+    // Inside a tab, its round edge is the only outline (this cell's straight edges run through it).
+    if (tabSeam >= 0.0) { seam = tabSeam; return face * PN * PN + piece.y * PN + piece.x; }
     // Straight parts of the outline, leaving a gap where each tab's neck crosses.
     if (abs(f.y - 0.5) > NECK || cell.x >= PN - 1.0) seam = min(seam, 1.0 - f.x);
     if (abs(f.y - 0.5) > NECK || cell.x <= 0.0) seam = min(seam, f.x);
@@ -271,11 +280,11 @@ const wallSheet = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.Shader
       float face = block.y * uBlocks.x + block.x;
       float seam;
       float piece = pieceOnFace(face, g - block * PN, seam);
-      float seamWidth = 0.02 + fwidth(seam) * 1.5;
+      float lineWidth = seamWidth(0.02);
       float cell = piece - face * PN * PN;
       vec2 pieceXY = (block * PN + vec2(mod(cell, PN), floor(cell / PN + 0.01)) + 0.5 - uWall.zw * 0.5) * uWall.x;
       if (wallHold(pieceXY, texelFetch(uShards, ivec2(3, int(piece + 0.5)), 0).w) < 0.999) discard;
-      float line = 1.0 - smoothstep(0.0, seamWidth, seam);
+      float line = 1.0 - smoothstep(0.0, lineWidth, seam);
       // Plain plum, with the seams as faint warm lines once they show: a hint of the brain inside.
       gl_FragColor = vec4(mix(uWallColor, vec3(0.91, 0.65, 0.51), 0.22 * line * uSeams), 1.0);
     }`
@@ -285,13 +294,18 @@ wallSheet.renderOrder = -1; // first, so it hides whatever is behind it
 wallSheet.visible = false;
 scene.add(wallSheet);
 
-function addMesh(m) {
+function toGeometry(m) {
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(m.position, 3));
   geo.setAttribute('normal', new THREE.BufferAttribute(m.normal, 3));
   geo.setAttribute('aShard', new THREE.BufferAttribute(m.shard, 1));
   geo.setAttribute('aAO', new THREE.BufferAttribute(m.ao, 1));
   geo.setIndex(new THREE.BufferAttribute(m.index, 1));
+  return geo;
+}
+
+function addMesh(m) {
+  const geo = toGeometry(m);
 
   // Per piece, 5 texels: [centre, delay] [loose position, turn] [turn axis, swirl speed]
   // [outward direction, when it leaves the wall] [the piece's "up" on its cube face, unused].
@@ -437,19 +451,26 @@ function addMesh(m) {
     shader.fragmentShader = `varying float vLoose; varying float vSnap; varying vec3 vRest; varying float vShard; varying float vAO; varying float vFeature; varying float vDim;
       varying float vWall;
       uniform vec3 uFade; uniform float uMaskOnly; uniform float uSeams; uniform vec3 uWallColor;
+      uniform float uFeature; uniform float uFeatureDetail;
       ${PUZZLE_SPACE}
       ${PUZZLE_GLSL}
       ` + shader.fragmentShader
       .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>
+        // Up close, the featured piece is drawn by its own fine-detail copy instead (addDetail).
+        #ifdef DETAIL
+          if (uFeatureDetail < 0.5 || abs(vShard - uFeature) > 0.5) discard;
+        #else
+          if (uFeatureDetail > 0.5 && abs(vShard - uFeature) < 0.5) discard;
+        #endif
         if (vWall > 0.999) discard; // still standing in the wall, which the flat sheet draws
         // Keep only the part of this copy that is really inside its piece: exact jigsaw outlines.
         float inWall = smoothstep(0.9, 1.0, vWall); // only just letting go of the wall
         float seam;
         float piece = pieceAt(vRest, seam);
-        float seamWidth = (0.03 - 0.01 * inWall) + fwidth(seam) * 1.5;
+        float lineWidth = seamWidth(0.03 - 0.01 * inWall);
         if (abs(piece - vShard) > 0.5) discard;
         if (uMaskOnly > 0.5 && vFeature < 0.999) discard;
-        float line = 1.0 - smoothstep(0.0, seamWidth, seam);
+        float line = 1.0 - smoothstep(0.0, lineWidth, seam);
         // Looking just like the wall sheet as it lets go. Skip the lighting while it still does.
         vec3 wallInk = mix(uWallColor, vec3(0.91, 0.65, 0.51), 0.22 * line * uSeams);
         if (inWall > 0.999) { gl_FragColor = vec4(wallInk, 1.0); return; }`)
@@ -484,6 +505,10 @@ function addMesh(m) {
   brainMesh = new THREE.Mesh(geo, material);
   brainMesh.frustumCulled = false; // pieces move in the shader, so the box three.js knows about is wrong
   brain.add(brainMesh);
+  // The same look for the fine-detail pieces, which only draw the featured piece.
+  detailMaterial = material.clone();
+  detailMaterial.defines = { DETAIL: '' };
+  detailMaterial.onBeforeCompile = material.onBeforeCompile;
   ready = true;
   document.body.classList.add('brain-ready');
 }
@@ -497,10 +522,17 @@ function pickFeatured(m) {
   const count = new Uint32Array(m.shards);
   const near = new Float32Array(m.shards).fill(1e9), far = new Float32Array(m.shards).fill(-1e9);
   pieceSize = new Float32Array(m.shards);
-  // Only points really in the piece count (the mesh also keeps copies around its tabs).
+  pieceBox = new Float32Array(m.shards * 6).fill(1e9);
+  for (let s = 0; s < m.shards; s++) pieceBox.fill(-1e9, s * 6 + 3, s * 6 + 6);
   for (let v = 0; v < m.shard.length; v++) {
     const s = m.shard[v];
     const x = m.position[v * 3], y = m.position[v * 3 + 1], z = m.position[v * 3 + 2];
+    // The box around everything that may belong to the piece, tabs and all (for addDetail).
+    for (let c = 0; c < 3; c++) {
+      pieceBox[s * 6 + c] = Math.min(pieceBox[s * 6 + c], m.position[v * 3 + c]);
+      pieceBox[s * 6 + 3 + c] = Math.max(pieceBox[s * 6 + 3 + c], m.position[v * 3 + c]);
+    }
+    // Only points really in the piece count from here on (the mesh also keeps copies around its tabs).
     const [face, i, j] = puzzleCell(x, y, z);
     if (face * N * N + j * N + i !== s) continue;
     count[s]++;
@@ -524,26 +556,51 @@ function pickFeatured(m) {
   picks = []; // a new mesh: choose again
 }
 
+let builder = null; // the worker, kept to build fine-detail pieces later
+let finished = false; // the detailed brain is in (not just the rough one)
 function build() {
   const step = lowPower ? 0.023 : 0.017;
   try {
-    const worker = new Worker(new URL('./build-worker.js?v=7', import.meta.url), { type: 'module' });
+    builder = new Worker(new URL('./build-worker.js?v=8', import.meta.url), { type: 'module' });
     let got = 0;
-    worker.onmessage = (e) => { addMesh(e.data); if (++got === 2) worker.terminate(); };
-    worker.onerror = () => { worker.terminate(); if (!got) buildHere(step); };
-    worker.postMessage({ step, preview: 0.04 });
+    builder.onmessage = (e) => {
+      if (e.data.piece !== undefined) { addDetail(e.data); return; }
+      addMesh(e.data);
+      if (++got === 2) finished = true;
+    };
+    builder.onerror = () => { builder.terminate(); builder = null; if (!got) buildHere(step); };
+    builder.postMessage({ step, preview: 0.04 });
   } catch (_) {
     buildHere(step);
   }
 }
-// Browsers without module workers: build on the page instead (a short pause while it loads).
+// Browsers without module workers: build on the page instead (a short pause while it loads), and
+// no fine-detail pieces.
 function buildHere(step) {
-  import('./mesh.js').then(({ buildBrainMesh }) => addMesh(buildBrainMesh({ step }))).catch((error) => {
+  import('./mesh.js').then(({ buildBrainMesh }) => { addMesh(buildBrainMesh({ step })); finished = true; }).catch((error) => {
     console.error(error);
     window.brainFallback && window.brainFallback();
   });
 }
 build();
+
+// A piece that comes up close is shown about four times its size, which the brain's own mesh is
+// too coarse for: it would look faceted and blurry. So each piece picked for a quote is built
+// again on its own, about three times finer, and drawn in place of its coarse copy while it's out.
+const detailed = new Set(); // pieces asked for
+const detailReady = new Set(); // pieces whose fine copy is in
+function requestDetail(piece) {
+  if (!builder || !finished || detailed.has(piece)) return;
+  detailed.add(piece);
+  const b = pieceBox.subarray(piece * 6, piece * 6 + 6), pad = 0.03;
+  builder.postMessage({ piece, step: lowPower ? 0.008 : 0.0055, box: [[b[0] - pad, b[1] - pad, b[2] - pad], [b[3] + pad, b[4] + pad, b[5] + pad]] });
+}
+function addDetail(m) {
+  const mesh = new THREE.Mesh(toGeometry(m), detailMaterial);
+  mesh.frustumCulled = false;
+  brain.add(mesh);
+  detailReady.add(m.piece);
+}
 
 /* ---------- scroll + frame ---------- */
 
@@ -744,18 +801,22 @@ function pickFor(index) {
   }
   if (!choice && options.length) choice = { piece: options[0], fit: null }; // it still comes forward, without words
   picks[index] = choice;
+  if (choice) requestDetail(choice.piece);
   return choice;
 }
 
-// Which section's piece should be out at scroll position y, and how far (0 to 1): it comes out as
-// the section scrolls in, stays while you read, and goes back before the next one.
-function featureAt(y) {
+// Which section's piece should be out at scroll position y (-1 for none): from just before the
+// section's top reaches the middle of the screen until it has nearly scrolled past, so there is
+// time to read it. The same window going up or down the page.
+function featureAt(y, current) {
   const middle = y + innerHeight * 0.5;
   for (let i = 0; i < sections.length; i++) {
     const s = sections[i], at = (middle - s.top) / s.height;
-    if (at >= 0 && at < 1) return { index: i, amount: smooth(0.1, 0.28, at) * (1 - smooth(0.74, 0.92, at)) };
+    // A little wider for the piece already out, so it doesn't flicker at the edges.
+    const [from, to] = i === current ? [-0.12, 0.95] : [-0.06, 0.9];
+    if (at >= from && at < to) return i;
   }
-  return { index: -1, amount: 0 };
+  return -1;
 }
 
 const pointer = { x: 0, y: 0, tx: 0, ty: 0 };
@@ -838,22 +899,30 @@ function frame(now) {
   dust.rotation.y = t * 0.02 + smoothP * 0.6;
 
   // One piece out at a time: the old one goes back into the cloud before the next one leaves.
-  const want = still || !featured.length ? { index: -1, amount: 0 } : featureAt(y);
-  if (want.index !== featIndex) {
-    featT = Math.max(0, featT - dt * 1.2);
-    if (featT === 0) featIndex = want.index;
-  } else {
-    // Follow the scroll, but never faster than a calm pace either way.
-    featT += clamp((want.amount * appear - featT) * Math.min(1, dt * 6), -dt * 1.2, dt * 0.8);
+  // The scroll only decides which section's piece should be out; the piece then moves on its own
+  // clock, at the same even pace whichever way you scroll (the shader eases it in and out).
+  // One piece out at a time: the old one goes back before the next one comes out.
+  const want = still || !featured.length ? -1 : featureAt(y, featIndex);
+  if (want !== featIndex) {
+    featT = Math.max(0, featT - dt / 0.7);
+    if (featT === 0) featIndex = want;
   }
   const pick = featIndex >= 0 && fontsReady && sections[featIndex] ? pickFor(featIndex) : null;
+  if (want === featIndex && pick) featT = Math.min(1, featT + dt / 1.1);
+  // Choose the other sections' pieces ahead of time, one per quiet frame, so their fine copies are
+  // ready and choosing never stalls a piece on its way out.
+  if (finished && fontsReady && featT === 0) {
+    const next = sections.findIndex((_, i) => !picks[i]);
+    if (next >= 0) pickFor(next);
+  }
   uniforms.uFeature.value = pick ? pick.piece : -1;
   uniforms.uFeatureT.value = pick ? featT : 0;
+  uniforms.uFeatureDetail.value = pick && featT > 0 && detailReady.has(pick.piece) ? 1 : 0;
   if (pick && pick.fit) {
     const at = placeFeature(pick.piece);
     const { fit } = pick;
     // The words appear once the piece has settled in front, and leave before it goes back.
-    const shown = smooth(0.85, 1, featT);
+    const shown = smooth(0.8, 1, featT);
     card.textContent = sections[featIndex].quote;
     card.style.opacity = String(shown);
     card.style.width = `${Math.floor(fit.w)}px`;
