@@ -17,7 +17,7 @@ A small Node server that serves the Chemoasis website and the account API, deplo
 | POST | `/api/profile/level` | `{ game, level }` → records a finished level |
 | POST | `/api/profile/result` | `{ game, level, score }` → one point on that game's progress chart |
 | POST | `/api/forum/:method` | `{ args }` → runs one forum action (see `forum/README.md`) as the signed-in person. Reading needs an account too; signed out, only `currentUser` answers (with `null`) |
-| GET | `/api/studio/published` | Research Studio activities a reviewer has published, with the creator's credit (public) |
+| GET | `/api/studio/published` | Open Research Studio activities a reviewer has published, with the creator's credit (public) |
 | GET | `/api/studio/play/:id` | A published activity's game, in a sandbox: its own origin, no internet, no storage, framed only by this site |
 | GET/POST | `/api/studio/mine` | The signed-in creator's submissions / start a new draft `{ data, code }` |
 | GET/PUT/DELETE | `/api/studio/mine/:id` | Read, save or delete a draft |
@@ -39,7 +39,7 @@ A small Node server that serves the Chemoasis website and the account API, deplo
 - Request bodies are capped at 10 KB. Only the site folders are served, never `server/`, `node_modules/`, `.git/` or `.env`.
 - Tables are created by migrations in `migrations/`, which run on startup.
 
-## Research Studio and Claude
+## Open Research Studio and Claude
 
 The Studio's design assistant and its advisory review of submissions use Claude (`studio-ai.js`), and only run when `ANTHROPIC_API_KEY` is set. Without it, everything else works and the pages say the assistant isn't on yet. The advisory review never decides anything: only a reviewer can publish. Calls are capped per person and at 200 a day for the whole site, so the bill can't run away.
 
