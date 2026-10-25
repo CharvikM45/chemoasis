@@ -1,103 +1,317 @@
-/* The six brain games (games/assets/js/brain-games.js). Builds on new-worlds-3d.css. */
+/* The six brain games (games/assets/js/brain-games.js) and the games library
+   (games/assets/js/experience.js). Builds on new-worlds-3d.css, restyled to match the rest of
+   the site (home/assets/css/home.css): warm near-black, cream text, the peach accent, square
+   cards with thin warm lines, DM Mono buttons and Playfair headings. Each game keeps its own
+   colour (--tone) for the pieces you play with. */
 
-.brain-game .world-kicker { color: var(--tone); }
-.bg-card { text-align: left; }
-.bg-how { margin: 6px 0 0; padding-left: 20px; display: grid; gap: 10px; font-size: 17px; line-height: 1.55; }
-.bg-how b { color: #fff1c8; }
-.bg-safety { margin: 18px 0 0; padding: 12px 14px; border-left: 2px solid #ff9a7a; background: rgba(255, 154, 122, .08); font-size: 14px !important; color: #ffd9cc; }
-.world-controls .bg-primary { background: var(--tone); border-color: var(--tone); color: #0d1424; }
-.bg-choices { justify-content: center; }
-.bg-choices button { min-width: 160px; min-height: 64px; font-size: 15px; }
+/* ---------- the games library ---------- */
+
+/* It opens under the site's top bar (z-index 20), so the bar stays the same as on every page. */
+#experience-view {
+  --ink: #f4ebe2;
+  --espresso: #f4ebe2;
+  --clay: #e7a782;
+  --latte: #d9a07d;
+  --cream: #060507;
+  --paper: #0e0b0e;
+  --muted: #a8978a;
+  --tile: rgba(255, 236, 220, .05);
+  z-index: 15;
+  padding-top: 96px;
+  background: radial-gradient(70% 55% at 85% 0%, #2a140d, transparent 70%), #060507;
+  color: var(--ink);
+}
+#experience-view .experience-hero { padding-top: 48px; border-bottom: 1px solid rgba(255, 236, 220, .13); }
+#experience-view .experience-hero .eyebrow { margin: 0 0 18px; color: #d9a07d; font: 11px "DM Mono", monospace; letter-spacing: .19em; text-transform: uppercase; }
+#experience-view .experience-hero h2 { color: var(--ink); text-shadow: none; }
+#experience-view .experience-hero em { color: #e7a782; }
+#experience-view .experience-hero p { max-width: 420px; color: #cdbcae; }
+#experience-view .experience-hero .button { margin-top: 22px; }
+#experience-view .experience-section { margin-top: 44px; }
+#experience-view .experience-section > .eyebrow { margin: 0 0 16px; color: #d9a07d; font: 11px "DM Mono", monospace; letter-spacing: .19em; text-transform: uppercase; }
+#experience-view .activity-grid { border-color: rgba(255, 236, 220, .13); background: rgba(255, 236, 220, .13); }
+#experience-view .activity-card { min-height: 240px; padding: 24px 24px 54px; background: #0e0b0e; transition: background .2s, box-shadow .2s; }
+#experience-view .activity-card:hover { background: #1a1316; box-shadow: inset 0 2px 0 var(--tone); }
+#experience-view .activity-card button:focus-visible { outline: 2px solid #e7a782; outline-offset: -2px; }
+#experience-view .activity-icon { color: var(--tone); border: 1px solid rgba(255, 236, 220, .13); font-style: normal; }
+#experience-view .activity-area { color: #d9a07d; }
+#experience-view .activity-card h4 { color: var(--ink); }
+#experience-view .activity-card p { color: #cdbcae; font-size: 14px; }
+#experience-view .activity-meta { color: var(--muted); }
+#experience-view .activity-meta b { color: #e7a782; font-weight: 500; }
+.atlas-card.lumen { --tone: #c58cff; }
+.atlas-card.starling { --tone: #7fb8ff; }
+.atlas-card.cloudpath { --tone: #f6d184; }
+.atlas-card.echo { --tone: #e7b574; }
+.atlas-card.rhythm { --tone: #8ed9c3; }
+.atlas-card.signal { --tone: #d8a4f0; }
+@media (max-width: 720px) { #experience-view { padding-top: 76px; } }
+@media (prefers-reduced-motion: reduce) { #experience-view .activity-card { transition: none; } }
+
+/* ---------- the world around each game ---------- */
+
+.brain-game {
+  --ink: #f4ebe2;
+  --soft: #cdbcae;
+  --muted: #a8978a;
+  --accent: #e7a782;
+  --accent-2: #d9a07d;
+  --line: rgba(255, 236, 220, .13);
+  background: radial-gradient(70% 60% at 75% 20%, #2a140d, transparent 70%), #060507;
+  background: radial-gradient(70% 60% at 75% 20%, #2a140d, transparent 70%), radial-gradient(55% 45% at 10% 100%, color-mix(in srgb, var(--tone) 16%, transparent), transparent 70%), #060507;
+  color: var(--ink);
+}
+.brain-game::after { background: radial-gradient(120% 95% at 50% 40%, transparent 45%, rgba(0, 0, 0, .6) 100%); }
+.brain-game .world-panel { padding-top: 24px; }
+.brain-game .world-top { align-items: center; }
+.brain-game .world-kicker { margin: 0 0 10px; color: var(--accent-2); font: 11px "DM Mono", monospace; letter-spacing: .19em; }
+.brain-game .world-kicker::before { content: "●"; margin-right: 8px; color: var(--tone); }
+.brain-game .world-top h2 { color: var(--ink); }
 .world-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+/* Title on the left, the buttons on one line on the right (they stack under the title on phones). */
+.brain-game .world-actions { flex: 0 0 auto; flex-wrap: nowrap; }
+.brain-game .world-top > div:first-child { min-width: 0; }
+
+/* Buttons look like the site's: square, thin warm border, DM Mono capitals. */
+.brain-game .world-top button,
+.brain-game .world-controls button,
+.bg-pause .world-controls button {
+  min-height: 48px;
+  padding: 12px 18px;
+  border: 1px solid rgba(255, 236, 220, .4);
+  border-radius: 0;
+  background: rgba(10, 8, 10, .6);
+  color: var(--ink, #f4ebe2);
+  font: 500 12px "DM Mono", monospace;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  transition: border-color .2s, color .2s, background .2s;
+}
+.brain-game .world-top button { min-height: 44px; padding: 10px 14px; font-size: 11px; }
+.brain-game .world-top button:hover, .brain-game .world-top button:focus-visible,
+.brain-game .world-controls button:hover, .brain-game .world-controls button:focus-visible,
+.bg-pause .world-controls button:hover, .bg-pause .world-controls button:focus-visible { background: rgba(10, 8, 10, .6); border-color: var(--accent, #e7a782); color: var(--accent, #e7a782); outline: none; }
+.brain-game .world-controls button[aria-pressed="true"] { background: rgba(231, 167, 130, .14); border-color: var(--accent); color: var(--accent); }
+.brain-game .world-controls .bg-primary, .bg-pause .world-controls .bg-primary { background: var(--accent, #e7a782); border-color: var(--accent, #e7a782); color: #1c120d; }
+.brain-game .world-controls .bg-primary:hover, .brain-game .world-controls .bg-primary:focus-visible,
+.bg-pause .world-controls .bg-primary:hover, .bg-pause .world-controls .bg-primary:focus-visible { background: #f2c2a3; border-color: #f2c2a3; color: #1c120d; }
+.brain-game button:disabled { cursor: default; }
+
+/* How far through the session: a thin line under the title bar. */
+.bg-progress { height: 2px; margin: 20px 0 0; background: var(--line); }
+.bg-progress i { display: block; width: 0; height: 100%; background: var(--accent); box-shadow: 0 0 12px rgba(231, 167, 130, .6); transition: width .5s ease; }
+
+.brain-game .world-card {
+  position: relative;
+  margin-top: clamp(22px, 5vh, 56px);
+  border: 1px solid var(--line);
+  border-top: 2px solid var(--tone);
+  background: rgba(14, 11, 14, .88);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, .5);
+}
+.brain-game .world-card p { color: var(--ink); }
+.brain-game .world-note { margin: 0; color: var(--accent-2) !important; font: 11px/1.5 "DM Mono", monospace !important; letter-spacing: .14em; text-transform: uppercase; }
+.bg-card { text-align: left; }
+.brain-game .howto .howto-meta { color: var(--muted); font-size: 13px; line-height: 1.45; }
+.brain-game .game-status { margin: 16px 0 0; min-height: 28px; color: var(--ink) !important; font-size: 17px !important; text-align: center; }
+.bg-safety { margin: 18px 0 0; padding: 12px 14px; border-left: 2px solid #ff9a7a; background: rgba(255, 154, 122, .08); font-size: 14px !important; color: #ffd9cc !important; }
+.bg-choices { justify-content: center; }
+.brain-game .bg-choices button { min-width: 170px; min-height: 64px; font: 500 15px "DM Sans", sans-serif; letter-spacing: 0; text-transform: none; }
 
 /* Gentle / Challenge choice on the start card */
-.bg-modes { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; margin: 14px 0 20px; }
-.bg-modes button { min-height: 72px; padding: 12px 16px; border: 1px solid rgba(255, 250, 230, .35); border-radius: 10px; background: rgba(7, 13, 28, .6); color: #fffaf0; font: 600 18px "DM Sans", sans-serif; text-align: left; cursor: pointer; }
-.bg-modes button small { display: block; margin-top: 4px; color: #c9cde0; font-size: 14px; font-weight: 400; line-height: 1.4; }
-.bg-modes button[aria-pressed="true"] { border: 2px solid var(--tone); background: rgba(255, 255, 255, .09); }
-.bg-modes button[aria-pressed="true"]::before { content: "✓ "; color: var(--tone); }
-.bg-modes button:focus-visible { outline: 3px solid #fff3b5; outline-offset: 3px; }
+.bg-modes { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; margin: 16px 0 4px; }
+.bg-modes button { min-height: 76px; padding: 12px 16px; border: 1px solid rgba(255, 236, 220, .28); background: rgba(10, 8, 10, .6); color: var(--ink); font: 500 12px "DM Mono", monospace; letter-spacing: .1em; text-transform: uppercase; text-align: left; cursor: pointer; transition: border-color .2s; }
+.bg-modes button small { display: block; margin-top: 6px; color: var(--soft); font: 14px/1.4 "DM Sans", sans-serif; letter-spacing: 0; text-transform: none; }
+.bg-modes button:hover { border-color: var(--accent); }
+.bg-modes button[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); background: rgba(231, 167, 130, .1); color: var(--accent); }
+.bg-modes button[aria-pressed="true"]::before { content: "● "; }
+.bg-modes button:focus-visible { outline: 3px solid rgba(231, 167, 130, .6); outline-offset: 3px; }
 
 /* "Picking up where you left off" line on the start card */
-.bg-carry { margin: 16px 0 0; color: #d9dcea; font-size: 15px; line-height: 1.5; }
-.bg-carry button { margin-left: 4px; padding: 4px 10px; border: 1px solid rgba(255, 250, 230, .35); border-radius: 999px; background: transparent; color: #fffaf0; font: 14px "DM Sans", sans-serif; cursor: pointer; }
-.bg-carry button:focus-visible { outline: 3px solid #fff3b5; outline-offset: 3px; }
+.bg-carry { margin: 16px 0 0; color: var(--soft) !important; font-size: 15px !important; line-height: 1.5; }
+.bg-carry button { margin-left: 4px; padding: 5px 10px; border: 1px solid rgba(255, 236, 220, .35); background: transparent; color: var(--ink); font: 12px "DM Mono", monospace; letter-spacing: .06em; text-transform: uppercase; cursor: pointer; }
+.bg-carry button:hover, .bg-carry button:focus-visible { border-color: var(--accent); color: var(--accent); outline: none; }
 
 /* Keyboard hints (F, J, 1, 2...) mean nothing on a touch screen, so they hide there. */
 kbd.bg-key { font: inherit; }
 @media (hover: none) and (pointer: coarse) { .brain-game .bg-key { display: none; } }
 
 /* Story Echo (Challenge): type the words before picking them out */
-.bg-type { display: grid; gap: 8px; margin-top: 14px; color: #d9dcea; font-size: 15px; }
-.bg-type textarea { width: 100%; min-height: 96px; padding: 12px; border: 1px solid rgba(255, 250, 230, .35); border-radius: 8px; background: rgba(7, 13, 28, .6); color: #fffaf0; font: 18px/1.5 "DM Sans", sans-serif; resize: vertical; box-sizing: border-box; }
-.bg-type textarea:focus-visible { outline: 3px solid #fff3b5; outline-offset: 2px; }
+.bg-type { display: grid; gap: 8px; margin-top: 14px; color: var(--soft); font-size: 15px; }
+.bg-type textarea { width: 100%; min-height: 96px; padding: 12px; border: 1px solid rgba(255, 236, 220, .3); background: rgba(10, 8, 10, .6); color: var(--ink); font: 18px/1.5 "DM Sans", sans-serif; resize: vertical; box-sizing: border-box; }
+.bg-type textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-/* Pause screen */
-.bg-pause { position: fixed; inset: 0; z-index: 25; display: grid; place-items: center; padding: 16px; background: rgba(3, 5, 14, .8); backdrop-filter: blur(8px); }
-.bg-pause-card { width: min(440px, 100%); padding: 28px; border: 1px solid rgba(255, 248, 224, .28); background: rgba(6, 11, 25, .92); text-align: center; }
-.bg-pause-card h3 { margin: 0 0 8px; font: 400 40px/1 "Playfair Display", serif; letter-spacing: -.03em; }
-.bg-pause-card p { margin: 0; color: #d9dcea; font-size: 17px; line-height: 1.55; }
+/* Pause screen (also where How to play opens during a session) */
+.bg-pause { position: fixed; inset: 0; z-index: 25; display: grid; place-items: center; padding: 16px; overflow-y: auto; background: rgba(6, 5, 7, .82); backdrop-filter: blur(8px); }
+.bg-pause-card { width: min(520px, 100%); padding: 30px; border: 1px solid rgba(255, 236, 220, .13); border-top: 2px solid var(--tone, #e7a782); background: rgba(14, 11, 14, .96); color: #f4ebe2; text-align: center; }
+.bg-pause-card > h3 { margin: 0 0 8px; font: 400 42px/1 "Playfair Display", serif; letter-spacing: -.04em; }
+.bg-pause-card > p { margin: 0; color: #cdbcae; font-size: 17px; line-height: 1.55; }
 .bg-pause-card .world-controls { justify-content: center; }
 
-/* Lumen Garden: the flower grid */
-.span-grid { display: grid; grid-template-columns: repeat(var(--n), 1fr); gap: 10px; width: min(100%, calc(var(--n) * 96px)); margin: 18px auto 6px; }
-.span-grid button { aspect-ratio: 1; border: 1px solid rgba(255, 250, 230, .3); border-radius: 14px; background: rgba(255, 255, 255, .04); color: rgba(255, 255, 255, .28); font-size: clamp(22px, 5vw, 32px); cursor: pointer; transition: background .12s, color .12s, box-shadow .12s, transform .12s; }
-.span-grid button:disabled { cursor: default; }
-.span-grid button.lit, .span-grid button.tap { background: var(--tone); color: #170c24; box-shadow: 0 0 34px var(--tone); transform: scale(1.06); }
-.span-grid button.hint { outline: 3px solid #fff1c8; outline-offset: 3px; }
+/* ---------- Lumen Garden: the flower grid ---------- */
+.span-grid { display: grid; grid-template-columns: repeat(var(--n), 1fr); gap: 10px; width: min(100%, calc(var(--n) * 100px)); margin: 22px auto 6px; }
+.span-grid button {
+  aspect-ratio: 1;
+  border: 1px solid rgba(255, 236, 220, .16);
+  border-radius: 50% 50% 46% 46%;
+  background: radial-gradient(circle at 50% 38%, rgba(197, 140, 255, .14), rgba(255, 255, 255, .02) 68%);
+  color: rgba(197, 140, 255, .42);
+  font-size: clamp(24px, 5vw, 34px);
+  cursor: pointer;
+  transition: background .14s, color .14s, box-shadow .14s, transform .14s;
+}
+.span-grid button:not(:disabled):hover { border-color: var(--tone); color: var(--tone); }
+.span-grid button.lit, .span-grid button.tap { background: radial-gradient(circle at 50% 40%, #fff6ff, var(--tone) 62%); border-color: #fff; color: #2a1640; box-shadow: 0 0 0 5px rgba(197, 140, 255, .22), 0 0 44px var(--tone); transform: scale(1.08); }
+.span-grid button.hint { outline: 3px solid #fff3e6; outline-offset: 3px; }
+.span-grid button.bloom { animation: bloom .7s ease; }
+@keyframes bloom { 40% { color: var(--tone); box-shadow: 0 0 24px rgba(197, 140, 255, .45); } }
 
-/* Starling Observatory: the flash sky */
-.sky { position: relative; width: min(100%, 360px); aspect-ratio: 1; margin: 12px auto; border-radius: 50%; background: radial-gradient(circle, rgba(127, 184, 255, .12), rgba(4, 8, 20, .7) 70%); border: 1px solid rgba(127, 184, 255, .25); }
-.sky-centre { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 64px; height: 64px; display: grid; place-items: center; border: 1px solid rgba(255, 255, 255, .25); border-radius: 12px; background: rgba(0, 0, 0, .35); font-size: 36px; color: #fff; }
-.sky-slot { position: absolute; left: 50%; top: 50%; width: 52px; height: 52px; margin: -26px 0 0 -26px; transform: rotate(var(--a)) translateY(-138%) rotate(calc(-1 * var(--a))); border: 1px solid transparent; border-radius: 50%; background: transparent; color: #fff1c8; font-size: 26px; cursor: pointer; }
-.sky-slot:not(:disabled) { border-color: rgba(255, 255, 255, .35); background: rgba(255, 255, 255, .06); }
+/* ---------- Starling Observatory: the flash sky ---------- */
+.sky {
+  position: relative;
+  width: min(100%, 360px);
+  aspect-ratio: 1;
+  margin: 18px auto 6px;
+  border-radius: 50%;
+  border: 1px solid rgba(127, 184, 255, .28);
+  background:
+    radial-gradient(1.5px 1.5px at 18% 30%, #fff 50%, transparent 51%),
+    radial-gradient(1px 1px at 72% 22%, #fff 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 84% 64%, #dfe9ff 50%, transparent 51%),
+    radial-gradient(1px 1px at 30% 78%, #fff 50%, transparent 51%),
+    radial-gradient(1px 1px at 58% 88%, #dfe9ff 50%, transparent 51%),
+    radial-gradient(1px 1px at 12% 58%, #fff 50%, transparent 51%),
+    radial-gradient(circle, rgba(127, 184, 255, .16), rgba(6, 5, 7, .8) 72%);
+  box-shadow: inset 0 0 60px rgba(127, 184, 255, .12), 0 0 50px rgba(127, 184, 255, .08);
+}
+.sky::before { content: ""; position: absolute; left: 50%; top: 50%; width: 144px; height: 144px; margin: -72px 0 0 -72px; border: 1px dashed rgba(127, 184, 255, .22); border-radius: 50%; pointer-events: none; }
+.sky-centre { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 66px; height: 66px; display: grid; place-items: center; border: 1px solid rgba(255, 255, 255, .3); border-radius: 50%; background: rgba(6, 5, 7, .7); box-shadow: 0 0 24px rgba(127, 184, 255, .25); font-size: 36px; color: #fff; }
+.sky-slot { position: absolute; left: 50%; top: 50%; width: 52px; height: 52px; margin: -26px 0 0 -26px; transform: rotate(var(--a)) translateY(-138%) rotate(calc(-1 * var(--a))); border: 1px solid transparent; border-radius: 50%; background: transparent; color: #fff3e6; font-size: 26px; cursor: pointer; }
+.sky-slot:not(:disabled) { border-color: rgba(255, 255, 255, .4); background: rgba(127, 184, 255, .08); }
 .sky-slot:not(:disabled):hover { background: rgba(127, 184, 255, .3); }
-.sky-slot.answer { border-color: #fff1c8; box-shadow: 0 0 18px #fff1c8; }
+.sky-slot.answer { border-color: #fff3e6; box-shadow: 0 0 18px #fff3e6; }
 .sky-clutter { position: absolute; inset: 0; pointer-events: none; }
-.sky-clutter i { position: absolute; font-style: normal; color: #fff1c8; font-size: 20px; transform: translate(-50%, -50%); }
+.sky-clutter i { position: absolute; font-style: normal; color: #fff3e6; font-size: 20px; transform: translate(-50%, -50%); }
 
-/* Cloudpath: Tower of London */
+/* ---------- Cloudpath: Tower of London ---------- */
 .tol { display: flex; justify-content: center; align-items: flex-end; gap: 14px; }
-.tol-goal { display: grid; justify-items: center; gap: 6px; margin: 4px 0 18px; padding: 10px; border: 1px dashed rgba(246, 209, 132, .5); border-radius: 10px; }
-.tol-goal small { color: #f6d184; font: 10px "DM Mono", monospace; letter-spacing: .14em; text-transform: uppercase; }
-.tol-goal .tol-peg { width: 52px; height: calc(var(--cap) * 22px + 12px); }
-.tol-goal .tol-peg i { width: 20px; height: 20px; }
-.tol-peg { width: clamp(78px, 22vw, 110px); height: calc(var(--cap) * 44px + 20px); display: flex; flex-direction: column-reverse; align-items: center; justify-content: flex-start; gap: 4px; padding: 6px 0; border: 1px solid rgba(255, 250, 230, .35); border-bottom: 4px solid rgba(246, 209, 132, .7); border-radius: 14px 14px 6px 6px; background: rgba(255, 255, 255, .04); color: inherit; cursor: pointer; }
-button.tol-peg:hover { background: rgba(246, 209, 132, .12); }
-.tol-peg i { width: 38px; height: 38px; border-radius: 50%; box-shadow: inset 0 -4px 8px rgba(0, 0, 0, .25), 0 0 14px rgba(255, 255, 255, .15); transition: transform .15s; }
-.tol-peg i.held { transform: translateY(-14px); box-shadow: 0 0 0 3px #fff1c8, 0 0 22px #fff1c8; }
+.tol-goal { display: grid; justify-items: center; gap: 8px; width: max-content; margin: 16px auto 20px; padding: 12px 16px; border: 1px dashed rgba(246, 209, 132, .45); background: rgba(246, 209, 132, .04); }
+.tol-goal small { color: #f6d184; font: 10px "DM Mono", monospace; letter-spacing: .16em; text-transform: uppercase; }
+.tol-goal .tol-peg { width: 54px; height: calc(var(--cap) * 24px + 14px); border-bottom-width: 3px; }
+.tol-goal .tol-peg i { width: 22px; height: 22px; font-size: 10px; }
+.tol-peg {
+  position: relative;
+  width: clamp(80px, 22vw, 116px);
+  height: calc(var(--cap) * 46px + 22px);
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 5px;
+  padding: 7px 0;
+  border: 1px solid rgba(255, 236, 220, .2);
+  border-bottom: 5px solid rgba(246, 209, 132, .75);
+  border-radius: 46px 46px 8px 8px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, .02), rgba(246, 209, 132, .1));
+  color: inherit;
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+}
+button.tol-peg:hover, button.tol-peg:focus-visible { background: linear-gradient(180deg, rgba(255, 255, 255, .03), rgba(246, 209, 132, .2)); border-color: rgba(246, 209, 132, .6); outline: none; }
+.tol-peg i {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff8ee, var(--c) 46%, color-mix(in srgb, var(--c) 55%, #000) 100%);
+  box-shadow: 0 0 16px color-mix(in srgb, var(--c) 55%, transparent);
+  color: rgba(14, 11, 14, .78);
+  font: normal 15px/1 "DM Sans", sans-serif;
+  transition: transform .15s;
+}
+.tol-peg i.held { transform: translateY(-16px); box-shadow: 0 0 0 3px #fff3e6, 0 0 24px #fff3e6; }
 
-/* Story Echo: words */
-.word-show { min-height: 110px; display: grid; place-items: center; margin: 20px 0; font: 400 clamp(40px, 8vw, 64px) / 1 "Playfair Display", serif !important; letter-spacing: -.02em; color: #fff1c8; }
-.word-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; margin-top: 14px; }
-.word-grid button { min-height: 64px; padding: 8px; border: 1px solid rgba(255, 250, 230, .35); border-radius: 8px; background: rgba(7, 13, 28, .6); color: #fffaf0; font: 18px "DM Sans", sans-serif; cursor: pointer; }
+/* ---------- Story Echo: words ---------- */
+.word-show { min-height: 120px; display: grid; place-items: center; margin: 22px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: radial-gradient(60% 80% at 50% 50%, rgba(231, 181, 116, .1), transparent 70%); font: 400 clamp(42px, 8vw, 66px) / 1 "Playfair Display", serif !important; letter-spacing: -.02em; color: #fff3e6 !important; }
+.word-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; margin-top: 16px; }
+.word-grid button { min-height: 64px; padding: 8px; border: 1px solid rgba(255, 236, 220, .28); background: rgba(10, 8, 10, .6); color: var(--ink); font: 18px "DM Sans", sans-serif; cursor: pointer; transition: border-color .15s, background .15s; }
+.word-grid button:hover:not(:disabled) { border-color: var(--tone); }
+.word-grid button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .word-grid button:disabled { cursor: default; opacity: 1; }
 .word-grid button[aria-pressed="true"] { background: var(--tone); border-color: var(--tone); color: #1c1306; }
-.word-grid button.hit { background: #8fe3a4; border-color: #8fe3a4; color: #0d2414; }
-.word-grid button.missed { border: 2px dashed #8fe3a4; }
-.word-grid button.wrong { background: #ff8a78; border-color: #ff8a78; color: #2a0d08; }
+.word-grid button[aria-pressed="true"]:not(:disabled)::before { content: "✓ "; }
+.word-grid button.hit { background: #a9d8b8; border-color: #a9d8b8; color: #0d2414; }
+.word-grid button.missed { border: 2px dashed #a9d8b8; }
+.word-grid button.wrong { background: #f2a08e; border-color: #f2a08e; color: #2a0d08; }
 
-/* Finger Rhythm: four quick pads */
-.brain-game .rhythm-row { gap: clamp(10px, 3vw, 28px); margin: 30px 0; }
-.brain-game .pad { width: clamp(70px, 19vw, 132px); height: clamp(70px, 19vw, 132px); font-size: clamp(26px, 6vw, 38px); transition: transform .08s, background .08s, box-shadow .08s; touch-action: manipulation; }
-.brain-game .rhythm-row[data-count="2"] .pad { width: clamp(118px, 30vw, 170px); height: clamp(118px, 30vw, 170px); }
-.brain-game .pad { position: relative; }
-.brain-game .pad.good { background: #8fe3a4; color: #0d2414; }
-.brain-game .pad.bad { background: #ffb38a; color: #2a0d08; }
+/* ---------- Finger Rhythm: big round pads ---------- */
+.brain-game .rhythm-row { gap: clamp(12px, 3vw, 30px); margin: 34px 0 10px; }
+.brain-game .pad {
+  position: relative;
+  width: clamp(72px, 19vw, 136px);
+  height: clamp(72px, 19vw, 136px);
+  border: 2px solid rgba(142, 217, 195, .35);
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 35%, rgba(142, 217, 195, .14), rgba(10, 8, 10, .85) 72%);
+  color: rgba(244, 235, 226, .75);
+  font-size: clamp(26px, 6vw, 38px);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, .45);
+  transition: transform .08s, background .08s, box-shadow .08s, border-color .08s;
+  touch-action: manipulation;
+}
+.brain-game .rhythm-row[data-count="2"] .pad { width: clamp(120px, 30vw, 172px); height: clamp(120px, 30vw, 172px); }
+.brain-game .pad small { color: var(--muted); font: 12px "DM Mono", monospace; }
+.brain-game .pad.active { transform: translateY(-8px) scale(1.06); border-color: #fff; background: radial-gradient(circle at 50% 40%, #f2fffa, var(--tone) 66%); color: #10241e; box-shadow: 0 0 0 7px rgba(142, 217, 195, .25), 0 0 46px var(--tone); }
+.brain-game .pad.active small { color: #10241e; }
+.brain-game .pad.good { background: #a9d8b8; border-color: #a9d8b8; color: #0d2414; }
+.brain-game .pad.bad { background: #f2b48e; border-color: #f2b48e; color: #2a0d08; }
 /* A symbol as well as a colour, so right and wrong don't depend on telling green from red. */
 .brain-game .pad.good::after, .brain-game .pad.bad::after { position: absolute; top: 12%; right: 16%; font-size: 22px; font-weight: 700; }
 .brain-game .pad.good::after { content: "✓"; }
 .brain-game .pad.bad::after { content: "✗"; }
 
-/* Signal Match: rule switching */
-.switch-rule { margin: 10px 0 0; text-align: center; font: 500 22px "DM Mono", monospace !important; letter-spacing: .3em; }
-.switch-rule.rule-shape { color: #fff1c8; }
-.switch-rule.rule-fill { color: #d8a4f0; }
-.switch-card { width: min(240px, 64vw); aspect-ratio: 1; margin: 16px auto 10px; display: grid; place-items: center; border: 1px solid rgba(255, 255, 255, .3); border-radius: 18px; background: rgba(0, 0, 0, .35); font-size: clamp(110px, 34vw, 172px); line-height: 1; }
-.switch-bar { width: min(100%, 320px); height: 4px; margin: 0 auto 6px; background: rgba(255, 255, 255, .12); border-radius: 4px; overflow: hidden; }
+/* ---------- Signal Match: rule switching ---------- */
+.switch-rule { width: max-content; margin: 18px auto 0 !important; padding: 8px 20px 8px 26px; border: 1px solid currentColor; font: 500 20px "DM Mono", monospace !important; letter-spacing: .3em; }
+.switch-rule:empty { display: none; }
+.switch-rule.rule-shape { color: #fff3e6 !important; background: rgba(255, 243, 230, .06); }
+.switch-rule.rule-fill { color: #d8a4f0 !important; background: rgba(216, 164, 240, .1); }
+.switch-card { width: min(240px, 64vw); aspect-ratio: 1; margin: 16px auto 12px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 50%; background: radial-gradient(circle, rgba(216, 164, 240, .12), rgba(6, 5, 7, .7) 70%); box-shadow: inset 0 0 40px rgba(216, 164, 240, .1); font-size: clamp(110px, 34vw, 172px); line-height: 1; }
+.switch-bar { width: min(100%, 320px); height: 4px; margin: 0 auto 6px; background: var(--line); overflow: hidden; }
 .switch-bar i { display: block; height: 100%; width: 100%; background: var(--tone); }
-.brain-game .game-status { text-align: center; }
 
+/* ---------- the 3D worlds (worlds/*.js) ---------- */
+.brain-game.is-3d { overflow: hidden; }
+.brain-game.is-3d canvas { cursor: crosshair; }
+.w3-hud { position: fixed; inset: 0; z-index: 2; pointer-events: none; padding: 22px clamp(16px, 3vw, 40px); text-shadow: 0 2px 16px rgba(0, 0, 0, .8); }
+.w3-hud button { pointer-events: auto; }
+.w3-hud .world-top h2 { font-size: clamp(28px, 3.4vw, 46px); }
+.w3-goal { position: absolute; left: 50%; top: clamp(104px, 15vh, 140px); transform: translateX(-50%); width: min(580px, calc(100vw - 32px)); padding: 12px 18px 14px; border: 1px solid var(--line); border-top: 2px solid var(--tone); background: rgba(14, 11, 14, .78); backdrop-filter: blur(10px); text-align: center; font-size: 17px; line-height: 1.4; text-shadow: none; }
+.w3-goal:empty { display: none; }
+.w3-goal small { display: block; margin-bottom: 8px; color: var(--accent-2); font: 11px "DM Mono", monospace; letter-spacing: .14em; text-transform: uppercase; }
+.w3-goal b { font: 400 28px/1.1 "Playfair Display", serif; letter-spacing: -.02em; }
+.w3-tokens { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.w3-token { display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px; border: 1px solid var(--line); font-size: 15px; }
+.w3-token::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--c); box-shadow: 0 0 10px var(--c); }
+.w3-route { font: 500 15px "DM Mono", monospace; }
+.w3-status { position: absolute; left: 50%; bottom: 66px; transform: translateX(-50%); width: min(640px, calc(100vw - 32px)); margin: 0; padding: 11px 18px; border: 1px solid var(--line); background: rgba(14, 11, 14, .78); text-align: center; font-size: 16px; line-height: 1.45; text-shadow: none; }
+.w3-enter { position: absolute; left: 50%; top: 58%; transform: translate(-50%, -50%); min-height: 52px; padding: 14px 22px; border: 1px solid var(--accent); background: rgba(14, 11, 14, .8); color: var(--accent); font: 500 12px "DM Mono", monospace; letter-spacing: .1em; text-transform: uppercase; box-shadow: 0 0 40px rgba(231, 167, 130, .3); cursor: pointer; }
+.w3-enter:hover, .w3-enter:focus-visible { background: var(--accent); color: #1c120d; outline: none; }
+.w3-enter[hidden] { display: none; }
+.w3-cross { position: absolute; left: 50%; top: 50%; width: 20px; height: 20px; transform: translate(-50%, -50%); }
+.w3-cross::before, .w3-cross::after { content: ""; position: absolute; background: #fff3e6; box-shadow: 0 0 8px var(--tone); }
+.w3-cross::before { left: 0; top: 9px; width: 20px; height: 2px; }
+.w3-cross::after { left: 9px; top: 0; width: 2px; height: 20px; }
+.w3-keys { position: absolute; left: clamp(16px, 3vw, 40px); bottom: 22px; margin: 0; color: var(--soft); font-size: 13px; }
+.w3-keys b { color: var(--accent); font: 500 12px "DM Mono", monospace; }
+.w3-side { position: absolute; right: clamp(16px, 3vw, 40px); bottom: 16px; min-height: 44px; padding: 10px 16px; border: 1px solid rgba(255, 236, 220, .4); background: rgba(14, 11, 14, .8); color: var(--ink); font: 500 12px "DM Mono", monospace; letter-spacing: .08em; text-transform: uppercase; cursor: pointer; }
+.w3-side:hover, .w3-side:focus-visible { border-color: var(--accent); color: var(--accent); outline: none; }
+
+@media (max-width: 620px) {
+  .brain-game .world-top { align-items: flex-start; flex-direction: column; gap: 12px; }
+  .brain-game .world-actions { justify-content: flex-start; flex-wrap: wrap; }
+}
 @media (prefers-reduced-motion: reduce) {
-  .span-grid button, .tol-peg i, .brain-game .pad { transition: none; }
+  .span-grid button, .tol-peg, .tol-peg i, .brain-game .pad, .bg-progress i, .word-grid button, .bg-modes button { transition: none; }
+  .span-grid button.bloom { animation: none; }
 }

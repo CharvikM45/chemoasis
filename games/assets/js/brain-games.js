@@ -18,8 +18,13 @@
  * Levels set where a session starts; results and personal bests (per level and mode) are shown
  * at the end. The next session on a level picks up one step easier than where the last one
  * ended, unless the player chooses Start fresh. Every finished session is saved to the account.
- * three.js only draws the backdrop, so it is loaded on demand: if it can't download (offline,
- * a blocked network), the games still open on their plain background.
+ * Lumen, Starling and Cloudpath can also be played as a walk-around 3D world (worlds/*.js, the
+ * original 3D games). 2D is the default and always there; the 3D choice is remembered per game,
+ * offered only on computers with a mouse or trackpad, and off in Calm mode. The 3D worlds are
+ * simpler explore versions, not the research tasks, so their bests are kept apart (the "-3d"
+ * keys) and they aren't sent to the account.
+ * three.js draws the backdrop and the 3D worlds, so it is loaded on demand: if it can't download
+ * (offline, a blocked network), the games still open on their plain background.
  */
 // three.js is loaded only when a game opens with 3D on (not in calm mode).
 let THREE = null;
@@ -62,6 +67,14 @@ const MODE = 'chemoasis.mode';
 const savedMode = (game) => (readJSON(MODE)[game] === 'challenge' ? 'challenge' : 'gentle');
 function saveMode(game, mode) { const all = readJSON(MODE); all[game] = mode; writeJSON(MODE, all); }
 
+// 2D board or 3D world, remembered per game. 2D unless the player picked 3D and 3D is possible here.
+const VIEW = 'chemoasis.view';
+const hasMouse = () => matchMedia('(any-pointer: fine)').matches && 'requestPointerLock' in Element.prototype;
+const why3DOff = () => (window.reframeCalm ? '3D worlds are off in Calm mode. Turn Calm mode off in the top bar to use them.' : '');
+const viewOf = (game) => (game.w3 && hasMouse() && !why3DOff() && readJSON(VIEW)[game.id] === '3d' ? '3d' : '2d');
+function saveView(game, view) { const all = readJSON(VIEW); all[game] = view; writeJSON(VIEW, all); }
+const W3 = { lumen: () => import('./worlds/lumen.js'), starling: () => import('./worlds/starling.js'), cloudpath: () => import('./worlds/cloudpath.js') };
+
 /* ---------- the world around each game: a calm 3D backdrop and a panel ---------- */
 
 class World {
@@ -81,21 +94,52 @@ class World {
     this.pausedAt = 0;
     this.pausedTotal = 0; // time spent paused, left out of world.now()
   }
-  render(body) {
-    this.host.innerHTML = `<div class="world-panel"><header class="world-top"><div><p class="world-kicker">${esc(this.game.kicker)}</p><h2>${esc(this.game.title)}</h2></div><div class="world-actions">${this.playing ? '<button data-action="pause">Pause</button>' : ''}<button data-action="exit">Exit game</button></div></header>${body}</div>`;
+  // The title bar on every screen. While a session is under way it has How to play and Pause,
+  // which both open the pause card (it shows the How to play box too).
+  header() {
+    const kicker = this.walk ? `${this.game.kicker} · 3D world` : this.game.kicker;
+    return `<header class="world-top"><div><p class="world-kicker">${esc(kicker)}</p><h2>${esc(this.game.title)}</h2></div><div class="world-actions">${this.playing ? '<button data-action="how">How to play</button><button data-action="pause">Pause</button>' : ''}<button data-action="exit">Exit game</button></div></header>`;
+  }
+  wire() {
     this.host.querySelector('[data-action="exit"]').onclick = () => this.close();
-    const pause = this.host.querySelector('[data-action="pause"]');
-    if (pause) pause.onclick = () => this.pause();
-    if (this.renderer) this.host.prepend(this.renderer.domElement);
+    this.host.querySelectorAll('[data-action="pause"], [data-action="how"]').forEach((b) => { b.onclick = () => this.pause(); });
     if (this.paused) this.showPause();
+  }
+  render(body) {
+    this.leave3D();
+    this.host.innerHTML = `<div class="world-panel">${this.header()}${this.playing ? '<div class="bg-progress" aria-hidden="true"><i></i></div>' : ''}${body}</div>`;
+    if (this.renderer) this.host.prepend(this.renderer.domElement);
+    this.wire();
+    this.progress();
     return this.host.querySelector('.world-panel');
   }
+  // A 3D world (worlds/walk.js) takes the whole screen: its canvas, the title bar and its HUD.
+  mount3D(canvas, hud) {
+    this.dispose(); // the backdrop's graphics memory goes to the world instead
+    this.host.classList.add('is-3d');
+    this.host.innerHTML = `<div class="w3-hud">${this.header()}${hud}</div>`;
+    this.host.prepend(canvas);
+    this.wire();
+  }
+  leave3D() {
+    if (!this.walk) return;
+    this.walk.dispose();
+    this.walk = null;
+    this.host.classList.remove('is-3d');
+    if (!this.host.hidden) this.backdrop();
+  }
+  // How far through the session: `world.progress(3, 14)` fills the bar under the title.
+  progress(done, total) {
+    if (total) this.prog = done / total;
+    const bar = this.host.querySelector('.bg-progress i');
+    if (bar) bar.style.width = `${Math.round((this.prog || 0) * 100)}%`;
+  }
   async scene() {
-    if (this.renderer || this.sceneTried || window.reframeCalm) return; // calm mode: plain background, no 3D
+    if (this.renderer || this.sceneTried || window.reframeCalm || this.walk) return; // calm mode: plain background, no 3D
     this.sceneTried = true;
     const T = await loadThree();
     if (!T) return; // no 3D: the game still works on its plain background
-    if (this.host.hidden) { this.sceneTried = false; return; } // closed while three.js loaded
+    if (this.host.hidden || this.walk) { this.sceneTried = false; return; } // closed (or a 3D world opened) while three.js loaded
     try {
       this.renderer = new T.WebGLRenderer({ antialias: !reduceMotion, alpha: true, powerPreference: 'high-performance' });
     } catch (_) { return; }
@@ -155,7 +199,10 @@ class World {
     // Keep Tab inside the game: everything else on the page is inert while it's open.
     this.inerted = [...document.body.children].filter((el) => el !== this.host && !el.inert);
     this.inerted.forEach((el) => { el.inert = true; });
-    // The game opens straight away; the backdrop joins in once three.js has loaded.
+    this.backdrop();
+  }
+  // The game opens straight away; the backdrop joins in once three.js has loaded.
+  backdrop() {
     this.scene().then(() => {
       if (this.host.hidden || !this.renderer) return;
       this.resize();
@@ -201,6 +248,7 @@ class World {
     el.setAttribute('aria-modal', 'true');
     el.setAttribute('aria-label', 'Paused');
     el.innerHTML = `<div class="bg-pause-card"><h3>Paused</h3><p>Take as long as you need. The game will wait for you.</p>
+      ${this.howLines ? GameLevels.howBox(this.howLines) : ''}
       <div class="world-controls"><button data-resume class="bg-primary">Resume</button><button data-exit>Exit game</button></div></div>`;
     el.querySelector('[data-resume]').onclick = () => this.resume();
     el.querySelector('[data-exit]').onclick = () => this.close();
@@ -220,9 +268,10 @@ class World {
     this.resume();
     this.playing = false;
     cancelAnimationFrame(this.raf);
+    this.host.hidden = true;
+    this.leave3D();
     this.dispose();
     GameLevels.close(this.host);
-    this.host.hidden = true;
     (this.inerted || []).forEach((el) => { el.inert = false; });
     this.inerted = null;
     // Back to the games library if it's open underneath, otherwise back to the page.
@@ -233,19 +282,20 @@ class World {
 
 /* ---------- shared screens ---------- */
 
-// "How it works" card before a session, with the Gentle / Challenge choice for games that have
-// one. Resolves { go, mode, startAt }: go is true for Start, false for All levels. startAt is
-// where the adaptive difficulty begins, picked up from last time (undefined: the level's start).
+// The start card before a session: the How to play box first, then the Gentle / Challenge choice
+// for games that have one. `game` is the 2D game or its 3D world (game.w3). Resolves
+// { go, mode, startAt }: go is true for Start, false for All levels. startAt is where the
+// adaptive difficulty begins, picked up from last time (undefined: the level's start).
 function intro(world, game, level) {
   let mode = game.modes ? savedMode(game.id) : null;
   let fresh = false;
   const panel = world.render(`<main class="world-card bg-card">
-    <p class="world-note">Level ${level.index + 1} · ${esc(level.name)}</p>
+    <p class="world-note">Level ${level.index + 1} · ${esc(level.name)}${game.is3D ? ' · 3D world' : ''}</p>
+    <div data-how></div>
     ${game.modes ? `<div class="bg-modes" role="group" aria-label="Mode">
       <button data-mode="gentle">Gentle<small>No timer. The game waits for you.</small></button>
       <button data-mode="challenge">Challenge<small>${esc(game.challengeNote)}</small></button>
     </div>` : ''}
-    <ul class="bg-how" data-how></ul>
     <p class="bg-carry" data-carry hidden><span data-carry-text></span> <button data-fresh>Start fresh</button></p>
     ${game.safety ? `<p class="bg-safety">${game.safety}</p>` : ''}
     <div class="world-controls"><button data-go class="bg-primary">Start</button><button data-levels>All levels</button></div>
@@ -255,7 +305,7 @@ function intro(world, game, level) {
     return last === undefined ? undefined : game.carry.from(last, level, mode);
   };
   const show = () => {
-    panel.querySelector('[data-how]').innerHTML = game.how(level, mode).map((l) => `<li>${l}</li>`).join('');
+    panel.querySelector('[data-how]').innerHTML = GameLevels.howBox(game.how(level, mode), game.meta && game.meta(level, mode));
     panel.querySelectorAll('[data-mode]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.mode === mode)));
     const from = startAt();
     panel.querySelector('[data-carry]').hidden = from === undefined;
@@ -284,28 +334,73 @@ function finish(world, game, level, lines, bestText = '', details = [], score = 
   });
 }
 
-function levelsFor(game) {
+// The level-complete screen after a 3D world. Its tick and best stay in this browser: the
+// account and the Your games charts only track the 2D research tasks.
+function finish3D(world, game, level, lines, bestText = '') {
+  GameLevels.done({
+    host: world.host, game: `${game.id}-3d`, sync: false, level: level.index, levels: game.w3.levels,
+    message: [...lines, bestText].filter(Boolean).join(' '),
+    onPick: (n) => start(game, n), onLevels: () => levelsFor(game), onExit: () => world.close()
+  });
+}
+// "Personal best" wording for the 3D worlds, where fewer is better.
+function best3D(world, value, unit) {
+  const { best, isNew } = recordBest(world.saveAs, value, true);
+  return isNew ? 'That’s a new personal best on this level.' : `Personal best on this level: ${best} ${unit}.`;
+}
+
+function levelsFor(game, focusView) {
   const world = worlds[game.id];
   world.render('');
-  GameLevels.pick({ host: world.host, game: game.id, title: game.title, kicker: `${game.kicker} · choose a level`, levels: game.levels, about: game.about, onPick: (n) => start(game, n), onExit: () => world.close() });
+  const view = viewOf(game), def = view === '3d' ? game.w3 : game;
+  GameLevels.pick({
+    host: world.host, game: view === '3d' ? `${game.id}-3d` : game.id, title: game.title,
+    kicker: `${game.kicker} · choose a level`, levels: def.levels, how: def.summary, focusView,
+    // The 2D / 3D choice: only on computers with a mouse or trackpad, and greyed out in Calm mode.
+    views: game.w3 && hasMouse() ? { current: view, off: why3DOff(), onChange: (v) => { saveView(game.id, v); levelsFor(game, true); } } : null,
+    ...(view === '3d'
+      ? { lede: 'Fixed levels, at your own pace.', note: 'The 3D world is a simpler explore version of this game, for fun and practice. It isn’t based on a research task, and it isn’t a treatment.' }
+      : { about: game.about }),
+    onPick: (n) => start(game, n), onExit: () => world.close()
+  });
 }
 
 async function start(game, n) {
   const world = worlds[game.id];
   const run = ++world.run;
-  const level = { ...game.levels[n], index: n };
+  const in3D = viewOf(game) === '3d', def = in3D ? game.w3 : game;
+  const level = { ...def.levels[n], index: n };
   const alive = () => world.run === run && !world.host.hidden;
-  const { go, mode, startAt } = await intro(world, game, level);
+  const { go, mode, startAt } = await intro(world, def, level);
   if (!alive()) return;
   if (!go) return levelsFor(game);
   world.playing = true;
-  world.mode = mode;
-  world.saveAs = keyFor(game.id, level, mode); // the name this session's best and carry use
+  world.mode = in3D ? '3d' : mode;
+  world.saveAs = keyFor(game.id, level, world.mode); // the name this session's best and carry use
+  world.howLines = def.how(level, mode);
+  world.prog = 0;
   try {
-    await game.play(world, level, alive, mode, startAt);
+    await def.play(world, level, alive, mode, startAt);
   } finally {
-    if (world.run === run) { world.playing = false; world.host.querySelector('[data-action="pause"]')?.remove(); }
+    if (world.run === run) { world.playing = false; world.howLines = null; world.host.querySelectorAll('[data-action="pause"], [data-action="how"]').forEach((b) => b.remove()); }
   }
+}
+
+// Opens game `id`'s 3D world and plays one level; resolves its result, or null if it closed.
+// If three.js or WebGL isn't available, it says so and offers the 2D board instead.
+async function play3D(world, game, level, alive) {
+  const [T, mod] = await Promise.all([loadThree(), W3[game.id]().catch(() => null)]);
+  if (!alive()) return null;
+  try {
+    if (T && mod) return await mod.play(T, world, level, alive);
+  } catch (_) { world.leave3D(); /* no WebGL context: fall through to the message */ }
+  world.playing = false;
+  const panel = world.render(`<main class="world-card bg-card"><p class="world-note">3D world</p>
+    <p>The 3D world couldn’t start on this device. The 2D board works everywhere.</p>
+    <div class="world-controls"><button data-2d class="bg-primary">Play in 2D</button></div></main>`);
+  panel.querySelector('[data-2d]').onclick = () => { saveView(game.id, '2d'); levelsFor(game); };
+  panel.querySelector('[data-2d]').focus();
+  return null;
 }
 
 /* ======================================================================
@@ -321,11 +416,9 @@ const lumen = {
     { name: 'Bigger garden', desc: '4 × 4 garden. Starts at 5 lights.', size: 4, span: 5, on: 480, backward: false },
     { name: 'Backwards', desc: '4 × 4 garden. Tap the path in reverse order.', size: 4, span: 4, on: 520, backward: true }
   ],
-  how: (l) => [
-    `Flowers light up one at a time. Then tap them in the <b>${l.backward ? 'reverse' : 'same'}</b> order.`,
-    'Get one right and the next path is one flower longer. Miss and it gets one shorter.',
-    '14 paths, about 3 minutes.'
-  ],
+  summary: ['Watch the flowers light up, one at a time.', 'Then tap them in the same order. On the last level, tap them backwards.'],
+  how: (l) => ['Watch the flowers light up, one at a time.', `Then tap them in the <b>${l.backward ? 'reverse' : 'same'}</b> order${l.backward ? ' (last one first)' : ''}.`],
+  meta: () => '14 paths · about 3 minutes · each right answer adds a flower',
   carry: { from: (v) => clamp(v - 1, 2, 9), label: (v) => `paths of ${v} flowers` },
   async play(world, level, alive, mode, startAt) {
     const TRIALS = 14;
@@ -339,6 +432,7 @@ const lumen = {
     const status = (t) => { panel.querySelector('[data-status]').textContent = t; };
     for (let trial = 0; trial < TRIALS && alive(); trial++) {
       panel.querySelector('[data-info]').textContent = `Path ${trial + 1} of ${TRIALS} · ${span} flowers${level.backward ? ' · backwards' : ''}`;
+      world.progress(trial, TRIALS);
       const seq = [];
       while (seq.length < span) { const c = Math.floor(Math.random() * cells); if (c !== seq[seq.length - 1]) seq.push(c); }
       buttons.forEach((b) => { b.disabled = true; b.className = ''; });
@@ -366,7 +460,7 @@ const lumen = {
         });
       });
       buttons.forEach((b) => { b.disabled = true; b.onclick = null; });
-      if (ok) { correct++; longest = Math.max(longest, span); status(`Yes, ${span} in a row.`); span = Math.min(9, span + 1); }
+      if (ok) { correct++; longest = Math.max(longest, span); status(`Yes, ${span} in a row.`); span = Math.min(9, span + 1); buttons.forEach((b) => b.classList.add('bloom')); }
       else { status('Not quite. The next path is a little shorter.'); span = Math.max(2, span - 1); }
       await world.sleep(1000);
     }
@@ -374,6 +468,24 @@ const lumen = {
     saveCarry(world.saveAs, span);
     const { best, isNew } = longest ? recordBest(world.saveAs, longest) : { best: readJSON(BEST)[world.saveAs] };
     finish(world, lumen, level, [`Longest path you got right: ${longest} flowers${level.backward ? ' backwards' : ''}. Paths correct: ${correct} of ${TRIALS}.`], isNew ? 'That is a new personal best on this level!' : best ? `Personal best on this level: ${best} flowers.` : '', [], longest);
+  }
+};
+
+lumen.w3 = {
+  id: 'lumen', is3D: true,
+  levels: [
+    { name: 'Two lights', desc: 'Remember 2 plants in order. 15 seconds to look.', count: 2, secs: 15 },
+    { name: 'Three lights', desc: 'Remember 3 plants in order. 10 seconds to look.', count: 3, secs: 10 },
+    { name: 'Four lights', desc: 'Remember 4 plants in order. 12 seconds to look.', count: 4, secs: 12 },
+    { name: 'Five lights', desc: 'Remember all 5 plants in order. 12 seconds to look.', count: 5, secs: 12 }
+  ],
+  summary: ['Remember the plants shown at the top, in order. Then they hide.', 'Walk to each plant and click it, in that order.'],
+  how: (l) => [`Remember the ${l.count} plants shown at the top, in order. They hide after ${l.secs} seconds.`, 'Walk up to each plant and click it, in that order.'],
+  meta: () => '<b>W A S D</b> walk · <b>mouse</b> look · <b>click</b> pick · no other timer',
+  async play(world, level, alive) {
+    const result = await play3D(world, lumen, level, alive);
+    if (!result) return;
+    finish3D(world, lumen, level, [`You found all ${level.count} plants in order${result.mistakes ? `, with ${result.mistakes} wrong ${result.mistakes === 1 ? 'pick' : 'picks'} on the way` : ', with no wrong picks'}.`], best3D(world, result.mistakes, 'wrong picks'));
   }
 };
 
@@ -394,11 +506,9 @@ const starling = {
     { name: 'Busy sky', desc: 'As before, with look-alike stars in the way.', ring: true, clutter: true, start: 500 },
     { name: 'Lightning sky', desc: 'Busy sky, starting with much shorter flashes.', ring: true, clutter: true, start: 260 }
   ],
-  how: (l) => [
-    'Keep your eyes on the + in the centre. A picture flashes, then is covered up.',
-    `Say which symbol was in the centre${l.ring ? ', then tap where the comet ☄ appeared around the edge' : ''}.`,
-    'Two right in a row and the flash gets shorter; a miss makes it longer. 20 flashes.'
-  ],
+  summary: ['Keep your eyes on the + in the middle. A symbol flashes there for a moment.', 'Pick which symbol it was. On later levels, also tap where the comet ☄ flashed at the edge.'],
+  how: (l) => ['Keep your eyes on the + in the middle. A symbol flashes there for a moment.', `Pick which symbol it was${l.ring ? ', then tap where the comet ☄ flashed around the edge' : ''}.`],
+  meta: () => '20 flashes · they get shorter as you get them right',
   carry: { from: (v) => Math.round(clamp(v * 1.25, 17, 800)), label: (v) => `flashes of about ${v} ms` },
   async play(world, level, alive, mode, startAt) {
     const TRIALS = 20;
@@ -418,6 +528,7 @@ const starling = {
     const frame = () => new Promise((r) => requestAnimationFrame(r));
     for (let trial = 0; trial < TRIALS && alive(); trial++) {
       $('[data-info]').textContent = `Flash ${trial + 1} of ${TRIALS}`;
+      world.progress(trial, TRIALS);
       const sym = Math.floor(Math.random() * 2), slot = Math.floor(Math.random() * 8);
       slots.forEach((s) => { s.textContent = ''; s.disabled = true; s.className = 'sky-slot'; });
       $('[data-centre]').textContent = '+';
@@ -479,6 +590,24 @@ const starling = {
   }
 };
 
+starling.w3 = {
+  id: 'starling', is3D: true,
+  levels: [
+    { name: 'One object', desc: 'Find 1 named object in the sky.', count: 1 },
+    { name: 'Two objects', desc: 'Find 2 objects, one after the other.', count: 2 },
+    { name: 'Three objects', desc: 'Find 3 objects, one after the other.', count: 3 },
+    { name: 'Four objects', desc: 'Find 4 objects, one after the other.', count: 4 }
+  ],
+  summary: ['The box at the top names an object in the observatory sky.', 'Look around, aim the crosshair at it and click.'],
+  how: (l) => [`The box at the top names an object in the sky${l.count > 1 ? `, ${l.count} in turn` : ''}.`, 'Look around, aim the crosshair at it and click.'],
+  meta: () => '<b>W A S D</b> walk · <b>mouse</b> look · <b>click</b> pick · no timer',
+  async play(world, level, alive) {
+    const result = await play3D(world, starling, level, alive);
+    if (!result) return;
+    finish3D(world, starling, level, [`You found ${level.count === 1 ? 'the object' : `all ${level.count} objects`}${result.mistakes ? `, with ${result.mistakes} wrong ${result.mistakes === 1 ? 'pick' : 'picks'}` : ' without a wrong pick'}.`], best3D(world, result.mistakes, 'wrong picks'));
+  }
+};
+
 /* ======================================================================
  * 3. Cloudpath Cartographer: planning (Tower of London)
  * ==================================================================== */
@@ -513,6 +642,9 @@ function distances(from) {
   return d;
 }
 const COLORS = { R: '#ff8a78', G: '#8fe3a4', B: '#7fb8ff' };
+// A shape on each lantern as well as a colour, so the puzzle never depends on telling colours apart.
+const GLYPHS = { R: '▲', G: '●', B: '■' };
+const NAMES = { R: 'red triangle', G: 'green circle', B: 'blue square' };
 
 const cloudpath = {
   id: 'cloudpath', title: 'Cloudpath Cartographer', kicker: 'Planning', tone: '#f6d184',
@@ -523,11 +655,9 @@ const cloudpath = {
     { name: 'Five moves', desc: 'Puzzles that take 5 moves.', target: 5 },
     { name: 'Long routes', desc: 'Puzzles that take 6 to 7 moves.', target: 6 }
   ],
-  how: () => [
-    'Move the lanterns so your clouds match the goal. Clouds hold 3, 2 and 1 lantern, and you can only move the top one.',
-    'Tap a cloud to lift its top lantern, then tap where it goes. <b>Plan the whole route first</b>: the aim is the fewest possible moves.',
-    'Solve it in the fewest moves and the next puzzle needs one more. 8 puzzles.'
-  ],
+  summary: ['Make your clouds match the Goal. Tap a cloud to lift its top lantern, then tap another cloud to drop it.', 'Clouds hold 3, 2 and 1 lanterns. Plan ahead and use as few moves as you can.'],
+  how: () => ['Make your clouds match the <b>Goal</b>. Tap a cloud to lift its top lantern, then tap another cloud to drop it.', 'Clouds hold 3, 2 and 1 lanterns. <b>Plan first</b> and use as few moves as you can.'],
+  meta: () => '8 puzzles · a perfect solve makes the next one a move longer',
   carry: { from: (v) => clamp(v - 1, 2, 8), label: (v) => `${v}-move puzzles` },
   async play(world, level, alive, mode, startAt) {
     const PUZZLES = 8;
@@ -541,6 +671,7 @@ const cloudpath = {
       const goal = pick(goals)[0];
       let state = parse(startKey), held = null, count = 0, firstMove = 0;
       const t0 = world.now();
+      world.progress(n, PUZZLES);
       const panel = world.render(`<main class="world-card bg-card">
         <p class="world-note">Puzzle ${n + 1} of ${PUZZLES} · fewest possible: ${need} moves</p>
         <div class="tol-goal"><small>Goal</small><div class="tol" data-goal></div></div>
@@ -549,7 +680,7 @@ const cloudpath = {
         <div class="world-controls"><button data-reset>Start over</button><button data-skip>Skip this puzzle</button></div>
       </main>`);
       const draw = (el, s, live) => {
-        el.innerHTML = s.map((peg, i) => `<${live ? 'button' : 'div'} class="tol-peg" data-peg="${i}" style="--cap:${CAP[i]}" ${live ? `aria-label="Cloud ${i + 1}"` : ''}>${peg.map((b, j) => `<i style="background:${COLORS[b]}" class="${live && held === i && j === peg.length - 1 ? 'held' : ''}"></i>`).join('')}</${live ? 'button' : 'div'}>`).join('');
+        el.innerHTML = s.map((peg, i) => `<${live ? 'button' : 'div'} class="tol-peg" data-peg="${i}" style="--cap:${CAP[i]}" ${live ? `aria-label="Cloud ${i + 1}: ${peg.length ? peg.map((b) => NAMES[b]).join(', ') : 'empty'}${held === i ? ', top lantern lifted' : ''}"` : ''}>${peg.map((b, j) => `<i style="--c:${COLORS[b]}" class="${live && held === i && j === peg.length - 1 ? 'held' : ''}" ${live ? '' : 'aria-hidden="true"'}>${GLYPHS[b]}</i>`).join('')}</${live ? 'button' : 'div'}>`).join('');
       };
       draw(panel.querySelector('[data-goal]'), parse(goal), false);
       const solved = await new Promise((resolve) => {
@@ -592,6 +723,24 @@ const cloudpath = {
   }
 };
 
+cloudpath.w3 = {
+  id: 'cloudpath', is3D: true,
+  levels: [
+    { name: 'To the Falls', desc: 'Plan a route from Harbor to Falls.', must: [], end: 'Falls', goal: 'Harbor to Falls', fewest: 2 },
+    { name: 'To the Beacon', desc: 'Plan a route from Harbor all the way to Beacon.', must: [], end: 'Beacon', goal: 'Harbor to Beacon', fewest: 3 },
+    { name: 'Through Moss', desc: 'Visit Moss on your way to Beacon.', must: ['Moss'], end: 'Beacon', goal: 'Harbor to Beacon, through Moss', fewest: 3 },
+    { name: 'Both sides', desc: 'Visit Moss and Wind before you reach Beacon.', must: ['Moss', 'Wind'], end: 'Beacon', goal: 'Harbor to Beacon, through Moss and Wind', fewest: 5 }
+  ],
+  summary: ['Plan a route across the sky bridges, from Harbor to the island named at the top.', 'Click each next island’s beacon. The ones you can reach next glow brightest.'],
+  how: (l) => [`Plan a route across the sky bridges: <b>${esc(l.goal)}</b>.`, 'Click each next island’s beacon. The ones you can reach next glow brightest.'],
+  meta: () => '<b>W A S D</b> walk · <b>mouse</b> look · <b>click</b> pick · no timer',
+  async play(world, level, alive) {
+    const result = await play3D(world, cloudpath, level, alive);
+    if (!result) return;
+    finish3D(world, cloudpath, level, [`Your route: ${result.path}. That’s ${result.stops} stops; the shortest takes ${level.fewest}.`], best3D(world, result.stops, 'stops'));
+  }
+};
+
 /* ======================================================================
  * 4. Story Echo: verbal memory (word lists, with a linking strategy)
  * ==================================================================== */
@@ -623,14 +772,15 @@ const echo = {
     { name: 'Long lists', desc: 'Lists start at 10 words.', words: 10, pace: 1500 },
     { name: 'Long and quick', desc: 'Lists start at 12 words. In Challenge, words show faster.', words: 12, pace: 1150 }
   ],
+  summary: ['Words appear one at a time. Try to remember them all.', 'Then tap every word you saw, from a mix of old and new.'],
   how: (l, mode) => [
     mode === 'challenge'
-      ? `Words appear one at a time, for about ${(l.pace / 1000).toFixed(1)} seconds each. Then pick out every word you saw from a mix of old and new.`
-      : 'Words appear one at a time. Press <b>Next word</b> (or Space) whenever you’re ready. Then pick out every word you saw from a mix of old and new.',
-    '<b>Strategy:</b> make up a tiny story that links the words, like “the horse ate a lemon on the bridge.” The words also come in pairs from the same group, which helps.',
-    `Remember at least 85% and the next list is 2 words longer. 5 lists, starting at ${Math.min(l.words, echoMax(mode))} words.`,
-    ...(mode === 'challenge' ? ['After each list you can type the words you remember before picking them out. At the end, one last check of what stayed with you.'] : [])
+      ? `Words appear one at a time, about ${(l.pace / 1000).toFixed(1)} seconds each. Then type the ones you remember (or skip).`
+      : 'Words appear one at a time. Press <b>Next word</b> (or Space) when you’re ready.',
+    'Then tap every word you saw, from a mix of old and new.',
+    '<b>Tip:</b> link the words in a tiny story, like “the horse ate a lemon on the bridge.”'
   ],
+  meta: (l, mode) => `5 lists, starting at ${Math.min(l.words, echoMax(mode))} words · remember 85% and the next list grows${mode === 'challenge' ? ' · one last check at the end' : ''}`,
   carry: { from: (v, l, mode) => clamp(v - 2, 4, echoMax(mode)), label: (v) => `lists of ${v} words` },
   async play(world, level, alive, mode, startAt) {
     const LISTS = 5, gentle = mode !== 'challenge', max = echoMax(mode);
@@ -657,6 +807,7 @@ const echo = {
       for (let i = 0; i < list_.length; i++) {
         if (!alive()) return;
         panel.querySelector('[data-info]').textContent = `List ${list + 1} of ${LISTS} · word ${i + 1} of ${n}`;
+        world.progress(list + i / n / 2, LISTS);
         panel.querySelector('[data-word]').textContent = list_[i];
         if (speak && window.speechSynthesis) speechSynthesis.speak(new SpeechSynthesisUtterance(list_[i]));
         if (gentle) {
@@ -701,6 +852,7 @@ const echo = {
         }
       }
       const options = shuffle([...list_, ...foils]);
+      world.progress(list + 0.5, LISTS);
       const recall = world.render(`<main class="world-card bg-card">
         <p class="world-note">List ${list + 1} of ${LISTS} · pick the ${n} words you saw</p>
         <div class="word-grid">${options.map((w) => `<button data-w="${w}" aria-pressed="${chosenSet.has(w)}">${w}</button>`).join('')}</div>
@@ -798,15 +950,12 @@ const rhythm = {
   how: (l, mode) => {
     const keys = PAD_SETS[l.pads].map((i) => PADS[i][0]);
     return [
-      mode === 'challenge'
-        ? `${l.pads} pads light up one at a time. Tap the lit pad (or press <b>${keys.join(' ')}</b>) before the next one lights.`
-        : `${l.pads} pads light up one at a time. Tap the lit pad (or press <b>${keys.join(' ')}</b>). It waits for you, and a wrong tap doesn’t count against you.`,
-      'There is a hidden pattern. You don’t need to look for it; your hands may start to learn it.',
-      mode === 'challenge'
-        ? 'Catch almost every light in a round and the pace speeds up a little; miss a few and it slows down. 8 rounds of 8 lights.'
-        : 'No timer and no speed scores. 8 short rounds of 8 lights.'
+      `Tap the pad that lights up<span class="bg-key"> (or press <b>${keys.join(' ')}</b>)</span>.`,
+      mode === 'challenge' ? 'Catch it before the next one lights. The pace adapts to you.' : 'It waits for you, and a wrong tap doesn’t count against you.'
     ];
   },
+  summary: ['Tap the pad that lights up, using a light touch.', 'In Gentle mode it waits for you. In Challenge, catch each light before the next.'],
+  meta: () => '8 rounds of 8 lights · a hidden pattern repeats, and your hands may pick it up',
   // Only Challenge has a pace to carry over; Gentle always waits.
   carry: { from: (v, l, mode) => (mode === 'challenge' ? Math.round(clamp(v * 1.1, RHYTHM_FASTEST, 1400)) : undefined), label: (v) => `a light every ${(v / 1000).toFixed(1)} seconds` },
   async play(world, level, alive, mode, startAt) {
@@ -836,6 +985,7 @@ const rhythm = {
     for (let round = 0; round < ROUNDS && alive(); round++) {
       const seq = round === RANDOM_ROUND ? tapPattern(pads_.length) : SEQ;
       panel.querySelector('[data-info]').textContent = `Round ${round + 1} of ${ROUNDS}${gentle ? '' : ' · Challenge'}`;
+      world.progress(round, ROUNDS);
       status('Get ready…');
       await world.sleep(900);
       status(gentle ? 'Tap the glowing pad whenever you’re ready.' : 'Tap the glowing pad before the next one lights.');
@@ -918,13 +1068,12 @@ const signal = {
     { name: 'Frequent switches', desc: 'The rule changes about half the time.', p: 0.5, deadline: 2000 },
     { name: 'Fast switching', desc: 'Half the time. In Challenge, with less time to answer.', p: 0.5, deadline: 1300 }
   ],
-  how: (l, mode) => [
-    'Each signal is a shape that is either <b>solid</b> or just an <b>outline</b>. The word on top tells you which to sort by.',
-    '<b>SHAPE</b>: round → left, pointed → right. <b>FILL</b>: solid → left, outline → right. Use the buttons or <b>F</b> and <b>J</b>.',
-    mode === 'challenge'
-      ? 'A bar shows your time. Get one right and you get a little less time; miss and you get more. 40 signals.'
-      : 'No timer: each signal waits for your answer. 40 signals.'
+  summary: ['The word at the top says how to sort each shape: by <b>SHAPE</b> or by <b>FILL</b>.', '<b>SHAPE</b>: round goes left, pointed goes right. <b>FILL</b>: solid goes left, outline goes right.'],
+  how: () => [
+    'The word at the top says how to sort each shape: by <b>SHAPE</b> or by <b>FILL</b>.',
+    '<b>SHAPE</b>: round goes left, pointed goes right. <b>FILL</b>: solid goes left, outline goes right.'
   ],
+  meta: (l, mode) => `40 shapes · ${mode === 'challenge' ? 'a bar shows your time' : 'no timer'}<span class="bg-key"> · keys <b>F</b> (left) and <b>J</b> (right)</span>`,
   carry: { from: (v, l, mode) => (mode === 'challenge' ? Math.round(clamp(v * 1.1, SIGNAL_FASTEST, 4000)) : undefined), label: (v) => `${(v / 1000).toFixed(1)} seconds to answer` },
   async play(world, level, alive, mode, startAt) {
     const TRIALS = 40, challenge = mode === 'challenge';
@@ -950,6 +1099,7 @@ const signal = {
       const glyph = kind === 'round' ? (fill === 'solid' ? '●' : '○') : pick(fill === 'solid' ? ['▲', '◆'] : ['△', '◇']);
       const want = rule === 'shape' ? (kind === 'round' ? 0 : 1) : (fill === 'solid' ? 0 : 1);
       $('[data-info]').textContent = `Signal ${t + 1} of ${TRIALS}${challenge ? ' · Challenge' : ''}`;
+      world.progress(t, TRIALS);
       $('[data-rule]').textContent = rule.toUpperCase();
       $('[data-rule]').className = `switch-rule rule-${rule}`;
       $('[data-card]').innerHTML = `<span style="color:${pick(SIGNAL_TONES)}" role="img" aria-label="${fill} ${kind} shape">${glyph}</span>`;
