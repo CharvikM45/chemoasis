@@ -184,7 +184,7 @@ h1 em, h2 em { color: var(--accent); }
   .hero .lede { margin-left: auto; margin-right: auto; }
   .hero .actions { justify-content: center; }
   .band { min-height: auto; padding-top: 90px; padding-bottom: 90px; }
-  .band .copy { padding: 26px 20px; background: rgba(6, 5, 7, .62); }
+  .band .copy { padding: 26px 20px; background: rgba(6, 5, 7, .8); } /* the brain's pieces pass behind it */
   .closing { min-height: 100vh; padding-bottom: 24px; } /* low, so the finished brain shows above it */
 }
 @media (max-width: 640px) {
