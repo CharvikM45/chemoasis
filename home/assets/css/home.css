@@ -11,6 +11,8 @@
   --line: rgba(255, 236, 220, .13);
   --plum: #3b1832;
   --wall: var(--plum); /* the opening wall; brain/intro.js reads this too */
+  --pink: #d3a5c9; /* people and steps: labels, step numbers, card icons */
+  --blue: #a7bcdd; /* games and checks: game chips, ticks, Verified */
 }
 
 /* The games library and its launch button (games/assets/css/*) use the light palette. */
