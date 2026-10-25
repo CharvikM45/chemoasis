@@ -1,6 +1,6 @@
 # Chemoasis
 
-Chemoasis is a website for people in the months after chemotherapy. It has calm, adaptive brain games, a short questionnaire that suggests where to start, and a moderated community forum. It's built by a student team, and it's supportive and educational: it doesn't diagnose anything and doesn't replace anyone's care team.
+Chemoasis is a website for people during and after chemotherapy. It balances mental focus, brain retraining and community: calm, adaptive brain games, a short questionnaire that suggests where to start, and a moderated community forum. It's built by a student team, and it's supportive and educational: it doesn't diagnose anything and doesn't replace anyone's care team.
 
 ## What's where
 
