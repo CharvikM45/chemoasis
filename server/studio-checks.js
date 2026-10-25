@@ -1,4 +1,4 @@
-// Automatic checks for Research Studio submissions: the creator's ORCID iD and NPI number and the
+// Automatic checks for Open Research Studio submissions: the creator's ORCID iD and NPI number and the
 // cited studies are looked up in public registries, and the wording and prototype are scanned.
 // The results go to the reviewer and the creator. A definite "fail" (a record that doesn't exist)
 // sends the submission back for changes; nothing here can publish one.
@@ -7,7 +7,7 @@
 // reviewer to check by hand, never a "fail".
 
 const TIMEOUT_MS = 8000;
-const USER_AGENT = 'Chemoasis Research Studio (registry check)';
+const USER_AGENT = 'Chemoasis Open Research Studio (registry check)';
 
 // ---------- identifiers ----------
 
