@@ -3,7 +3,7 @@
  * people after cancer treatment. Most adapt as you play: harder after you succeed and easier
  * after you miss. Sessions are a few minutes long.
  *
- *   lumen      Lumen Garden            spatial working memory span
+ *   lumen      Lumen Garden            spatial working memory span (forward, then backward)
  *   starling   Starling Observatory    speed of processing (brief flashes, centre + periphery)
  *   cloudpath  Cloudpath Cartographer  planning (Tower of London puzzles)
  *   echo       Story Echo              verbal memory (word lists, linking strategy)
@@ -44,8 +44,9 @@ const BEST = 'reframe.best';
 const readJSON = (name) => { try { return JSON.parse(localStorage.getItem(name) || '{}') || {}; } catch (_) { return {}; } };
 const writeJSON = (name, value) => { try { localStorage.setItem(name, JSON.stringify(value)); } catch (_) { /* storage unavailable */ } };
 // Bests and carried difficulty are kept per game, level and mode, so a level 1 score never
-// stands as the best to beat on level 3, and Gentle never competes with Challenge.
-const keyFor = (game, level, mode) => `${game}-L${level.index + 1}${mode ? `-${mode}` : ''}`;
+// stands as the best to beat on level 3, and Gentle never competes with Challenge. A level that
+// moved keeps its old name through `save`, so its bests and carry move with it.
+const keyFor = (game, level, mode) => `${game}-${level.save || `L${level.index + 1}`}${mode ? `-${mode}` : ''}`;
 // Saves `value` if it beats the old best (higher is better unless lowerIsBetter). Returns { best, isNew }.
 function recordBest(name, value, lowerIsBetter) {
   const all = readJSON(BEST);
@@ -413,10 +414,11 @@ const lumen = {
   levels: [
     { name: 'Forward paths', desc: '3 × 3 garden. Sequences start at 3 lights.', size: 3, span: 3, on: 650 },
     { name: 'Longer paths', desc: '3 × 3 garden. Starts at 4 lights, a little faster.', size: 3, span: 4, on: 520 },
-    { name: 'Bigger garden', desc: '4 × 4 garden. Starts at 5 lights.', size: 4, span: 5, on: 480 }
+    // Backwards was level 4 until levels went from four to three, so it still saves as L4.
+    { name: 'Backwards', desc: '4 × 4 garden. Tap the path in reverse order.', size: 4, span: 4, on: 520, backward: true, save: 'L4' }
   ],
-  summary: ['Watch the flowers light up, one at a time.', 'Then tap them in the same order.'],
-  how: () => ['Watch the flowers light up, one at a time.', 'Then tap them in the <b>same</b> order.'],
+  summary: ['Watch the flowers light up, one at a time.', 'Then tap them in the same order. On the last level, tap them backwards.'],
+  how: (l) => ['Watch the flowers light up, one at a time.', `Then tap them in the <b>${l.backward ? 'reverse' : 'same'}</b> order${l.backward ? ' (last one first)' : ''}.`],
   meta: () => '14 paths · about 3 minutes · each right answer adds a flower',
   carry: { from: (v) => clamp(v - 1, 2, 9), label: (v) => `paths of ${v} flowers` },
   async play(world, level, alive, mode, startAt) {
@@ -430,7 +432,7 @@ const lumen = {
     const buttons = [...panel.querySelectorAll('[data-cell]')];
     const status = (t) => { panel.querySelector('[data-status]').textContent = t; };
     for (let trial = 0; trial < TRIALS && alive(); trial++) {
-      panel.querySelector('[data-info]').textContent = `Path ${trial + 1} of ${TRIALS} · ${span} flowers`;
+      panel.querySelector('[data-info]').textContent = `Path ${trial + 1} of ${TRIALS} · ${span} flowers${level.backward ? ' · backwards' : ''}`;
       world.progress(trial, TRIALS);
       const seq = [];
       while (seq.length < span) { const c = Math.floor(Math.random() * cells); if (c !== seq[seq.length - 1]) seq.push(c); }
@@ -444,7 +446,8 @@ const lumen = {
         buttons[c].classList.remove('lit');
         await world.sleep(220);
       }
-      status('Your turn: tap them in the same order.');
+      const want = level.backward ? seq.slice().reverse() : seq;
+      status(level.backward ? 'Your turn: tap them in reverse order.' : 'Your turn: tap them in the same order.');
       buttons.forEach((b) => { b.disabled = false; });
       const ok = await new Promise((resolve) => {
         let step = 0;
@@ -452,8 +455,8 @@ const lumen = {
           b.onclick = () => {
             b.classList.add('tap');
             setTimeout(() => b.classList.remove('tap'), 180);
-            if (i !== seq[step]) { buttons[seq[step]].classList.add('hint'); resolve(false); return; }
-            if (++step === seq.length) resolve(true);
+            if (i !== want[step]) { buttons[want[step]].classList.add('hint'); resolve(false); return; }
+            if (++step === want.length) resolve(true);
           };
         });
       });
@@ -465,7 +468,7 @@ const lumen = {
     if (!alive()) return;
     saveCarry(world.saveAs, span);
     const { best, isNew } = longest ? recordBest(world.saveAs, longest) : { best: readJSON(BEST)[world.saveAs] };
-    finish(world, lumen, level, [`Longest path you got right: ${longest} flowers. Paths correct: ${correct} of ${TRIALS}.`], isNew ? 'That is a new personal best on this level!' : best ? `Personal best on this level: ${best} flowers.` : '', [], longest);
+    finish(world, lumen, level, [`Longest path you got right: ${longest} flowers${level.backward ? ' backwards' : ''}. Paths correct: ${correct} of ${TRIALS}.`], isNew ? 'That is a new personal best on this level!' : best ? `Personal best on this level: ${best} flowers.` : '', [], longest);
   }
 };
 
