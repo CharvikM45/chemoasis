@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&family=Playfair+Display:ital,wght@0,400;0,500;1,400;1,500&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="assets/css/home.css?v=11" />
+    <link rel="stylesheet" href="assets/css/home.css?v=12" />
     <script type="importmap">{ "imports": { "three": "../games/assets/vendor/three/three.module.min.js" } }</script>
     <link rel="stylesheet" href="../games/assets/css/experience.css?v=three-games-2" />
     <link rel="stylesheet" href="../games/assets/css/experience-games.css?v=three-games-2" />
@@ -19,6 +19,15 @@
     <link rel="stylesheet" href="../games/assets/css/brain-games.css?v=4" />
   </head>
   <body>
+    <script>
+      // Before the first paint: open on the solid wall (assets/js/brain/intro.js), unless Calm
+      // mode or reduced motion is on.
+      (function () {
+        var calm = null;
+        try { calm = localStorage.getItem('reframe.calm'); } catch (e) {}
+        if (calm !== '1' && !matchMedia('(prefers-reduced-motion: reduce)').matches) document.body.classList.add('wall');
+      })();
+    </script>
     <div class="scene" aria-hidden="true"><canvas id="brain"></canvas></div>
     <div class="vignette" aria-hidden="true"></div>
 
@@ -155,7 +164,7 @@
         if (saved === '1') { window.brainFallback(); return; }
         var s = document.createElement('script');
         s.type = 'module';
-        s.src = 'assets/js/brain/intro.js?v=18';
+        s.src = 'assets/js/brain/intro.js?v=19';
         s.onerror = window.brainFallback;
         document.body.appendChild(s);
       })();

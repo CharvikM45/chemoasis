@@ -9,6 +9,10 @@
   --accent-2: #d9a07d;
   --card: rgba(14, 11, 14, .84);
   --line: rgba(255, 236, 220, .13);
+  --plum: #3b1832;
+  --wall: var(--plum); /* the opening wall; brain/intro.js reads this too */
+  --pink: #d3a5c9; /* people and steps: labels, step numbers, card icons */
+  --blue: #a7bcdd; /* games and checks: game chips, ticks, Verified */
 }
 
 /* The games library and its launch button (games/assets/css/*) use the light palette. */
@@ -35,12 +39,18 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: "DM San
 #brain { display: block; width: 100%; height: 100%; opacity: 0; } /* brain/intro.js fades it in */
 .no-brain #brain { display: none; }
 
+/* The opening wall: the page starts on one solid colour that turns out to be a jigsaw (brain/intro.js).
+   Until the 3D wall is drawn, the hero itself is the wall, so it never flashes dark first. */
+.wall:not(.no-brain) .hero { background: var(--wall); transition: background-color .5s ease; }
+.wall.wall-live:not(.no-brain) .hero { background: transparent; }
+.wall:not(.no-brain) .vignette { opacity: 0; }
+
 /* The quote set on the piece that comes out of the brain for each section (brain/intro.js). The
    piece itself is drawn in 3D; this is the text on it, sized to its middle. */
 .piece-quote { position: fixed; z-index: 3; top: 0; left: 0; margin: 0; display: grid; place-items: center; text-align: center; opacity: 0; pointer-events: none; will-change: transform, opacity; font: italic 500 clamp(19px, 1.6vw, 23px)/1.3 "Playfair Display", serif; letter-spacing: -.01em; color: #2b1610; text-wrap: balance; text-shadow: 0 0 10px rgba(255, 238, 228, .9), 0 0 2px rgba(255, 238, 228, .9); }
 .no-brain .piece-quote { display: none; }
 /* Phones: the text boxes fill the screen, so there is no clear space for it; the piece still
-   leaves the storm behind them, without the quote. */
+   still comes forward behind them, without the quote. */
 @media (max-width: 899px) { .piece-quote { display: none; } }
 
 .vignette { position: fixed; inset: 0; z-index: 1; pointer-events: none; background: linear-gradient(90deg, rgba(7, 6, 9, .82) 0, rgba(7, 6, 9, .55) 38%, rgba(7, 6, 9, 0) 56%), radial-gradient(120% 95% at 60% 45%, transparent 45%, rgba(0, 0, 0, .55) 100%); }
