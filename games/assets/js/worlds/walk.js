@@ -76,8 +76,9 @@ export class Walk {
     });
     this.listen(window, 'keyup', (e) => this.keys.delete(e.key.toLowerCase()));
     this.listen(window, 'blur', () => this.keys.clear());
-    this.listen(this.canvas, 'mousedown', () => this.lock());
-    this.listen(this.canvas, 'click', () => { if (!world.paused && this.onPick) this.onPick(this.aim()); });
+    // The click that grabs the mouse only grabs it; clicks pick once you're already looking around.
+    this.listen(this.canvas, 'mousedown', () => { this.picking = this.locked || !this.canvas.requestPointerLock; this.lock(); });
+    this.listen(this.canvas, 'click', () => { if (this.picking && !world.paused && this.onPick) this.onPick(this.aim()); });
     // brain-games.js passes key presses here (and not while paused).
     this.keyHandler = world.keyHandler = (e) => {
       const k = e.key.toLowerCase();
