@@ -24,6 +24,14 @@
   --f-support-tint: rgba(157, 183, 214, 0.1);
   --f-danger: #f08a73;
   --f-danger-bg: #7d2d16;
+  /* the site's added colors: plum for background glows, pink for people, blue for games */
+  --f-plum: #3b1832;
+  --f-pink: #d3a5c9;
+  --f-pink-line: rgba(211, 165, 201, 0.45);
+  --f-pink-tint: rgba(211, 165, 201, 0.1);
+  --f-blue: #a7bcdd;
+  --f-blue-line: rgba(167, 188, 221, 0.45);
+  --f-blue-tint: rgba(167, 188, 221, 0.1);
   color-scheme: dark;
 }
 
@@ -351,6 +359,7 @@ html {
   padding-bottom: 2.5rem;
   margin-bottom: 2.5rem;
   border-bottom: 1px solid var(--f-line);
+  background: radial-gradient(closest-side, rgba(59, 24, 50, 0.85), rgba(59, 24, 50, 0)) no-repeat 100% 30% / 60% 130%;
 }
 
 .f-layout {
@@ -411,7 +420,7 @@ html {
 
 .f-categories__count {
   font: 0.8rem "DM Mono", ui-monospace, monospace;
-  color: var(--f-muted);
+  color: var(--f-pink);
 }
 
 .f-categories__blurb {
@@ -617,8 +626,9 @@ html {
 }
 
 .f-label--experience {
-  border-color: rgba(231, 167, 130, 0.45);
-  color: var(--f-accent);
+  border-color: var(--f-pink-line);
+  background: var(--f-pink-tint);
+  color: var(--f-pink);
 }
 
 .f-label--info {
@@ -662,21 +672,21 @@ html {
 
 .f-chip {
   padding: 0.2rem 0.65rem;
-  border: 1px solid var(--f-line-strong);
+  border: 1px solid var(--f-blue-line);
   border-radius: 999px;
-  background: transparent;
+  background: var(--f-blue-tint);
   font-size: 0.8rem;
   text-decoration: none;
 }
 
 .f-page .f-chip {
-  color: var(--f-soft);
+  color: var(--f-blue);
   text-decoration: none;
 }
 
 .f-page .f-chip:hover {
-  border-color: var(--f-accent);
-  color: var(--f-accent);
+  border-color: var(--f-blue);
+  color: var(--f-ink);
 }
 
 .f-status {
