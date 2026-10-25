@@ -5,6 +5,8 @@ const compression = require('compression');
 const { authRouter } = require('./auth');
 const { profileRouter } = require('./profile');
 const { forumRouter } = require('./forum');
+const { studioRouter } = require('./studio');
+const { createStudioAi } = require('./studio-ai');
 const { securityHeaders, safeJsonReviver } = require('./security');
 const { createLimiter } = require('./rate-limit');
 const { audit } = require('./audit');
@@ -12,7 +14,7 @@ const { audit } = require('./audit');
 const ROOT = path.join(__dirname, '..');
 const SITE_FOLDERS = ['home', 'account', 'forum', 'games']; // never serve server/, node_modules/, .git/, .env
 
-function createApp({ db, isProd = false, allowedOrigins = [], moderators = [], dataKey, limits } = {}) {
+function createApp({ db, isProd = false, allowedOrigins = [], moderators = [], dataKey, limits, fetchImpl, studioAi } = {}) {
   const app = express();
   app.disable('x-powered-by');
   app.set('env', isProd ? 'production' : 'development'); // no debug output from Express in production
@@ -55,6 +57,7 @@ function createApp({ db, isProd = false, allowedOrigins = [], moderators = [], d
 
   app.use('/api/profile', express.json({ limit: '128kb', reviver: safeJsonReviver })); // answers + play history (up to 96 KB, see profile.js) are bigger than a sign-in
   app.use('/api/forum', express.json({ limit: '32kb', reviver: safeJsonReviver })); // a 5,000-character post in another script can pass 10 KB
+  app.use('/api/studio', express.json({ limit: '512kb', reviver: safeJsonReviver })); // a submission carries its game's code (up to 300 KB)
   app.use('/api', express.json({ limit: '10kb', reviver: safeJsonReviver }));
 
   app.get('/api/health', async (req, res) => {
@@ -69,6 +72,9 @@ function createApp({ db, isProd = false, allowedOrigins = [], moderators = [], d
   app.use('/api/auth', authRouter({ db, isProd, limits, onDelete: forum.forgetUser }));
   app.use('/api/profile', profileRouter({ db, isProd, dataKey }));
   app.use('/api/forum', forum.router);
+  // The design assistant and advisory review only run when ANTHROPIC_API_KEY is set.
+  const ai = studioAi !== undefined ? studioAi : createStudioAi();
+  app.use('/api/studio', studioRouter({ db, isProd, moderators, limits, fetchImpl: fetchImpl || fetch, ai }));
   app.use('/api', (req, res) => res.status(404).json({ error: 'Not found.' }));
 
   for (const folder of SITE_FOLDERS) {
