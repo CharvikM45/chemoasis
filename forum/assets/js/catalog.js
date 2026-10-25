@@ -17,7 +17,7 @@ Forum.catalog = (function () {
     {
       id: "experiences",
       name: "Sharing experiences",
-      blurb: "Personal stories about recovery and everyday life after treatment."
+      blurb: "Personal stories about everyday life during chemo and after it."
     },
     {
       id: "games",
