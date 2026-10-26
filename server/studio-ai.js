@@ -47,7 +47,7 @@ Draw a single-screen mock-up of the activity as SVG:
 - One <svg> element with xmlns="http://www.w3.org/2000/svg" and viewBox="0 0 800 600".
 - Use only shapes, paths, text, groups and gradients. No <script>, <image>, <foreignObject>, <style>, <a>, animation, event attributes or links to anything outside the file.
 - Palette: background #1c120d, panels #2a1c15, text #f4e9df, muted text #b9a596, accent #e7a782, secondary #d7b391. Fonts: font-family="Georgia, serif" for headings, "Helvetica, Arial, sans-serif" for the rest.
-- Calm and uncluttered: large tap targets (at least 64 px), text at least 18 px, a visible pause button, no countdown timer unless the description asks for one, nothing that relies on colour alone.
+- Calm and uncluttered: large tap targets (at least 64 px), text at least 18 px, a visible pause button, no countdown timer unless the description asks for one, nothing that relies on color alone.
 - Label the main parts so a reader understands how it plays.
 - No medical claims, scores about health, or personal details anywhere in the drawing.
 
@@ -64,7 +64,7 @@ Look for:
 - claims: anything in the title, summary or claim that promises to treat, cure, reverse or prevent a condition, or overstates small or mixed results.
 - credentials: registry results that don't match the creator's stated name or field.
 - gentleness: timers, speed pressure, punishing failure, or long rounds that aren't optional.
-- accessibility: tiny targets, colour-only cues, required dragging, fast motion.
+- accessibility: tiny targets, color-only cues, required dragging, fast motion.
 - privacy: anything that collects personal or health information, or tries to use the internet or storage.
 - safety: anything that could distress or harm someone who is unwell.
 

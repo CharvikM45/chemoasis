@@ -22,7 +22,7 @@ window.Account = window.Account || {};
 Account.recommender = (function () {
   const GAMES = [
     { id: "lumen", name: "Lumen Garden", area: "Working memory", areas: ["memory"], blurb: "Repeat a growing path of lights, forwards and then backwards.", icon: "✿" },
-    { id: "starling", name: "Starling Observatory", area: "Processing speed", areas: ["focus"], blurb: "Catch what flashes in the centre and at the edges, faster each time.", icon: "✧" },
+    { id: "starling", name: "Starling Observatory", area: "Processing speed", areas: ["focus"], blurb: "Catch what flashes in the center and at the edges, faster each time.", icon: "✧" },
     { id: "cloudpath", name: "Cloudpath Cartographer", area: "Planning", areas: ["planning"], blurb: "Plan the fewest moves to match a goal, Tower of London style.", icon: "⌁" },
     { id: "echo", name: "Story Echo", area: "Verbal memory", areas: ["words", "memory"], blurb: "Learn word lists with memory strategies; lists grow as you improve.", icon: "☷" },
     { id: "rhythm", name: "Finger Rhythm", area: "Hand coordination", areas: ["hand"], blurb: "Tap glowing pads at your own pace while a hidden pattern repeats. Challenge mode speeds up.", icon: "◉" },
