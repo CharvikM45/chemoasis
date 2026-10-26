@@ -110,9 +110,7 @@
   border: 1px solid rgba(255, 236, 220, .4);
   background: rgba(10, 8, 10, .6);
   color: var(--ink, #f4ebe2);
-  font: 500 12px "DM Mono", monospace;
-  letter-spacing: .08em;
-  text-transform: uppercase;
+  font: 600 16px "Atkinson Hyperlegible Next", "DM Sans", sans-serif;
   cursor: pointer;
   transition: border-color .2s, color .2s, background .2s;
 }
