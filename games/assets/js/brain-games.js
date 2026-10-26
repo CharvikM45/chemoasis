@@ -256,6 +256,8 @@ class World {
     el.querySelector('[data-resume]').onclick = () => this.resume();
     el.querySelector('[data-exit]').onclick = () => this.close();
     this.host.append(el);
+    // The game behind the card can't be tabbed to, clicked or answered until Resume.
+    [...this.host.children].forEach((child) => { if (child !== el) child.inert = true; });
     el.querySelector('[data-resume]').focus({ preventScroll: true });
   }
   resume() {
@@ -265,6 +267,8 @@ class World {
     (this.frozen || []).forEach((a) => { try { a.play(); } catch (_) { /* animation already gone */ } });
     this.frozen = null;
     this.host.querySelector(':scope > .bg-pause')?.remove();
+    [...this.host.children].forEach((child) => { child.inert = false; });
+    this.host.querySelector('[data-action="pause"]')?.focus({ preventScroll: true });
   }
   close() {
     this.run++;
@@ -422,7 +426,7 @@ async function play3D(world, game, level, alive) {
 
 const lumen = {
   id: 'lumen', title: 'Lumen Garden', kicker: 'Working memory', tone: '#c58cff',
-  about: { text: 'Practices working memory: holding a short sequence in mind and replaying it. Inspired by span tasks used in research. A small pilot with childhood cancer survivors found gains on similar tasks; results in adults after cancer are early and mixed, and this game itself hasn’t been studied.', cite: 'Hardy et al., Psycho-Oncology 2013', href: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC4820841/' },
+  about: { text: 'Practices working memory: holding a short sequence in mind and replaying it. Inspired by span tasks used in research. A small pilot with childhood cancer survivors found gains on similar tasks; results in adults after cancer are early and mixed, and this game itself hasn’t been studied.', cite: 'Hardy et al., Psycho-Oncology 2013', href: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC4131851/' },
   levels: [
     // span: where paths start; min and max: how short and long they get, here and when picked up next time.
     { name: 'Forward paths', desc: '3 × 3 garden. Paths of 2 to 5 lights, starting at 3.', size: 3, span: 3, min: 2, max: 5, on: 650 },
@@ -817,7 +821,7 @@ const echo = {
   carry: { from: (v, l, mode) => clamp(v - 2, l.min, echoMax(mode, l)), label: (v) => `lists of ${v} words` },
   async play(world, level, alive, mode, startAt) {
     const LISTS = 5, gentle = mode !== 'challenge', max = echoMax(mode, level);
-    let n = Math.min(startAt ?? level.words, max), bestLen = 0, totalHits = 0, totalShown = 0;
+    let n = Math.min(startAt ?? level.words, max), bestLen = 0, totalHits = 0, totalShown = 0, totalWrong = 0;
     let typedHits = 0, typedShown = 0; // Challenge: words typed from memory, before the list
     const seen = [], used = new Set(); // every listed word, and every word shown on any screen
     // Challenge keeps 8 words aside that no list or lure uses, so the last check always has
@@ -909,7 +913,7 @@ const echo = {
       const hits = list_.filter((w) => chosenSet.has(w)).length;
       const falseAlarms = [...chosenSet].filter((w) => !list_.includes(w)).length;
       const score = Math.max(0, (hits - falseAlarms) / n);
-      totalHits += hits; totalShown += n;
+      totalHits += hits; totalShown += n; totalWrong += falseAlarms;
       // Marks use a symbol as well as a color: ✓ found, ○ missed, ✗ not on the list.
       recall.querySelectorAll('[data-w]').forEach((b) => {
         const w = b.dataset.w;
@@ -949,10 +953,12 @@ const echo = {
     }
     saveCarry(world.saveAs, n);
     const { best, isNew } = bestLen ? recordBest(world.saveAs, bestLen) : { best: readJSON(BEST)[world.saveAs] };
-    finish(world, echo, level, [`You remembered ${totalHits} of ${totalShown} words. Longest list at 85% or better: ${bestLen || 'not yet'}${bestLen ? ' words' : ''}.`], isNew ? 'That is a new personal best on this level!' : best ? `Personal best on this level: ${best} words.` : '', [
+    // Picks that weren't on the list count against the total, so tapping every word isn't a perfect score.
+    const wrongText = totalWrong ? `, and picked ${totalWrong} that ${totalWrong === 1 ? 'wasn’t' : 'weren’t'} on the lists` : '';
+    finish(world, echo, level, [`You found ${totalHits} of ${totalShown} words${wrongText}. Longest list at 85% or better: ${bestLen || 'not yet'}${bestLen ? ' words' : ''}.`], isNew ? 'That is a new personal best on this level!' : best ? `Personal best on this level: ${best} words.` : '', [
       typedShown ? `Typed from memory before picking: ${typedHits} of ${typedShown} words.` : '',
       later
-    ], bestLen, !bestLen && totalHits < totalShown * 0.6);
+    ], bestLen, !bestLen && totalHits - totalWrong < totalShown * 0.6);
   }
 };
 
