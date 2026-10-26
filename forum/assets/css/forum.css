@@ -867,9 +867,7 @@ html {
   border: 1px solid var(--f-accent);
   background: var(--f-accent);
   color: var(--f-accent-ink);
-  font: 500 0.78rem "DM Mono", ui-monospace, monospace;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font: 600 1rem "Atkinson Hyperlegible Next", "DM Sans", system-ui, sans-serif;
   text-decoration: none;
   cursor: pointer;
   transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
