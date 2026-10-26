@@ -138,7 +138,7 @@ export async function play(T, world, level, alive) {
       walk.onPick = null;
       button.hidden = true;
       walk.goal(`<small>Garden complete</small><div class="w3-tokens">${path.map(token).join('')}</div>`);
-      walk.status(`Garden complete: all ${path.length} plants, in order.`);
+      walk.status(`Garden complete: ${path.length === 2 ? 'both' : `all ${path.length}`} plants, in order.`);
       world.sleep(900).then(() => resolve(alive() ? { mistakes, peeks } : null));
     };
   });

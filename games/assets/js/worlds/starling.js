@@ -87,7 +87,7 @@ export async function play(T, world, level, alive) {
       found.traverse((o) => { if (o.isMesh && o.material.emissive) o.material.emissiveIntensity = 3; });
       if (++at < queue.length) { walk.goal(goal()); return walk.status(`You found the ${name}. Now look for the ${queue[at]}.`); }
       walk.onPick = null;
-      walk.goal(`<small>Done</small>You found ${queue.length === 1 ? 'it' : `all ${queue.length}`}.`);
+      walk.goal(`<small>Done</small>You found ${queue.length === 1 ? 'it' : queue.length === 2 ? 'both' : `all ${queue.length}`}.`);
       walk.status(`You found the ${name}. Take a breath.`);
       world.sleep(900).then(() => resolve(alive() ? { mistakes } : null));
     };
