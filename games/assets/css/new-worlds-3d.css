@@ -6,7 +6,7 @@
 .new-world::after { content:""; position:fixed; inset:0; pointer-events:none; background:radial-gradient(ellipse at center,transparent 15%,rgba(2,5,13,.82) 115%); }
 .world-panel { position:relative; z-index:2; width:min(820px,calc(100% - 32px)); min-height:100%; margin:0 auto; padding:28px 0 56px; }
 .world-top { display:flex; justify-content:space-between; align-items:flex-start; gap:18px; }
-.world-kicker { margin:0 0 8px; color:#e8c27d; font: 600 15px "Atkinson Hyperlegible Next", "DM Sans", sans-serif; }
+.world-kicker { margin:0 0 8px; color:var(--gold, #f2c35b); font: 600 15px "Atkinson Hyperlegible Next", "DM Sans", sans-serif; }
 .world-top h2 { margin:0; font:400 clamp(34px,5vw,60px)/.96 "Playfair Display",serif; letter-spacing:-.045em; }
 .world-top button,.world-controls button,.pad { min-height:48px; border:1px solid rgba(255,250,230,.55); border-radius:3px; background:rgba(7,13,28,.72); color:#fffaf0; font:500 13px "DM Sans",sans-serif; cursor:pointer; backdrop-filter:blur(11px); }
 .world-top button,.world-controls button { padding:10px 14px; font:600 14px "Atkinson Hyperlegible Next","DM Sans",sans-serif; }

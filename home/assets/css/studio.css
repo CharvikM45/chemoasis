@@ -1,7 +1,7 @@
 /* Open Research Studio pages (research.html and the studio-*.html pages). Builds on home.css: same
    colours, fonts, nav and buttons, with no 3D brain behind it.
    One visual language throughout: dark cards with a hairline border (like the home page's
-   panels), copper for the eyebrow, italic words, links and the main button.
+   panels), gold for the eyebrow and small labels, copper for italic words and the main button.
    The site's added colours: a plum band behind "How it works", pink for step numbers and card
    icons, blue for ticks, passed checks and the Verified badge. The fallbacks match home.css. */
 
@@ -22,7 +22,7 @@
 .rs-hero { min-height: 82vh; display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, .75fr); align-items: center; gap: clamp(32px, 5vw, 80px); padding: 130px 0 56px; max-width: 1180px; margin: 0 auto; }
 .rs-hero__copy { max-width: 640px; }
 .rs-hero h1 { font-size: clamp(44px, 5.4vw, 76px); }
-.rs-status { display: inline-flex; align-items: center; gap: 10px; margin: 24px 0 0; color: var(--accent-2); font: 600 15px "Atkinson Hyperlegible Next", "DM Sans", sans-serif; }
+.rs-status { display: inline-flex; align-items: center; gap: 10px; margin: 24px 0 0; color: var(--gold, #f2c35b); font: 600 15px "Atkinson Hyperlegible Next", "DM Sans", sans-serif; }
 .rs-status span { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 4px rgba(231, 167, 130, .18); }
 
 .rs-puzzle { width: 100%; max-width: 420px; justify-self: end; overflow: visible; }
@@ -68,10 +68,10 @@
 /* credit preview beside the standards */
 .rs-split { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1fr); gap: clamp(28px, 5vw, 64px); align-items: center; margin-top: 40px; }
 .rs-preview { margin: 0; padding: 20px; display: grid; gap: 12px; }
-.rs-preview figcaption { color: var(--accent-2); font: 600 14px "Atkinson Hyperlegible Next", "DM Sans", sans-serif; }
+.rs-preview figcaption { color: var(--gold, #f2c35b); font: 600 14px "Atkinson Hyperlegible Next", "DM Sans", sans-serif; }
 .rs-game { padding: 18px; border: 1px solid var(--line); background: rgba(0, 0, 0, .25); }
 .rs-game p { margin: 0; }
-.rs-game__area { color: var(--accent); font: 600 14px "Atkinson Hyperlegible Next", "DM Sans", sans-serif; }
+.rs-game__area { color: var(--gold, #f2c35b); font: 600 14px "Atkinson Hyperlegible Next", "DM Sans", sans-serif; }
 .rs-game__name { margin-top: 8px !important; font: 400 24px/1.15 "Playfair Display", serif; letter-spacing: -.02em; }
 .rs-game__desc { margin-top: 8px !important; color: var(--soft); font-size: 14px; line-height: 1.5; }
 .rs-game__based { margin-top: 12px !important; color: var(--muted); font: 11px "DM Mono", monospace; letter-spacing: .04em; }
@@ -104,7 +104,7 @@
 .rs-footer { max-width: 1180px; margin: 0 auto; padding: 40px 0 56px; border-top: 1px solid var(--line); }
 .rs-footer .disclaimer { margin: 0; }
 .rs-footer__links { display: flex; flex-wrap: wrap; gap: 10px 24px; margin-top: 22px; }
-.rs-footer__links a { color: var(--accent); font: 500 15px "Atkinson Hyperlegible Next", "DM Sans", sans-serif; text-decoration: none; }
+.rs-footer__links a { color: var(--gold, #f2c35b); font: 500 15px "Atkinson Hyperlegible Next", "DM Sans", sans-serif; text-decoration: none; }
 .rs-footer__links a:hover { color: var(--ink); }
 
 /* the agreement as a numbered list (studio-submit.html) */
@@ -143,7 +143,7 @@
 .rs-banner--note { border-color: var(--line); background: var(--card); }
 .rs-banner--error { border-color: #e48a7a; background: rgba(228, 138, 122, .1); }
 .rs-banner--error ul { margin: 8px 0 0; padding-left: 20px; }
-.rs-banner__label { font: 600 15px "Atkinson Hyperlegible Next", "DM Sans", sans-serif; color: var(--accent); }
+.rs-banner__label { font: 600 15px "Atkinson Hyperlegible Next", "DM Sans", sans-serif; color: var(--gold, #f2c35b); }
 
 .rs-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 18px; }
 .rs-row__actions { display: flex; flex-wrap: wrap; gap: 10px; }
@@ -190,7 +190,7 @@
 
 .rs-assistant { padding: 20px; border: 1px solid var(--line); background: rgba(0, 0, 0, .25); display: grid; gap: 12px; }
 .rs-assistant .actions { margin-top: 0; }
-.rs-assistant__title { margin: 0; color: var(--accent); font: 600 15px "Atkinson Hyperlegible Next", "DM Sans", sans-serif; }
+.rs-assistant__title { margin: 0; color: var(--gold, #f2c35b); font: 600 15px "Atkinson Hyperlegible Next", "DM Sans", sans-serif; }
 .rs-assistant__text { margin: 0; color: var(--soft); font-size: 14px; line-height: 1.55; }
 .rs-sketch { margin: 0; display: grid; gap: 10px; }
 .rs-sketch img { width: 100%; max-width: 640px; aspect-ratio: 4 / 3; object-fit: contain; background: #1c120d; border: 1px solid var(--line); }
@@ -225,7 +225,7 @@
 .rs-review { margin-top: 14px; padding: 24px; display: grid; gap: 16px; }
 .rs-review__head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
 .rs-review__head h3 { margin-top: 6px; font-size: 26px; }
-.rs-review h4 { margin: 6px 0 0; color: var(--accent-2); font: 600 15px "Atkinson Hyperlegible Next", "DM Sans", sans-serif; }
+.rs-review h4 { margin: 6px 0 0; color: var(--gold, #f2c35b); font: 600 15px "Atkinson Hyperlegible Next", "DM Sans", sans-serif; }
 .rs-dl { margin: 0; display: grid; gap: 0; border-top: 1px solid var(--line); }
 .rs-dl__row { display: grid; grid-template-columns: 200px 1fr; gap: 14px; padding: 10px 0; border-bottom: 1px solid var(--line); }
 .rs-dl dt { color: var(--muted); font-size: 13px; }
@@ -233,7 +233,7 @@
 .rs-advisory { padding: 16px; border: 1px solid var(--line); background: rgba(0, 0, 0, .25); }
 .rs-advisory p { margin: 0 0 8px; color: var(--soft); font-size: 14px; line-height: 1.55; }
 .rs-advisory ul { margin: 0; padding-left: 20px; color: var(--soft); font-size: 14px; line-height: 1.55; }
-.rs-advisory__label { color: var(--accent) !important; font: 600 14px "Atkinson Hyperlegible Next", "DM Sans", sans-serif!important; }
+.rs-advisory__label { color: var(--gold, #f2c35b) !important; font: 600 14px "Atkinson Hyperlegible Next", "DM Sans", sans-serif!important; }
 .rs-decide { display: grid; gap: 10px; padding-top: 6px; border-top: 1px solid var(--line); }
 .rs-decide .actions { margin-top: 0; }
 
