@@ -42,7 +42,7 @@ Forum.safety = (function () {
         // Everyday ways of saying it that the lines above miss (re-audit, 2026-10-26).
         /\b(wanna|ready to|wish i could|wish i would) die\b/i,
         /\b(want(ed|ing)? to|wanna|going to|gonna|ready to|plan(ning)? to|think(ing)? (about|of)) end(ing)? (it|things|everything)( all)?\s*([.!?,;]|$)/im,
-        /\b(do ?n['’]?t|do not|can['’]?t) (want to )?(go on|keep going)( like this| anymore| any more)?\s*([.!?,;]|$)/im,
+        /\b(do ?n['’]?t|do not|can['’]?t|can ?not|could ?n['’]?t) (want to )?(go on|keep going)( like this| anymore| any more)?\s*([.!?,;]|$)/im,
         /\bbetter off (if|when|once) i (was|were|wasn['’]?t|weren['’]?t|am|died|die|was gone|were gone)\b/i,
         /\b(wish|want|hope|pray|think(ing)? about)\b[^.!?\n]{0,20}(\bnot|\bnever|n['’]?t) (to )?wak(e|ing) up\b/i,
         /\bsleep and (not|never) wake up\b/i,
@@ -53,7 +53,25 @@ Forum.safety = (function () {
         /\b(do ?n['’]?t|can['’]?t) see the point (anymore|any more|in (anything|living|life|going on))\b/i,
         /\bdisappear (forever|for good|permanently)\b/i,
         /\bcan['’]?t do this any ?more\b/i,
-        /\blet (it|death|the cancer|nature) (just )?(happen|take me|win|take its course)\b/i
+        /\blet (it|death|the cancer|nature) (just )?(happen|take me|win|take its course)\b/i,
+        // Missed in the ChatGPT audit (2026-10-26). These also run on a cleaned-up copy of the
+        // text (see normalize below), so "k1ll my self", "kiII myself" and "want 2 d!e" count too.
+        /\bend(ing)? my (own )?life\b/i,
+        /\bun-?aliv(e|ing) (me|myself)\b/i,
+        /\b(off|offing|delet(e|ing)) myself\b/i,
+        /\b(do ?n['’]?t|do not|dont) want to (wake up|be here|live)\b/i,
+        /\b(sleep|go to sleep) forever\b/i,
+        /\b(happier|better|easier)( off)? (if|when|once) i (was|were|am|['’]m) (gone|dead|not here|not around)\b/i,
+        /\bbetter( off)? without me\b/i,
+        /\bthis is (my|a) (final |last )?goodbye\b/i,
+        /\b(decided|going|gonna|plan(ning)?|want(ing)?|ready|feel like) (to )?end(ing)? (it|things|everything)( all)? (tonight|today|tomorrow|soon|now|rn|after)\b/i,
+        /\b(cut|cutting|burn(ing)?|hurt(ing)?|scratch(ing)?) (my|myself)\b[^.!?\n]{0,30}\bon purpose\b/i,
+        /\b(promise|sure)\b[^.!?\n]{0,20}\bkeep (myself|me) safe\b/i,
+        /\bdo something\b[^.!?\n]{0,15}\b(to myself|permanent)\b/i,
+        /\b(take|taking|swallow(ing)?) (every|all the) (pill|pills|tablet|tablets)( that)? (i have|i['’]ve got|in the house)\b/i,
+        /\bstop existing\b/i,
+        /\bwish i (was|were) (not|never) (alive|born|here)\b/i,
+        /\bwish i (wasn['’]?t|weren['’]?t) (alive|born)\b/i
       ],
       level: "support",
       alert: true,
@@ -71,7 +89,20 @@ Forum.safety = (function () {
     },
     {
       id: "urgent",
-      patterns: [/chest pain/i, /can['’]?t breathe/i, /trouble breathing/i, /passed out/i, /fainted/i], // fevers have their own check above
+      // Fevers have their own check above.
+      patterns: [
+        /chest pain/i,
+        /\bchest\b[^.!?\n]{0,25}\b(tight|heavy|pressure|crushing)\b/i,
+        /\b(tight|heavy|crushing|pressure)\b[^.!?\n]{0,25}\bchest\b/i,
+        /\b(can['’]?t|can ?not|could ?n['’]?t|unable to|struggling to|hard to|trouble|difficulty) (breathe|breathing|catch my breath)\b/i,
+        /\bshort(ness)? of breath\b/i,
+        /\bgasping\b/i,
+        /\bblue lips\b/i,
+        /\bpassed out\b/i,
+        /\bfainted\b/i,
+        /\b(lost|losing) consciousness\b/i,
+        /\bblack(ed)? out\b/i
+      ],
       level: "warning",
       message:
         "If you have new, severe or worsening symptoms, please contact your care team now, or call 911 in an emergency. The forum can't respond quickly enough to help with that."
@@ -90,7 +121,8 @@ Forum.safety = (function () {
         /instead of (chemo|chemotherapy|treatment|your doctor|your oncologist|medication)/i,
         /\b(guaranteed|proven) to (heal|fix|cure|reverse)/i,
         /\brevers(e|es|ed) (neuropathy|chemo brain|nerve damage)/i,
-        /\bdon['’]?t need (a |your )?(doctor|oncologist|treatment)/i
+        /\bdon['’]?t need (a |your )?(doctor|oncologist|treatment)/i,
+        /\bcancer (disappears|goes away|vanishes|melts away)\b/i
       ],
       level: "hold",
       message:
@@ -129,7 +161,9 @@ Forum.safety = (function () {
         if (mentionsFever(text)) notes.push(check);
         return;
       }
-      if (check.patterns.some((pattern) => pattern.test(text))) notes.push(check);
+      const texts = check.id === "crisis" ? [text, normalize(text)] : [text];
+      if (check.patterns.some((pattern) => texts.some((t) => pattern.test(t)))) notes.push(check);
+      else if (check.id === "unsafe-medical" && givesRiskyAdvice(text)) notes.push(check);
     });
 
     return {
@@ -140,20 +174,88 @@ Forum.safety = (function () {
   }
 
   /*
+   * A copy of the text with common disguises undone, for the crisis check only: look-alike and
+   * full-width letters, "my self", "k1ll", "kiII" (capital I for l), "d!e" and "want 2 die".
+   */
+  function normalize(text) {
+    return String(text)
+      .normalize("NFKC")
+      .replace(/(?<=[a-z])I+/g, (m) => "l".repeat(m.length))
+      .toLowerCase()
+      .replace(/[а-яёіїυοα]/g, (c) => CONFUSABLE[c] || c)
+      .replace(/(?<=[a-z])[1!|](?=[a-z])/g, "i")
+      .replace(/(?<=[a-z])0(?=[a-z])/g, "o")
+      .replace(/(?<=[a-z])3(?=[a-z])/g, "e")
+      .replace(/\bmy self\b/g, "myself")
+      .replace(/\b2 (die|live)\b/g, "to $1");
+  }
+
+  /*
+   * Advice to change or stop treatment: "Double your dose", "Just skip the next chemo cycle",
+   * "You do not need to take the pills your doctor gave you". Only sentences that tell someone
+   * else what to do (they start with the instruction, or say "you"), so "My doctor reduced my
+   * dose" or "We had to delay my next cycle" are left alone. A sentence that sends people to
+   * their care team ("Ask your doctor before you change your dose") is fine, unless it says
+   * not to ("without checking with your doctor", "don't tell your care team").
+   */
+  const RISKY_ADVICE = [
+    /\b(skip|miss|postpone|delay|cancel|take a break from|stop|quit|discontinue|wean (yourself )?off)\b[^.!?\n]{0,40}\b(chemo|chemotherapy|infusions?|cycles?|rounds?|doses?|treatments?|appointments?|medicines?|medications?|meds|pills|tablets|steroids?|antibiotics|blood thinners?|prescriptions?)\b/i,
+    /\bput (your |the )?(next )?(chemo(therapy)? )?(infusion|cycle|treatment|round|appointment)s? off\b/i,
+    /\b(do ?n['’]?t|do not|never|no need to)\b[^.!?\n]{0,10}\b(take|bother taking|go to)\b[^.!?\n]{0,30}\b(pills?|meds|medications?|medicines?|steroids?|tablets?|chemo|chemotherapy|treatment|appointment|blood thinners?|antibiotics|prescriptions?)\b/i,
+    /\b(double|triple|increase|reduce|cut|lower|raise|halve)\b[^.!?\n]{0,30}\b(dose|doses|dosage|medications?|medicines?|meds)\b/i,
+    /\b(take|taking) (an extra|two|double|twice)\b[^.!?\n]{0,25}\b(dose|doses|pills?|tablets?|medications?|as much)\b/i,
+    /\bcrush(ing)?\b[^.!?\n]{0,25}\b(chemo|chemotherapy|tablets?|pills?|capsules?)\b/i,
+    /\b(share|borrow|lend)\b[^.!?\n]{0,30}\bprescription/i,
+    /\breplace\b[^.!?\n]{0,30}\b(chemo|chemotherapy|treatment|medications?|medicines?|meds|prescri)/i,
+    /\bflush\b[^.!?\n]{0,25}\b(pills?|meds|medications?|prescriptions?|tablets?)\b/i,
+    /\b(do ?n['’]?t|do not|never)\b[^.!?\n]{0,5}\b(tell|ask|check with|call)\b[^.!?\n]{0,15}\b(care team|doctor|oncologist|nurse|pharmacist)\b/i
+  ];
+  const INSTRUCTION = /^(?:(?:just|simply|so|honestly|then|also|and|but|ok(?:ay)?)[,]?\s+)*(?:skip|miss|postpone|delay|cancel|take|stop|quit|discontinue|wean|put|do ?n['’]?t|do not|never|double|triple|increase|reduce|cut|lower|raise|halve|crush|share|borrow|lend|replace|flush)\b/i;
+  const ASKS_CARE_TEAM = /\b(ask|check with|checking with|talk (to|with)|tell|call|speak (to|with))\b[^.!?\n]{0,20}\b(doctor|care team|oncologist|nurse|pharmacist)\b/i;
+  const SKIPS_CARE_TEAM = /\b(without|instead of|do ?n['’]?t|do not|never|no need to)\b[^.!?\n]{0,15}\b(ask|check|talk|tell|call|speak)/i;
+  // "Your oncologist may lower the dose" and "Don't skip your anti-nausea meds" are good advice.
+  const CARE_TEAM_DECIDES = /\b(doctor|oncologist|care team|nurse|pharmacist)s?\b\s+(may|might|can|could|will|would|should|usually|often|sometimes)\b/i;
+  const KEEP_GOING = /\b(do ?n['’]?t|do not|never|try not to)\s+(skip|miss|stop|quit|forget|delay|cancel|postpone|discontinue)\b/i;
+  function givesRiskyAdvice(text) {
+    return text.split(/[.!?\n]+/).some((raw) => {
+      const sentence = raw.trim();
+      if (!sentence) return false;
+      if (!INSTRUCTION.test(sentence) && !/\byou(r|rself)?\b/i.test(sentence)) return false;
+      if ((ASKS_CARE_TEAM.test(sentence) || CARE_TEAM_DECIDES.test(sentence)) && !SKIPS_CARE_TEAM.test(sentence)) return false;
+      if (KEEP_GOING.test(sentence)) return false;
+      return RISKY_ADVICE.some((pattern) => pattern.test(sentence));
+    });
+  }
+
+  // Cyrillic and Greek letters that look like Latin ones (also used for forum names).
+  const CONFUSABLE = { а: "a", е: "e", о: "o", р: "p", с: "c", у: "y", х: "x", і: "i", ї: "i", к: "k", м: "m", н: "h", т: "t", в: "b", ё: "e", υ: "u", ο: "o", α: "a" };
+
+  /*
    * True for the word "fever", or a temperature of 100.4°F / 38°C or higher:
    * "101.2", "38.5 C", "temp of 100.6". A bare number needs a unit or a nearby
    * "temp"/"temperature", so "I slept 100 hours" doesn't count.
    */
-  function mentionsFever(text) {
-    if (/\bfever(s|ish)?\b/i.test(text)) return true;
+  function mentionsFever(rawText) {
+    // "No fever" and "fever-free" don't count; a reading later in the same post still does.
+    const text = String(rawText).replace(/\b(no|without( a)?|not (running )?a|never had a)\s+(fever|temp|temperature)\b|\bfever[- ]free\b/gi, " ");
+    // "fever" and its common typos ("fevr", "feever"), "febrile", and feeling hot with chills.
+    if (/\bfe+ve?r(s|ish)?\b|\bfebrile\b|\bburning up\b|\brigou?rs\b/i.test(text)) return true;
+    if (/\b(chills|shivering|shaking)\b/i.test(text) && /\b(chemo|chemotherapy|infusion|treatment)\b/i.test(text) && !/\bno (chills|shivering)\b/i.test(text)) return true;
+    // Readings in words: "thirty eight degrees", "one hundred and one".
+    if (/\b(thirty[- ]?(eight|nine)|forty) degrees\b/i.test(text)) return true;
+    if (/\b(temp\w*|thermometer)\b[^.!?\n]{0,25}\b(thirty[- ]?(eight|nine)|one hundred( and)? (one|two|three|four|five))\b/i.test(text)) return true;
+    // A weather report ("The forecast is 101 F today") isn't a body temperature.
+    const weather = /\b(forecast|weather|outside|heat ?wave)\b/i.test(text) && !/\b(my|a|i have a|running a) (temp|temperature|fever)\b/i.test(text);
     // "Running a temperature" means a fever, unless a normal reading follows ("a temperature of 98.6" is checked below).
     if (/\b(running|run|ran|have|had|got|spik(e|ed|ing)) (a )?(high |slight |bit of a )?(temp|temperature)\b(?!\s*(of|at|was|is|reading)?\s*\d)/i.test(text)) return true;
     if (/\btemp(erature)? spike\b/i.test(text)) return true;
-    const reading = /(\btemp(erature)?\b[^.\d]{0,20})?\b(\d{2,3}(?:\.\d)?)\s*(°|º|degrees?\b|deg\b)?\s*([fc])?\b/gi;
+    if (weather) return false;
+    // "38.5", "38,5 C", "100.45°F", "38.2 Celsius", "temperture 38.5", "thermometer says 101.2".
+    const reading = /(\b(temp\w*|thermometer|reads|reading)\b[^.\d]{0,20})?\b(\d{2,3}(?:[.,]\d{1,2})?)\s*(°|º|degrees?\b|deg\b)?\s*(celsius|centigrade|fahrenheit|[fc])?\b/gi;
     let match;
     while ((match = reading.exec(text))) {
-      const value = parseFloat(match[3]);
-      const unit = (match[5] || "").toLowerCase();
+      const value = parseFloat(match[3].replace(",", "."));
+      const unit = (match[5] || "").toLowerCase().charAt(0);
       const hasContext = Boolean(match[1] || match[4] || unit);
       if (!hasContext) continue;
       if (unit === "c" || (!unit && value < 45)) {
@@ -175,5 +277,5 @@ Forum.safety = (function () {
     }
   }
 
-  return { review, isValidSourceUrl, mentionsFever };
+  return { review, isValidSourceUrl, mentionsFever, normalize, CONFUSABLE };
 })();

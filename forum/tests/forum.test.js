@@ -173,6 +173,170 @@ test("a fever or a temperature of 100.4°F / 38°C shows the chemo fever warning
   }
 });
 
+// ---------- the ChatGPT audit's misses (2026-10-26) ----------
+// Every phrase the audit found slipping through, kept as written (odd spellings and look-alike
+// letters included). These are test inputs, not advice.
+
+test("crisis wording from the audit shows the 988 Lifeline and alerts moderators", (F) => {
+  const phrases = [
+    "I am thinking of ending my own life tonight.",
+    "I am going to kill my self.",
+    "I want to k1ll myself.",
+    "I want to kiII myself.",
+    "I want to unalive me.",
+    "I might off myself tonight.",
+    "Thinking about deleting myself from this world.",
+    "I cannot keep going anymore.",
+    "I do not want to wake up tomorrow.",
+    "I wish I could go to sleep forever.",
+    "Everyone would be happier if I were gone.",
+    "My family would be better without me around.",
+    "This is my goodbye. I will not be here tomorrow.",
+    "I have decided to end everything tonight.",
+    "I am going to end things after everyone falls asleep.",
+    "I have been cutting my arms on purpose.",
+    "I hurt my self to cope.",
+    "I cannot promise I will keep myself safe tonight.",
+    "I am scared I might do something to myself.",
+    "I am about to do something permanent to myself.",
+    "brb gonna off myself, haha but actually.",
+    "I feel like ending it rn.",
+    "I am going to take every pill I have.",
+    "I want to stop existing permanently.",
+    "I wish I was not alive.",
+    "I want 2 die.",
+    "I want to d!e.",
+    "I will end my own life after treatment."
+  ];
+  for (const body of phrases) {
+    const result = F.safety.review({ body });
+    assert(result.alert && !result.hold, "missed: " + body);
+  }
+});
+
+test("advice to change doses or skip treatment from the audit is held for a moderator", (F) => {
+  const phrases = [
+    "Just skip the next chemotherapy cycle.",
+    "Take a break from your chemotherapy without asking anyone.",
+    "Put your next chemotherapy infusion off for a month.",
+    "Do not go to your chemotherapy appointment.",
+    "You can safely miss a round of chemotherapy.",
+    "You should discontinue the prescribed medicine.",
+    "Do not take your prescribed pills.",
+    "You do not need to take the pills your doctor gave you.",
+    "Double your prescribed dose tonight.",
+    "Take twice as much of your prescribed medication.",
+    "Cut your steroid dose in half on your own.",
+    "Increase the dose without checking with your doctor.",
+    "Reduce your chemotherapy dose yourself.",
+    "Take an extra dose if you still feel bad.",
+    "Crush your chemotherapy tablets to make them work faster.",
+    "Share your prescription medicines with another patient.",
+    "Borrow someone else’s prescription for the same symptom.",
+    "Replace chemotherapy with supplements.",
+    "Cancer disappears if you only drink this juice.",
+    "Skip your steroid tablets tomorrow.",
+    "Do not tell your care team about the dose change.",
+    "Your doctor is wrong; flush the prescription pills.",
+    "Replace your prescribed medication with this natural remedy.",
+    "Do not take the blood thinner your doctor prescribed.",
+    "If you miss a dose, take two doses together next time.",
+    "You can safely stop the antibiotics early.",
+    "Wean yourself off the steroids overnight."
+  ];
+  for (const body of phrases) assert(F.safety.review({ body }).hold, "should hold: " + body);
+  const fine = [
+    "Ask your care team before you change your dose.",
+    "Tell your nurse if you miss a dose.",
+    "My doctor reduced my dose after cycle 2.",
+    "Your oncologist may lower the dose if side effects are bad.",
+    "Don't skip your anti-nausea meds.",
+    "Put ice on your hands during the infusion.",
+    "Don't forget to take your anti-nausea pills before the infusion."
+  ];
+  for (const body of fine) assert(!F.safety.review({ body }).hold, "should not hold: " + body);
+});
+
+test("urgent symptoms and fever readings from the audit show a warning", (F) => {
+  const phrases = [
+    "Chemo patient here, the thermometer reads 38.2 Celsius.",
+    "My temperature is thirty eight degrees after chemotherapy.",
+    "My temp is one hundred and one after chemo.",
+    "I am on chemo and burning up with chills.",
+    "I had chemotherapy yesterday and now I am shaking with rigors.",
+    "My temperture is 38.5 after chemo.",
+    "I have a fevr during chemotherapy.",
+    "I am febrile after my infusion.",
+    "My thermometer says 101.2 after chemotherapy.",
+    "38,5 C after chemo, should I wait?",
+    "100,6 F after chemo and I am shivering.",
+    "My chest feels tight and heavy after treatment.",
+    "There is crushing pressure in my chest.",
+    "I cannot breathe after chemotherapy.",
+    "I am struggling to breathe.",
+    "I am short of breath while sitting still.",
+    "I am gasping for air.",
+    "I have new shortness of breath and blue lips.",
+    "I lost consciousness after chemotherapy.",
+    "I blacked out after my infusion.",
+    "I had chemo today and now I have a feever.",
+    "I am on chemotherapy and my temp is 100.45°F."
+  ];
+  for (const body of phrases) {
+    assert(F.safety.review({ body }).notes.some((n) => n.id === "fever" || n.id === "urgent"), "missed: " + body);
+  }
+  const fever = (body) => F.safety.review({ body }).notes.some((n) => n.id === "fever");
+  for (const body of ["I have no fever and feel fine today.", "The forecast is 101 F today.", "I got chills watching that movie.", "My walk was 100 steps."]) {
+    assert(!fever(body), "false alarm: " + body);
+  }
+});
+
+test("staff and clinician names from the audit are refused, ordinary names are not", async (F) => {
+  const names = [
+    "Dоctor Amber",
+    "Mоderator Amber",
+    "Nυrse Amber",
+    "Admіn Amber",
+    "Chemoasіs Team",
+    "Мoderator Team",
+    "ｍｏｄｅｒａｔｏｒ",
+    "Ｄｒ Amber",
+    "DoctorAmber",
+    "NurseAmber",
+    "AdminAmber",
+    "StaffAmber",
+    "DrAmber",
+    "AmberMD",
+    "AmberRN",
+    "N.P. Amber",
+    "M.D. Amber",
+    "R.N. Amber",
+    "CareTeam Amber",
+    "OncologyNurse",
+    "PharmacistAmber",
+    "TherapistAmber",
+    "PhysicianAmber",
+    "ClinicianAmber",
+    "Site Owner Amber"
+  ];
+  for (const name of names) {
+    await rejects(F.store.updateMyProfile({ displayName: name }), "doesn't sound like a role");
+  }
+  for (const name of ["Drew", "Andrea", "Stafford", "Nursen", "Admira", "McKenzie", "Maria Sánchez"]) {
+    const saved = await F.store.updateMyProfile({ displayName: name });
+    assert(saved.displayName === name, "refused an ordinary name: " + name);
+  }
+});
+
+test("look-alike copies of another member's name are refused", async (F) => {
+  await addPerson(F, { id: "luna", displayName: "Luna Willow", type: "member" });
+  for (const name of [
+    
+  ]) {
+    await rejects(F.store.updateMyProfile({ displayName: name }), "already uses that name");
+  }
+});
+
 test("only http and https source links are accepted", (F) => {
   assert(F.safety.isValidSourceUrl("https://www.cancer.gov/"));
   assert(!F.safety.isValidSourceUrl("javascript:alert(1)"));
