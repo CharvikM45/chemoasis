@@ -22,6 +22,10 @@
 
   const save = async (patch) => { data = await auth.saveData(patch); return data; };
 
+  // Coming back with the Back button can show this page from the browser's cache, with the
+  // progress from before the game you just played. Load it fresh instead.
+  window.addEventListener('pageshow', (event) => { if (event.persisted) location.reload(); });
+
   /* ---------- Sign in ---------- */
 
   function setMode(next) {

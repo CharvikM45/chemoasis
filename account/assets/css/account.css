@@ -417,8 +417,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 @media (max-width: 480px) {
   .topbar { gap: 12px; }
   .brand { font-size: 18px; }
-  .toplinks { gap: 12px; flex-wrap: wrap; justify-content: flex-end; row-gap: 6px; }
-  .toplinks a { font-size: 14px; }
+  .toplinks { gap: 12px; flex-wrap: wrap; justify-content: flex-end; row-gap: 2px; }
+  .toplinks a { font-size: 14px; padding: 4px 0; min-height: 24px; } /* an easier tap with numb fingertips */
   .toplinks .toplinks-cta { padding: 6px 8px; }
   .toplinks .toplinks-cta span { display: none; }
 }

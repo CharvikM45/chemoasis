@@ -107,6 +107,32 @@ test('game results are saved for the progress chart', async () => {
   } finally { await t.close(); }
 });
 
+test('a page saving an older copy keeps results, levels and plays saved since it loaded', async () => {
+  const t = await start();
+  try {
+    const cookie = await t.signUp('sam@example.com');
+    await t.call('PUT', '/api/profile', { cookie, body: { profile: { answers: {}, model: { version: 1, delta: {}, events: [], dismissed: {} } } } });
+    const loaded = (await t.call('GET', '/api/profile', { cookie })).json; // the Your games page loads here
+    await new Promise((r) => setTimeout(r, 20));
+    // Then, in a game: a play, a result and a finished level are saved.
+    assert.strictEqual((await t.call('POST', '/api/profile/play', { cookie, body: { game: 'signal' } })).status, 204);
+    assert.strictEqual((await t.call('POST', '/api/profile/result', { cookie, body: { game: 'signal', level: 0, score: null, mode: 'gentle' } })).status, 204);
+    assert.strictEqual((await t.call('POST', '/api/profile/level', { cookie, body: { game: 'signal', level: 0 } })).status, 204);
+    // Back on the old page, pressing Play saves its old copy of the model.
+    const old = loaded.profile.model;
+    const saved = await t.call('PATCH', '/api/profile', { cookie, body: { profile: { model: { ...old, events: [...old.events, { game: 'lumen', kind: 'play', at: Date.now(), applied: false }] } }, since: loaded.updatedAt } });
+    assert.strictEqual(saved.status, 200);
+    const now = (await t.call('GET', '/api/profile', { cookie })).json.profile;
+    assert.strictEqual(now.results.length, 1, 'the result saved from the game is kept');
+    assert.ok(now.levels && Object.keys(now.levels).length, 'the finished level is kept');
+    assert.deepStrictEqual(now.model.events.map((e) => e.game).sort(), ['lumen', 'signal'], 'both plays are kept');
+    // Resetting suggestions doesn't bring back plays the page already knew about.
+    const fresh = (await t.call('GET', '/api/profile', { cookie })).json;
+    await t.call('PATCH', '/api/profile', { cookie, body: { profile: { model: { version: 1, delta: {}, events: [], dismissed: {} } }, since: fresh.updatedAt } });
+    assert.deepStrictEqual((await t.call('GET', '/api/profile', { cookie })).json.profile.model.events, []);
+  } finally { await t.close(); }
+});
+
 test('Gentle sessions are saved without a score, and odd modes are refused', async () => {
   const t = await start();
   try {

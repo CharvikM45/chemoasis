@@ -63,11 +63,13 @@ Account.auth = (function () {
 
   let cached; // undefined = not asked yet, null = signed out
   let profile = null; // last profile loaded or saved, so a save needs one request, not two
+  let loadedAt = null; // the server's updatedAt for that profile
   function remember(user) {
     cached = user;
     if (user) write(SESSION, { userId: user.id, at: Date.now() });
     else storage.remove(SESSION);
     profile = null;
+    loadedAt = null;
     return user;
   }
 
@@ -103,16 +105,21 @@ Account.auth = (function () {
     async getData() {
       const user = await this.currentUser();
       if (!user) throw new Error("Please sign in first.");
-      let remote = (await profileApi("")).profile;
+      const got = await profileApi("");
+      let remote = got.profile;
+      loadedAt = got.updatedAt || null;
       const local = read(userKey(user.id), null);
       if (!remote && local) remote = (await profileApi("", { method: "PUT", body: { profile: local } })).profile;
       if (local) storage.remove(userKey(user.id));
       return (profile = Object.assign(EMPTY(), remote || {}));
     },
 
+    // Sends only the changed fields, so results and plays saved from another tab, or while this
+    // page sat in the browser's Back cache, are kept (server/profile.js merges them).
     async saveData(patch) {
-      const next = Object.assign({}, profile || (await this.getData()), patch);
-      const saved = await profileApi("", { method: "PUT", body: { profile: next } });
+      if (!profile) await this.getData();
+      const saved = await profileApi("", { method: "PATCH", body: { profile: patch, since: loadedAt } });
+      loadedAt = saved.updatedAt || loadedAt;
       return (profile = Object.assign(EMPTY(), saved.profile));
     },
 
