@@ -119,7 +119,7 @@ function createStudioAi({ apiKey = process.env.ANTHROPIC_API_KEY, client } = {})
 function safeSvg(svg) {
   const text = String(svg || '').trim();
   if (!/^<svg[\s>]/i.test(text) || !/<\/svg>$/i.test(text) || text.length > 150000) return null;
-  if (/<(script|foreignObject|iframe|object|embed|image|a|style|animate|set)\b|<!(ENTITY|DOCTYPE)|javascript:|\bon[a-z]+\s*=|(?:xlink:)?href\s*=\s*(?!["']?\s*#)/i.test(text)) return null;
+  if (/<(script|foreignObject|iframe|object|embed|image|a|style|animate\w*|set)\b|<!(ENTITY|DOCTYPE)|javascript:|\bon[a-z]+\s*=|(?:xlink:)?href\s*=\s*(?!["']?\s*#)/i.test(text)) return null;
   return text;
 }
 

@@ -54,10 +54,15 @@
         if (decision === "publish" && !confirm(`Publish "${activity.title}" with ${creator.name}'s credit?`)) return;
         button.disabled = true;
         try {
-          await api("POST", "/review/" + s.id, { decision, note: note.value });
+          // submittedAt says which version this reviewer read, so a newer one can't be decided unseen.
+          await api("POST", "/review/" + s.id, { decision, note: note.value, submittedAt: s.submittedAt });
           message(`Done: "${activity.title}" is now ${STATUS[{ publish: "published", changes: "changes", reject: "rejected", unpublish: "changes" }[decision]].toLowerCase()}.`);
           await load();
-        } catch (error) { message(error.message); button.disabled = false; }
+        } catch (error) {
+          message(error.message);
+          if (error.status === 409) await load(); // it changed: show the current version
+          else button.disabled = false;
+        }
       }
     });
 
@@ -84,7 +89,7 @@
       el("h4", { text: "Automatic checks" }), checkList(s.checks),
       el("h4", { text: "Advisory read" }), advisory(s.checks && s.checks.ai),
       s.data.sketch ? el("figure", { class: "rs-sketch" }, el("img", { src: "data:image/svg+xml;charset=utf-8," + encodeURIComponent(s.data.sketch), alt: "The creator's mock-up" }), el("figcaption", { text: "Mock-up" })) : null,
-      s.code ? el("div", { class: "actions" }, el("button", { class: "button", type: "button", text: "Try the prototype in the sandbox", onclick: () => { frame.src = `/api/studio/review/${s.id}/prototype?t=${Date.now()}`; frame.hidden = false; } })) : null,
+      s.hasCode ? el("div", { class: "actions" }, el("button", { class: "button", type: "button", text: "Try the prototype in the sandbox", onclick: () => { frame.src = `/api/studio/review/${s.id}/prototype?t=${Date.now()}`; frame.hidden = false; } })) : null,
       frame,
       s.own ? el("p", { class: "rs-banner rs-banner--note", text: "This is your own submission, so another reviewer has to decide on it." }) : null,
       el("div", { class: "rs-decide" },

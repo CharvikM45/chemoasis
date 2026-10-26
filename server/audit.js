@@ -29,6 +29,8 @@ async function audit(db, req, event, { userId = null, detail = null } = {}) {
     const fresh = !entry || now - entry.since > FAIL_WINDOW_MS;
     const next = fresh ? { count: 1, since: now } : { count: entry.count + 1, since: entry.since };
     failures.set(ip, next);
+    // Forget addresses whose window has passed, so the count can't grow without end.
+    if (fresh && failures.size > 1000) for (const [key, value] of failures) if (now - value.since > FAIL_WINDOW_MS) failures.delete(key);
     if (next.count === FAIL_ALERT_AT) log('alert', { event: 'many_failed_logins', ip, count: next.count, minutes: 15 });
   }
   try {
