@@ -234,7 +234,7 @@ Forum.ui = (function () {
       below.setAttribute("data-forum-subbar", "");
       header.after(below);
     }
-    // A labelled region, so the community links, account and notices sit inside a landmark for screen readers.
+    // A labeled region, so the community links, account and notices sit inside a landmark for screen readers.
     below.setAttribute("role", "region");
     below.setAttribute("aria-label", "Community menu and notices");
     below.innerHTML =
