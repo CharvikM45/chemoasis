@@ -209,7 +209,6 @@ const uniforms = {
   uFeaturePos: { value: new THREE.Vector3(0, 0, -4) },
   uFeatureScale: { value: 4 },
   uSway: { value: new THREE.Vector2(0, 0) }, // how the piece in front is tilted (about the screen's x and y axes)
-  uMaskOnly: { value: 0 }, // 1 = draw only the featured piece (to measure where its quote fits)
   // Where pieces fade into the background, in canvas pixels: right edge of the text column, the
   // top bar's lower edge (counted from the bottom), and the width of the soft edge.
   uFade: { value: new THREE.Vector3(-1e5, 1e5, 60) }
@@ -538,7 +537,7 @@ function addMesh(m) {
         }`);
     shader.fragmentShader = `varying float vLoose; varying float vSnap; varying vec3 vRest; varying float vShard; varying float vAO; varying float vFeature; varying float vDim;
       varying float vWall; varying vec2 vWallXY; varying float vTop;
-      uniform vec3 uFade; uniform float uMaskOnly; uniform float uSeams;
+      uniform vec3 uFade; uniform float uSeams;
       uniform sampler2D uSky; uniform vec2 uView;
       uniform float uFeature; uniform float uFeatureDetail;
       ${PUZZLE_SPACE}
@@ -551,8 +550,6 @@ function addMesh(m) {
         vec3 wallInk = vec3(0.0);
         #ifdef DETAIL
           if (uFeatureDetail < 0.5 || abs(vShard - uFeature) > 0.5) discard;
-          // Measuring where the words fit: only the piece's top face counts, not its sides or back.
-          if (uMaskOnly > 0.5 && (vFeature < 0.999 || vTop < 0.25)) discard;
         #else
           if (uFeatureDetail > 0.5 && abs(vShard - uFeature) < 0.5) discard;
           if (vWall > 0.999) discard; // still standing in the wall, which the flat sheet draws
@@ -562,7 +559,6 @@ function addMesh(m) {
           float piece = pieceAt(vRest, seam);
           float lineWidth = seamWidth(0.03 - 0.01 * inWall);
           if (abs(piece - vShard) > 0.5) discard;
-          if (uMaskOnly > 0.5 && vFeature < 0.999) discard;
           line = 1.0 - smoothstep(0.0, lineWidth, seam);
           // Looking just like the wall sheet as it lets go. Skip the lighting while it still does.
           wallInk = mix(texture2D(uSky, vWallXY / (2.0 * uView) + 0.5).rgb, vec3(0.96, 0.86, 0.94), 0.1 * line * uSeams);
@@ -755,7 +751,7 @@ function resize() {
   if (w === width && Math.abs(h - height) < 140) return;
   width = w;
   height = h;
-  picks = []; // the pieces come forward at a new size: fit the quotes again
+  cardFits = []; // the pieces come forward at a new size: fit the words again
   renderer.setSize(width, height, false);
   camera.aspect = width / height;
   camera.updateProjectionMatrix();
@@ -802,18 +798,92 @@ function assembleAt(y) {
   return clamp((y - start) / (end - start), 0, 1);
 }
 
-// The section's quote (its data-quote), set on the featured piece once it has come forward: sharp
-// HTML text over the middle of the 3D piece. Decorative, so screen readers skip it.
-const card = document.createElement('blockquote');
+// The section's quote (its data-quote), shown once the 3D piece has come forward: a flat puzzle
+// piece drawn as an SVG, in the brain's own peach, with the words on it. The 3D piece carries it
+// out and back; while the words are up, the flat piece sits over it. Decorative, so screen
+// readers skip it.
+//
+// The shape: a square of 100 units with a tab (out) or a blank (in) on each side, drawn in the
+// jigsaw's own curve. Each section's piece has its blank on a different side.
+const PIECE_EDGES = [[1, 1, -1, 1], [-1, 1, 1, 1], [1, 1, 1, -1]]; // top, right, bottom, left
+const PIECE_VIEW = 148, PIECE_PAD = 24, PIECE_DIP = 22; // viewBox size, room for the tabs, how far a tab or blank reaches
+function piecePath(edges) {
+  // One edge, from (0,0) to (100,0), its tab in -y: the curve leaves the line, narrows into a
+  // neck and swells into a round head.
+  const edge = (sign) => sign === 0 ? [['L', 100, 0]] : [
+    ['L', 36, 0], ['C', 44, 0, 42, -6 * sign, 40, -9 * sign], ['C', 36, -16 * sign, 40, -PIECE_DIP * sign, 50, -PIECE_DIP * sign],
+    ['C', 60, -PIECE_DIP * sign, 64, -16 * sign, 60, -9 * sign], ['C', 58, -6 * sign, 56, 0, 64, 0], ['L', 100, 0]];
+  const turn = [(x, y) => [x, y], (x, y) => [100 - y, x], (x, y) => [100 - x, 100 - y], (x, y) => [y, 100 - x]];
+  let d = 'M0,0';
+  edges.forEach((sign, side) => {
+    for (const [op, ...pts] of edge(sign)) {
+      const out = [];
+      for (let i = 0; i < pts.length; i += 2) out.push(turn[side](pts[i], pts[i + 1]).map((v) => +v.toFixed(2)).join(','));
+      d += op + out.join(' ');
+    }
+  });
+  return d + 'Z';
+}
+const card = document.createElement('div');
 card.className = 'piece-quote';
 card.setAttribute('aria-hidden', 'true');
-card.style.transformOrigin = '0 0'; // its transform is written out in full each frame (see frame)
+card.innerHTML = `<svg viewBox="${-PIECE_PAD} ${-PIECE_PAD} ${PIECE_VIEW} ${PIECE_VIEW}" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="pqFill" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f8d6c0"/><stop offset="0.55" stop-color="#eaae89"/><stop offset="1" stop-color="#d1886c"/>
+    </linearGradient>
+    <radialGradient id="pqSheen" cx="0.3" cy="0.2" r="0.75">
+      <stop offset="0" stop-color="#fff5ee" stop-opacity="0.5"/><stop offset="1" stop-color="#fff5ee" stop-opacity="0"/>
+    </radialGradient>
+    <clipPath id="pqClip"><path class="pq-shape"/></clipPath>
+  </defs>
+  <path class="pq-shape" fill="url(#pqFill)"/>
+  <path class="pq-shape" fill="url(#pqSheen)"/>
+  <g clip-path="url(#pqClip)">
+    <path class="pq-shape" fill="none" stroke="#7a3a2c" stroke-opacity="0.3" stroke-width="7" transform="translate(1.6 1.6)"/>
+    <path class="pq-shape" fill="none" stroke="#fff8f2" stroke-opacity="0.75" stroke-width="2.4"/>
+  </g>
+  <path class="pq-shape" fill="none" stroke="#5a2420" stroke-opacity="0.5" stroke-width="0.9" stroke-linejoin="round"/>
+</svg><blockquote class="piece-words"></blockquote>`;
 document.body.appendChild(card);
+const cardShapes = card.querySelectorAll('.pq-shape');
+const cardWords = card.querySelector('.piece-words');
+let cardIndex = -1; // which section's piece the card is shaped and worded for
+let cardFits = []; // per section: the words' box and type size, for the current width
+function shapeCard(index) {
+  if (cardIndex === index) return;
+  cardIndex = index;
+  const d = piecePath(PIECE_EDGES[index % PIECE_EDGES.length]);
+  cardShapes.forEach((shape) => shape.setAttribute('d', d));
+  cardWords.textContent = sections[index].quote;
+}
+// The words' box: the square body with a margin, less the side the blank bites into, in piece
+// units; then the largest type whose lines all fit in it. Measured once per section and width.
+function fitWords(index, unit) {
+  if (cardFits[index] && cardFits[index].unit === unit) return cardFits[index];
+  const edges = PIECE_EDGES[index % PIECE_EDGES.length], m = 9;
+  const box = { x: m, y: m, w: 100 - 2 * m, h: 100 - 2 * m };
+  if (edges[0] < 0) { box.y += PIECE_DIP; box.h -= PIECE_DIP; }
+  if (edges[2] < 0) box.h -= PIECE_DIP;
+  if (edges[3] < 0) { box.x += PIECE_DIP; box.w -= PIECE_DIP; }
+  if (edges[1] < 0) box.w -= PIECE_DIP;
+  const fit = { unit, left: (box.x + PIECE_PAD) * unit, top: (box.y + PIECE_PAD) * unit, w: box.w * unit, h: box.h * unit, size: 16 };
+  shapeCard(index);
+  cardWords.style.width = `${Math.floor(fit.w)}px`;
+  cardWords.style.height = 'auto';
+  for (let size = 26; size >= 16; size -= 0.5) {
+    cardWords.style.fontSize = `${size}px`;
+    if (cardWords.scrollHeight <= fit.h && cardWords.scrollWidth <= fit.w) { fit.size = size; break; }
+  }
+  cardWords.style.height = `${Math.floor(fit.h)}px`;
+  cardFits[index] = fit;
+  return fit;
+}
 let featIndex = -1, featT = 0;
-let picks = []; // per section: { piece, fit }, chosen the first time it's needed
+let picks = []; // per section: { piece }, chosen the first time it's needed
 const stagePoint = new THREE.Vector3();
 let fontsReady = false;
-document.fonts.load('600 20px "Atkinson Hyperlegible Next"').catch(() => {}).then(() => { fontsReady = true; picks = []; });
+document.fonts.load('600 20px "Atkinson Hyperlegible Next"').catch(() => {}).then(() => { fontsReady = true; cardFits = []; });
 
 // Where the featured piece comes to: in front of the brain, halfway down the screen (near the top
 // on phones), with its square body about 300 pixels across. Returns that point on screen.
@@ -836,123 +906,16 @@ function placeFeature(piece) {
   return { sx, sy, body };
 }
 
-// Exactly which screen pixels a piece covers once it has come forward: draw it alone, settled,
-// into a hidden image at half resolution and read that back. Returns a grid of 1s (piece) and 0s
-// around the point it comes to, and where that grid sits on screen.
-const MASK = 0.5;
-const maskTarget = new THREE.WebGLRenderTarget(1, 1);
-function pieceMask(piece, at) {
-  const rw = Math.max(1, Math.round(width * MASK)), rh = Math.max(1, Math.round(height * MASK));
-  maskTarget.setSize(rw, rh);
-  const reach = Math.ceil(at.body * 1.15 * MASK);
-  const left = clamp(Math.round(at.sx * MASK) - reach, 0, rw - 1), top = clamp(Math.round(at.sy * MASK) - reach, 0, rh - 1);
-  const w = Math.min(rw - left, reach * 2), h = Math.min(rh - top, reach * 2);
-  const saved = { feature: uniforms.uFeature.value, t: uniforms.uFeatureT.value, detail: uniforms.uFeatureDetail.value, sway: uniforms.uSway.value.clone(), background: scene.background, sheet: wallSheet.visible, shadow: shadow.visible };
-  uniforms.uFeature.value = piece;
-  uniforms.uFeatureT.value = 1;
-  // Its solid copy if that is in, else the thin one (the thin copy hides whenever uFeatureDetail is
-  // on, so this must be set for the piece being measured, not left over from the one on screen).
-  uniforms.uFeatureDetail.value = detailReady.has(piece) ? 1 : 0;
-  uniforms.uSway.value.set(SWAY_BASE[0], SWAY_BASE[1]);
-  uniforms.uMaskOnly.value = 1;
-  shell.visible = ring.visible = dust.visible = wallSheet.visible = shadow.visible = false;
-  scene.background = null;
-  renderer.setRenderTarget(maskTarget);
-  renderer.setClearColor(0x000000, 0);
-  renderer.clear();
-  renderer.render(scene, camera);
-  const pixels = new Uint8Array(w * h * 4);
-  renderer.readRenderTargetPixels(maskTarget, left, rh - top - h, w, h, pixels); // rows counted from the bottom
-  renderer.setRenderTarget(null);
-  uniforms.uFeature.value = saved.feature;
-  uniforms.uFeatureT.value = saved.t;
-  uniforms.uFeatureDetail.value = saved.detail;
-  uniforms.uSway.value.copy(saved.sway);
-  uniforms.uMaskOnly.value = 0;
-  shell.visible = ring.visible = dust.visible = true;
-  wallSheet.visible = saved.sheet;
-  shadow.visible = saved.shadow;
-  scene.background = saved.background;
-  const grid = new Uint8Array(w * h);
-  let cover = 0;
-  for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) cover += grid[y * w + x] = pixels[((h - 1 - y) * w + x) * 4 + 3] > 200 ? 1 : 0;
-  }
-  return { grid, w, h, cover, left: left / MASK, top: top / MASK };
-}
-
-// The biggest text box that fits inside the piece with a clear margin all round, and the largest
-// type that fits that box: the grid is first shrunk by the margin (a pixel stays only if the whole
-// square around it is piece), then the widest-area rectangle, no taller than it is wide, is found
-// row by row. Returns the box (center, size, font size, relative to the point the piece comes to),
-// or null if the quote won't fit at a readable size, or undefined if the piece didn't draw at all
-// (so nothing could be measured, and it should be tried again).
-const MARGIN = 18; // screen pixels kept clear between the words and the piece's edge
-function fitQuote(piece, quote) {
-  const at = placeFeature(piece);
-  const { grid, w, h, cover, left, top } = pieceMask(piece, at);
-  if (!cover) return undefined;
-  const r = Math.round(MARGIN * MASK);
-  const sum = new Int32Array((w + 1) * (h + 1)); // summed-area table
-  for (let y = 0; y < h; y++) {
-    let row = 0;
-    for (let x = 0; x < w; x++) { row += grid[y * w + x]; sum[(y + 1) * (w + 1) + x + 1] = sum[y * (w + 1) + x + 1] + row; }
-  }
-  const area = (x0, y0, x1, y1) => sum[y1 * (w + 1) + x1] - sum[y0 * (w + 1) + x1] - sum[y1 * (w + 1) + x0] + sum[y0 * (w + 1) + x0];
-  const heights = new Int32Array(w);
-  let best = null;
-  for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) {
-      const clear = x >= r && y >= r && x + r < w && y + r < h && area(x - r, y - r, x + r + 1, y + r + 1) === (2 * r + 1) ** 2;
-      heights[x] = clear ? heights[x] + 1 : 0;
-    }
-    const stack = [];
-    for (let x = 0; x <= w; x++) {
-      const hx = x < w ? heights[x] : 0;
-      let start = x;
-      while (stack.length && stack[stack.length - 1][1] >= hx) {
-        const [sx, sh] = stack.pop();
-        const bw = x - sx, bh = Math.min(sh, bw);
-        if (!best || bw * bh > best.w * best.h) best = { x: sx, w: bw, h: bh, y: y - sh + 1 + Math.floor((sh - bh) / 2) };
-        start = sx;
-      }
-      stack.push([start, hx]);
-    }
-  }
-  if (!best) return null;
-  const box = { w: best.w / MASK, h: best.h / MASK };
-  box.x = left + (best.x + best.w / 2) / MASK - at.sx;
-  box.y = top + (best.y + best.h / 2) / MASK - at.sy;
-  // The largest type, in half-pixel steps, whose lines all fit inside the box.
-  card.textContent = quote;
-  card.style.width = `${Math.floor(box.w)}px`;
-  card.style.height = 'auto';
-  for (let size = 24; size >= 16; size -= 0.5) {
-    card.style.fontSize = `${size}px`;
-    if (card.scrollHeight <= box.h && card.scrollWidth <= box.w) return { ...box, size };
-  }
-  return null;
-}
-
-// The piece for a section, and where its quote goes: the first clean piece (alternating sides,
-// none used twice) that holds the quote at a comfortable size, or else the one that holds it
-// biggest.
+// The piece for a section: the best clean piece on alternating sides of the brain, none used
+// twice. Its solid copy is asked for straight away, so it is in by the time the piece comes out.
 function pickFor(index) {
   if (picks[index]) return picks[index];
   const used = new Set(picks.filter(Boolean).map((p) => p.piece));
-  const options = featured[index % 2].filter((id) => !used.has(id)).slice(0, 6);
-  let choice = null, unmeasured = false;
-  for (const piece of options) {
-    const fit = fitQuote(piece, sections[index].quote);
-    if (fit === undefined) unmeasured = true;
-    if (fit && (!choice || fit.size > choice.fit.size)) choice = { piece, fit };
-    if (fit && fit.size >= 19) break;
-  }
-  if (!choice && options.length) choice = { piece: options[0], fit: null }; // it still comes forward, without words
-  // If a piece couldn't be measured this time, keep this choice for now but try again later.
-  if (choice && (choice.fit || !unmeasured)) picks[index] = choice;
-  if (choice) requestDetail(choice.piece);
-  return choice;
+  const piece = featured[index % 2].find((id) => !used.has(id));
+  if (piece === undefined) return null;
+  picks[index] = { piece };
+  requestDetail(piece);
+  return picks[index];
 }
 
 // Which section's piece should be out at scroll position y (-1 for none): from just before the
@@ -1082,19 +1045,24 @@ function frame(now) {
     camera.localToWorld(shadow.position);
     const size = at.body * 2.1 * worldPerPixel * (1 + 0.12 * depth);
     shadow.scale.set(size, size * 0.9, 1);
-    shadow.material.opacity = 0.6 * smooth(0.35, 1, featT);
-    if (pick.fit) {
-      const { fit } = pick;
-      // The words appear once the piece has settled in front, and leave before it goes back. They
-      // tilt with it (about its middle, with the camera's own perspective), so they stay on its face.
-      const shown = smooth(0.8, 1, featT);
-      const focal = (0.5 * height) / tanHalf;
-      card.textContent = sections[featIndex].quote;
-      card.style.opacity = String(shown);
-      card.style.width = `${Math.floor(fit.w)}px`;
-      card.style.height = `${Math.floor(fit.h)}px`;
-      card.style.fontSize = `${fit.size}px`;
-      card.style.transform = `translate(${at.sx.toFixed(1)}px, ${at.sy.toFixed(1)}px) perspective(${focal.toFixed(0)}px) rotateX(${(-swayX * 57.2958).toFixed(2)}deg) rotateY(${(swayY * 57.2958).toFixed(2)}deg) translate(${fit.x.toFixed(1)}px, ${fit.y.toFixed(1)}px) translate(-50%, -50%)`;
+    // Once the 3D piece has settled in front, the flat piece with the words fades in over it (and
+    // the 3D piece draws in a little under it, so none of it shows past the flat one's edges);
+    // on the way back the flat piece fades first, then the 3D piece goes.
+    const flat = width >= 900 ? smooth(0.72, 1, featT) : 0; // phones have no room for the words
+    uniforms.uFeatureScale.value *= 1 - 0.5 * flat;
+    shadow.material.opacity = 0.6 * smooth(0.35, 1, featT) * (1 - flat);
+    if (flat > 0) {
+      const wide = Math.round(clamp(at.body * 1.3, 300, 430)), unit = wide / PIECE_VIEW;
+      const fit = fitWords(featIndex, unit);
+      card.style.width = `${wide}px`;
+      cardWords.style.left = `${fit.left.toFixed(1)}px`;
+      cardWords.style.top = `${fit.top.toFixed(1)}px`;
+      cardWords.style.width = `${Math.floor(fit.w)}px`;
+      cardWords.style.height = `${Math.floor(fit.h)}px`;
+      cardWords.style.fontSize = `${fit.size}px`;
+      const lift = 4 * Math.sin(t * 0.8); // floating gently
+      card.style.opacity = String(flat);
+      card.style.transform = `translate(${(at.sx - wide / 2).toFixed(1)}px, ${(at.sy - wide / 2 + lift).toFixed(1)}px) scale(${(0.94 + 0.06 * flat).toFixed(3)})`;
     } else {
       card.style.opacity = '0';
     }
