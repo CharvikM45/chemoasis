@@ -126,10 +126,71 @@ stage.add(dust);
 
 const SPREAD = 1.1; // how staggered the pieces are, in units of the whole assembly
 const WALL_DISTANCE = 3; // how far in front of the camera the opening wall stands
-// The wall's colour, the same as the hero's stand-in background in home.css (--wall). The wall is
-// drawn unlit, straight to the screen, so it is kept as plain sRGB values.
-const wallRGB = new THREE.Color().setStyle(getComputedStyle(document.documentElement).getPropertyValue('--wall').trim() || '#3b1832').getRGB({}, THREE.SRGBColorSpace);
-const WALL_COLOR = new THREE.Vector3(wallRGB.r, wallRGB.g, wallRGB.b);
+// The wall is painted with a twilight nebula, drawn once into a texture each time the window
+// changes size and shared by the flat sheet and the 3D pieces, so a piece keeps its patch of sky
+// as it lets go. The wall is drawn unlit, straight to the screen, so these are plain sRGB values.
+const NEBULA_GLSL = `
+// A soft twilight nebula: deep navy above, violet and lavender light breaking through low on
+// the right in soft rays, pink and lotus-pink cloud edges, dark teal wisps on the left.
+// p is the point on screen: about -1..1 up the screen, and wider across.
+float nHash(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
+float nNoise(vec2 p) {
+  vec2 i = floor(p), f = fract(p);
+  vec2 u = f * f * (3.0 - 2.0 * f);
+  return mix(mix(nHash(i), nHash(i + vec2(1.0, 0.0)), u.x), mix(nHash(i + vec2(0.0, 1.0)), nHash(i + vec2(1.0, 1.0)), u.x), u.y);
+}
+float nFbm(vec2 p) {
+  float v = 0.0, a = 0.5;
+  for (int i = 0; i < 5; i++) { v += a * nNoise(p); p = mat2(1.6, 1.2, -1.2, 1.6) * p; a *= 0.5; }
+  return v;
+}
+vec3 nebula(vec2 p, float aspect) {
+  vec2 q = vec2(nFbm(p * 1.1), nFbm(p * 1.1 + vec2(5.2, 1.3)));
+  float cloud = nFbm(p * vec2(1.4, 2.4) + 2.4 * q);       // wide, flat banks of cloud
+  float wisp = nFbm(p * vec2(2.2, 4.0) - 1.6 * q + 7.0);   // finer streaks inside them
+  vec3 navy = vec3(0.06, 0.05, 0.17), indigo = vec3(0.20, 0.14, 0.40), violet = vec3(0.38, 0.28, 0.66);
+  vec3 lavender = vec3(0.82, 0.74, 0.94), orchid = vec3(0.74, 0.40, 0.64), lotus = vec3(0.91, 0.55, 0.66);
+  vec3 teal = vec3(0.05, 0.36, 0.37), pine = vec3(0.04, 0.15, 0.14);
+  // The sky: navy at the top, deepening to violet toward the light.
+  vec2 sun = vec2(min(0.85, aspect * 0.55), -0.55); // low on the right, still on screen on a phone
+  vec2 g = p - sun;
+  float near = exp(-dot(g, g) * 0.9);                       // how close to the light
+  vec3 c = mix(navy, indigo, smoothstep(0.9, -0.6, p.y));
+  c = mix(c, violet, near * 0.85);
+  // Soft rays fanning out from the light.
+  float ang = atan(g.y, g.x);
+  float rays = 0.5 + 0.5 * sin(ang * 14.0 + 3.0 * nNoise(vec2(ang * 3.0, 1.0)));
+  c += lavender * 0.10 * rays * near * smoothstep(-0.3, 0.6, g.y + 0.3) * smoothstep(0.08, 0.5, length(g));
+  // Clouds catch the light: lavender where it's near, then orchid and lotus at their bright edges.
+  float lit = cloud * (0.35 + near);
+  c = mix(c, lavender * 0.8, smoothstep(0.45, 1.0, lit) * 0.7);
+  c = mix(c, orchid, smoothstep(0.5, 0.85, wisp) * smoothstep(0.35, 0.8, lit) * 0.7);
+  c = mix(c, lotus, smoothstep(0.62, 0.9, wisp * (0.4 + near)) * 0.45);
+  // Dark teal and pine wisps drifting in from the left.
+  float tealAmt = smoothstep(0.42, 0.75, cloud * 0.6 + wisp * 0.5) * smoothstep(0.7, -1.3, p.x);
+  c = mix(c, mix(pine, teal, wisp), tealAmt * 0.75);
+  // A few faint stars, where the sky is dark.
+  vec2 sp = p * 70.0;
+  float star = step(0.997, nHash(floor(sp))) * smoothstep(0.3, 0.0, length(fract(sp) - 0.5));
+  c += vec3(0.95, 0.9, 1.0) * star * 0.6 * (1.0 - near) * (1.0 - cloud);
+  // Darker behind the words on the left, so they stay easy to read.
+  c *= mix(0.6, 1.0, smoothstep(-1.5, 0.25, p.x));
+  return c;
+}
+`;
+const skyTarget = new THREE.WebGLRenderTarget(1, 1, { depthBuffer: false });
+const skyPaint = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMaterial({
+  uniforms: { uAspect: { value: 1 } },
+  vertexShader: `varying vec2 vP; uniform float uAspect;
+    void main() { vP = position.xy * vec2(uAspect, 1.0); gl_Position = vec4(position.xy, 0.0, 1.0); }`,
+  fragmentShader: `varying vec2 vP; uniform float uAspect;
+    ${NEBULA_GLSL}
+    void main() { gl_FragColor = vec4(nebula(vP, uAspect), 1.0); }`,
+  depthTest: false, depthWrite: false
+}));
+const skyScene = new THREE.Scene();
+skyScene.add(skyPaint);
+skyPaint.frustumCulled = false;
 const uniforms = {
   uAssemble: { value: 1 },
   uTime: { value: 0 },
@@ -139,7 +200,7 @@ const uniforms = {
   uWall: { value: new THREE.Vector4(0.1, WALL_DISTANCE, 36, 24) }, // tile size, distance, columns, rows
   uBlocks: { value: new THREE.Vector2(3, 2) }, // how the cube's six faces are laid out on the wall
   uView: { value: new THREE.Vector2(1, 1) }, // half the view's width and height at the wall
-  uWallColor: { value: WALL_COLOR },
+  uSky: { value: skyTarget.texture },
   // The piece that comes forward for the current section: its number, how far out it is (0 to 1),
   // where it goes (in front of the camera, in view space) and how much bigger it gets there.
   uFeature: { value: -1 },
@@ -259,7 +320,7 @@ const WALL_GLSL = `
 const wallSheet = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMaterial({
   uniforms: {
     uShards: uniforms.uShards, uHero: uniforms.uHero, uWall: uniforms.uWall, uBlocks: uniforms.uBlocks,
-    uView: uniforms.uView, uWallColor: uniforms.uWallColor, uSeams: uniforms.uSeams
+    uView: uniforms.uView, uSeams: uniforms.uSeams, uSky: uniforms.uSky
   },
   vertexShader: `uniform vec4 uWall; uniform vec2 uView;
     varying vec2 vWallXY;
@@ -269,7 +330,7 @@ const wallSheet = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.Shader
       gl_Position = projectionMatrix * vec4(vWallXY * z / uWall.y, -z, 1.0);
     }`,
   fragmentShader: `uniform sampler2D uShards; uniform float uHero; uniform vec4 uWall; uniform vec2 uBlocks; uniform vec2 uView;
-    uniform vec3 uWallColor; uniform float uSeams;
+    uniform float uSeams; uniform sampler2D uSky;
     varying vec2 vWallXY;
     ${PUZZLE_SPACE}
     ${PUZZLE_GLSL}
@@ -285,8 +346,9 @@ const wallSheet = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.Shader
       vec2 pieceXY = (block * PN + vec2(mod(cell, PN), floor(cell / PN + 0.01)) + 0.5 - uWall.zw * 0.5) * uWall.x;
       if (wallHold(pieceXY, texelFetch(uShards, ivec2(3, int(piece + 0.5)), 0).w) < 0.999) discard;
       float line = 1.0 - smoothstep(0.0, lineWidth, seam);
-      // Plain plum, with the seams as faint warm lines once they show: a hint of the brain inside.
-      gl_FragColor = vec4(mix(uWallColor, vec3(0.91, 0.65, 0.51), 0.22 * line * uSeams), 1.0);
+      // The nebula, with the seams as faint pale lines once they show: a hint of the pieces.
+      vec3 sky = texture2D(uSky, vWallXY / (2.0 * uView) + 0.5).rgb;
+      gl_FragColor = vec4(mix(sky, vec3(0.96, 0.86, 0.94), 0.1 * line * uSeams), 1.0);
     }`
 }));
 wallSheet.frustumCulled = false; // placed in the shader, in front of the camera
@@ -360,7 +422,7 @@ function addMesh(m) {
       uniform float uFeature; uniform float uFeatureT; uniform vec3 uFeaturePos; uniform float uFeatureScale;
       uniform float uHero; uniform vec4 uWall; uniform vec2 uBlocks; uniform vec2 uView;
       varying float vLoose; varying float vSnap; varying vec3 vRest; varying float vShard; varying float vAO; varying float vFeature;
-      varying float vDim; varying float vWall;
+      varying float vDim; varying float vWall; varying vec2 vWallXY;
       vec3 rotY(vec3 v, float a) { float c = cos(a), s = sin(a); return vec3(c * v.x + s * v.z, v.y, -s * v.x + c * v.z); }
       vec3 rotAxis(vec3 v, vec3 axis, float a) { float c = cos(a), s = sin(a); return v * c + cross(axis, v) * s + axis * dot(axis, v) * (1.0 - c); }
       ${PUZZLE_SPACE}
@@ -401,6 +463,7 @@ function addMesh(m) {
         vec2 wallXY = (block * PN + faceGrid(position, face) - grid * 0.5) * uWall.x;
         vec2 pieceXY = (block * PN + vec2(mod(cell, PN), floor(cell / PN + 0.01)) + 0.5 - grid * 0.5) * uWall.x;
         float w = wallHold(pieceXY, sD.w); // 1 = still in the wall
+        vWallXY = wallXY;
         vWall = w * (1.0 - feature);
         float lift = 1.0 - w;
         lift = lift * lift * (3.0 - 2.0 * lift);`)
@@ -449,8 +512,9 @@ function addMesh(m) {
           gl_Position = projectionMatrix * mvPosition;
         }`);
     shader.fragmentShader = `varying float vLoose; varying float vSnap; varying vec3 vRest; varying float vShard; varying float vAO; varying float vFeature; varying float vDim;
-      varying float vWall;
-      uniform vec3 uFade; uniform float uMaskOnly; uniform float uSeams; uniform vec3 uWallColor;
+      varying float vWall; varying vec2 vWallXY;
+      uniform vec3 uFade; uniform float uMaskOnly; uniform float uSeams;
+      uniform sampler2D uSky; uniform vec2 uView;
       uniform float uFeature; uniform float uFeatureDetail;
       ${PUZZLE_SPACE}
       ${PUZZLE_GLSL}
@@ -472,7 +536,7 @@ function addMesh(m) {
         if (uMaskOnly > 0.5 && vFeature < 0.999) discard;
         float line = 1.0 - smoothstep(0.0, lineWidth, seam);
         // Looking just like the wall sheet as it lets go. Skip the lighting while it still does.
-        vec3 wallInk = mix(uWallColor, vec3(0.91, 0.65, 0.51), 0.22 * line * uSeams);
+        vec3 wallInk = mix(texture2D(uSky, vWallXY / (2.0 * uView) + 0.5).rgb, vec3(0.96, 0.86, 0.94), 0.1 * line * uSeams);
         if (inWall > 0.999) { gl_FragColor = vec4(wallInk, 1.0); return; }`)
       .replace('#include <color_fragment>', `#include <color_fragment>
         if (!gl_FrontFacing) diffuseColor.rgb *= 0.4; // the inside of a piece is darker
@@ -638,6 +702,11 @@ function resize() {
   uniforms.uBlocks.value.set(tall ? 2 : 3, tall ? 3 : 2);
   uniforms.uWall.value.set(Math.max((2 * wallW) / cols, (2 * wallH) / rows), WALL_DISTANCE, cols, rows);
   uniforms.uView.value.set(wallW, wallH);
+  skyTarget.setSize(Math.ceil(width * renderer.getPixelRatio() / 2), Math.ceil(height * renderer.getPixelRatio() / 2));
+  skyPaint.material.uniforms.uAspect.value = camera.aspect;
+  renderer.setRenderTarget(skyTarget);
+  renderer.render(skyScene, camera);
+  renderer.setRenderTarget(null);
 
   // Size the brain to the free space right of the text (at most 40% of the screen's width and 70%
   // of its height), with the camera looking straight ahead, and centre it in that space.
