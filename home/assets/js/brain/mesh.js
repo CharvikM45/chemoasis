@@ -7,6 +7,9 @@
  * Pieces: the brain is wrapped in a cube (each face a PUZZLE_N × PUZZLE_N grid) and every point
  * belongs to the grid cell it points toward. Here quads are only sorted roughly (into the cell and
  * its neighbours); the shader cuts the exact jigsaw outline, tabs and all (see intro.js).
+ *
+ * The same code also builds a single piece on its own, much finer, for when it comes up close:
+ * pass the piece (only) and the box around it (box: [min, max]).
  */
 import { field, BOUNDS } from './shape.js';
 
@@ -30,8 +33,8 @@ export function puzzleCell(x, y, z) {
 }
 const pieceId = (face, i, j) => face * PUZZLE_N * PUZZLE_N + j * PUZZLE_N + i;
 
-export function buildBrainMesh({ step = 0.017 } = {}) {
-  const { min, max } = BOUNDS;
+export function buildBrainMesh({ step = 0.017, box = null, only = -1 } = {}) {
+  const [min, max] = box || [BOUNDS.min, BOUNDS.max];
   const nx = Math.ceil((max[0] - min[0]) / step) + 1;
   const ny = Math.ceil((max[1] - min[1]) / step) + 1;
   const nz = Math.ceil((max[2] - min[2]) / step) + 1;
@@ -66,10 +69,11 @@ export function buildBrainMesh({ step = 0.017 } = {}) {
     }
   }
 
-  // The field anywhere inside the grid, smoothly (trilinear); far outside, "empty".
+  // The field anywhere inside the grid, smoothly (trilinear); outside it, "empty" for the whole
+  // brain, or worked out exactly for a single piece (its box is small, and the shading looks past it).
   function sample(x, y, z) {
     const fx = (x - min[0]) / step, fy = (y - min[1]) / step, fz = (z - min[2]) / step;
-    if (fx < 0 || fy < 0 || fz < 0 || fx >= nx - 1 || fy >= ny - 1 || fz >= nz - 1) return 1;
+    if (fx < 0 || fy < 0 || fz < 0 || fx >= nx - 1 || fy >= ny - 1 || fz >= nz - 1) return box ? field(x, y, z) : 1;
     const i = Math.floor(fx), j = Math.floor(fy), k = Math.floor(fz);
     const tx = fx - i, ty = fy - j, tz = fz - k;
     const c00 = F[at(i, j, k)] * (1 - tx) + F[at(i + 1, j, k)] * tx;
@@ -187,7 +191,7 @@ export function buildBrainMesh({ step = 0.017 } = {}) {
     let x = 0, y = 0, z = 0;
     for (let c = 0; c < 4; c++) { const p = quads[q * 4 + c] * 3; add(set, pos[p], pos[p + 1], pos[p + 2]); x += pos[p]; y += pos[p + 1]; z += pos[p + 2]; }
     add(set, x / 4, y / 4, z / 4);
-    quadShards.push([...set]);
+    quadShards.push(only < 0 ? [...set] : set.has(only) ? [only] : []);
   }
 
   // 7. Final buffers: vertices are shared within a shard and duplicated where shards meet.
