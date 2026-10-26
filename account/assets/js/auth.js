@@ -123,12 +123,18 @@ Account.auth = (function () {
       catch (error) { if (error.status === 401) storage.remove(SESSION); return null; } // signed out elsewhere: stop asking
     },
 
-    // Deletes the account on the server and everything saved for it in this browser.
+    // Deletes the account on the server and everything saved for it in this browser, unsent forum
+    // drafts included (forum/assets/js/ui.js keys them by the account's id).
     async deleteAccount() {
       const user = await this.currentUser();
       if (!user) return true;
       await api("/me", { method: "DELETE" });
       storage.remove(userKey(user.id));
+      try {
+        Object.keys(localStorage)
+          .filter((key) => key.startsWith("chemoasis-forum-draft:") && key.split(":").includes(user.id))
+          .forEach((key) => localStorage.removeItem(key));
+      } catch (_) { /* storage unavailable: nothing was kept */ }
       remember(null);
       return true;
     },

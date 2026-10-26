@@ -165,7 +165,10 @@ test('a submission with real records goes to review, a reviewer publishes it, an
 
     assert.strictEqual((await t.call('POST', `/api/studio/review/${id}`, { body: { decision: 'reject' }, cookie: mod })).status, 400, 'a rejection needs a reason');
     assert.strictEqual((await t.call('POST', `/api/studio/review/${id}`, { body: { decision: 'publish' }, cookie: ana })).status, 403, 'creators cannot publish');
-    const decided = await t.call('POST', `/api/studio/review/${id}`, { body: { decision: 'publish' }, cookie: mod });
+    assert.strictEqual(queue[0].hasCode, true);
+    assert.strictEqual(queue[0].code, undefined, "the queue doesn't carry the prototypes' code");
+    assert.strictEqual((await t.call('POST', `/api/studio/review/${id}`, { body: { decision: 'publish' }, cookie: mod })).status, 409, 'a decision says which version it is about');
+    const decided = await t.call('POST', `/api/studio/review/${id}`, { body: { decision: 'publish', submittedAt: queue[0].submittedAt }, cookie: mod });
     assert.strictEqual(decided.json.status, 'published');
     const audits = await t.db.query("SELECT detail FROM audit_log WHERE event = 'studio_decision'");
     assert.strictEqual(audits.rows[0].detail.decision, 'publish', 'every decision is recorded');
@@ -285,6 +288,70 @@ test('the design assistant: off without a key, and when on, only a safe drawing 
   assert.strictEqual(safeSvg('<svg><use href="https://evil.example/x.svg#a"/></svg>'), null);
   assert.strictEqual(safeSvg('<svg><use href="#piece"/></svg>'), '<svg><use href="#piece"/></svg>', 'links inside the drawing are fine');
   assert.strictEqual(safeSvg('<div>not svg</div>'), null);
+  assert.strictEqual(safeSvg('<svg><animateTransform attributeName="transform" type="rotate"/></svg>'), null, 'no animation of any kind');
+});
+
+test('a reviewer only decides on the version they read', async () => {
+  const t = await start();
+  try {
+    const ana = await t.signUp('ana@example.com', 'Ana');
+    const mod = await t.signUp('mod@example.com', 'Mod');
+    const id = (await t.call('POST', '/api/studio/mine', { body: { data: complete(), code: GAME }, cookie: ana })).json.submission.id;
+    await t.call('POST', `/api/studio/mine/${id}/submit`, { cookie: ana });
+    const seen = (await t.call('GET', '/api/studio/review', { cookie: mod })).json.submissions[0].submittedAt;
+
+    // While the reviewer reads, the creator withdraws, swaps in a different game and sends it again.
+    await t.call('POST', `/api/studio/mine/${id}/withdraw`, { cookie: ana });
+    assert.strictEqual((await t.call('POST', `/api/studio/review/${id}`, { body: { decision: 'publish', submittedAt: seen }, cookie: mod })).status, 409, 'withdrawn: nothing to decide');
+    await new Promise((r) => setTimeout(r, 5));
+    await t.call('PUT', '/api/studio/mine/' + id, { body: { data: complete(), code: GAME.replace('Pause', 'Stop') }, cookie: ana });
+    await t.call('POST', `/api/studio/mine/${id}/submit`, { cookie: ana });
+    const stale = await t.call('POST', `/api/studio/review/${id}`, { body: { decision: 'publish', submittedAt: seen }, cookie: mod });
+    assert.strictEqual(stale.status, 409, 'the new version has to be looked at first');
+    assert.strictEqual((await t.call('GET', '/api/studio/published')).json.activities.length, 0);
+
+    const fresh = (await t.call('GET', '/api/studio/review', { cookie: mod })).json.submissions[0].submittedAt;
+    assert.notStrictEqual(fresh, seen);
+    assert.strictEqual((await t.call('POST', `/api/studio/review/${id}`, { body: { decision: 'publish', submittedAt: fresh }, cookie: mod })).status, 200);
+  } finally { await t.close(); }
+});
+
+test('the queue lists everything waiting before what is published, and drafts stay private', async () => {
+  const t = await start();
+  try {
+    const ana = await t.signUp('ana@example.com', 'Ana');
+    const mod = await t.signUp('mod@example.com', 'Mod');
+    const make = async () => (await t.call('POST', '/api/studio/mine', { body: { data: complete(), code: GAME }, cookie: ana })).json.submission.id;
+    const first = await make();
+    const { submittedAt } = (await t.call('POST', `/api/studio/mine/${first}/submit`, { cookie: ana })).json.submission;
+    await t.call('POST', `/api/studio/review/${first}`, { body: { decision: 'publish', submittedAt }, cookie: mod });
+    const second = await make();
+    await t.call('POST', `/api/studio/mine/${second}/submit`, { cookie: ana });
+    const draft = await make();
+
+    const queue = (await t.call('GET', '/api/studio/review', { cookie: mod })).json.submissions;
+    assert.deepStrictEqual(queue.map((s) => [s.id, s.status]), [[second, 'review'], [first, 'published']]);
+    assert.strictEqual((await t.call('GET', `/api/studio/review/${draft}/prototype`, { cookie: mod })).status, 404, "a reviewer can't open a draft");
+  } finally { await t.close(); }
+});
+
+test('a prototype near the limit saves whole with a mock-up, and one over it is turned away', async () => {
+  const t = await start();
+  try {
+    const ana = await t.signUp('ana@example.com', 'Ana');
+    // Quotes and tabs double in size as JSON, so this draft is well over 512 KB on the way in.
+    const code = ('<!doctype html><p title="' + '"\t'.repeat(160000)).slice(0, 300 * 1024 - 7) + '</html>';
+    const sketch = '<svg xmlns="http://www.w3.org/2000/svg">' + '<rect width="1" height="1" fill="#fff"/>'.repeat(3500) + '</svg>';
+    const made = await t.call('POST', '/api/studio/mine', { body: { data: complete({ sketch }), code }, cookie: ana });
+    assert.strictEqual(made.status, 201, JSON.stringify(made.json));
+    assert.strictEqual(made.json.submission.code, code, 'saved whole, not cut short');
+    assert.strictEqual(made.json.submission.data.sketch, sketch);
+
+    const over = await t.call('PUT', '/api/studio/mine/' + made.json.submission.id, { body: { data: complete(), code: code + ' ' + 'x' }, cookie: ana });
+    assert.strictEqual(over.status, 413);
+    assert.match(over.json.error, /over 300 KB/);
+    assert.strictEqual((await t.call('GET', '/api/studio/mine/' + made.json.submission.id, { cookie: ana })).json.submission.code, code, 'the saved version is untouched');
+  } finally { await t.close(); }
 });
 
 test('deleting an account deletes its submissions, published ones included', async () => {
@@ -293,8 +360,8 @@ test('deleting an account deletes its submissions, published ones included', asy
     const ana = await t.signUp('ana@example.com', 'Ana');
     const mod = await t.signUp('mod@example.com', 'Mod');
     const id = (await t.call('POST', '/api/studio/mine', { body: { data: complete(), code: GAME }, cookie: ana })).json.submission.id;
-    await t.call('POST', `/api/studio/mine/${id}/submit`, { cookie: ana });
-    await t.call('POST', `/api/studio/review/${id}`, { body: { decision: 'publish' }, cookie: mod });
+    const { submittedAt } = (await t.call('POST', `/api/studio/mine/${id}/submit`, { cookie: ana })).json.submission;
+    await t.call('POST', `/api/studio/review/${id}`, { body: { decision: 'publish', submittedAt }, cookie: mod });
     assert.strictEqual((await t.call('GET', '/api/studio/published')).json.activities.length, 1);
     assert.strictEqual((await t.call('DELETE', '/api/auth/me', { cookie: ana })).status, 204);
     assert.strictEqual((await t.call('GET', '/api/studio/published')).json.activities.length, 0);

@@ -37,6 +37,11 @@ const SANDBOX_CSP = [
 ].join('; ');
 
 const text = (value, max) => (typeof value === 'string' ? value.replace(/\r\n/g, '\n').trim().slice(0, max) : '');
+// The prototype is sent as "code" (the JSON reader drops a "prototype" key, see security.js). It's
+// never cut short: a game cut off part-way would break without saying why, so a file that is too
+// big is turned away instead.
+const prototypeOf = (body) => (body && typeof body.code === 'string' ? body.code.replace(/\r\n/g, '\n').trim() : '');
+const TOO_BIG = 'The prototype file is over 300 KB. Please make it smaller, or describe the activity in the written plan.';
 
 // Keeps only the fields the Studio knows, trimmed to their limits. Drafts can be incomplete;
 // completeness is checked on submit (missingFields).
@@ -219,9 +224,10 @@ function studioRouter({ db, isProd, moderators = [], limits = {}, fetchImpl = fe
   router.post('/mine', wrap(async (req, res) => {
     const u = await signedIn(req, res);
     if (!u) return;
+    const prototype = prototypeOf(req.body);
+    if (prototype.length > PROTOTYPE_MAX) return res.status(413).json({ error: TOO_BIG });
     const wait = createLimit.hit(u.id);
     if (wait) return tooMany(res, wait, "You've started a lot of activities today. Please continue one of your drafts.");
-    const prototype = text(req.body && req.body.code, PROTOTYPE_MAX); // sent as "code": the JSON reader drops a "prototype" key (security.js)
     const id = crypto.randomUUID();
     await db.query('INSERT INTO studio_submissions (id, user_id, data, prototype) VALUES ($1, $2, $3::jsonb, $4)', [id, u.id, JSON.stringify(cleanData(req.body && req.body.data)), prototype]);
     const { rows } = await db.query('SELECT * FROM studio_submissions WHERE id = $1', [id]);
@@ -241,7 +247,8 @@ function studioRouter({ db, isProd, moderators = [], limits = {}, fetchImpl = fe
     const row = await own(req, res, u);
     if (!row) return;
     if (!EDITABLE.includes(row.status)) return res.status(409).json({ error: row.status === 'published' ? 'Withdraw the activity before changing it. It will be reviewed again.' : "It's being reviewed, so it can't be changed right now." });
-    const prototype = text(req.body && req.body.code, PROTOTYPE_MAX);
+    const prototype = prototypeOf(req.body);
+    if (prototype.length > PROTOTYPE_MAX) return res.status(413).json({ error: TOO_BIG });
     await db.query('UPDATE studio_submissions SET data = $1::jsonb, prototype = $2, updated_at = now() WHERE id = $3', [JSON.stringify(cleanData(req.body && req.body.data)), prototype, row.id]);
     const { rows } = await db.query('SELECT * FROM studio_submissions WHERE id = $1', [row.id]);
     res.json({ submission: ownView(rows[0]) });
@@ -348,27 +355,36 @@ function studioRouter({ db, isProd, moderators = [], limits = {}, fetchImpl = fe
     return u;
   }
 
+  // Everything waiting (oldest first), then what's published (newest first), each with its own cap,
+  // so a long list of published activities never pushes new submissions out of the queue. The
+  // prototypes' code stays on the server: the page opens each one in the sandbox on request.
   router.get('/review', wrap(async (req, res) => {
     const u = await reviewer(req, res);
     if (!u) return;
-    const { rows } = await db.query(
-      `SELECT s.*, u.email AS account_email FROM studio_submissions s JOIN users u ON u.id = s.user_id
-        WHERE s.status IN ('review', 'published') ORDER BY s.submitted_at ASC LIMIT 200`
-    );
+    const columns = `s.id, s.user_id, s.status, s.data, s.checks, s.decision, s.created_at, s.updated_at, s.submitted_at,
+        s.published_at, s.prototype <> '' AS has_code, u.email AS account_email
+        FROM studio_submissions s JOIN users u ON u.id = s.user_id`;
+    const waiting = await db.query(`SELECT ${columns} WHERE s.status = 'review' ORDER BY s.submitted_at ASC LIMIT 200`);
+    const published = await db.query(`SELECT ${columns} WHERE s.status = 'published' ORDER BY s.published_at DESC LIMIT 200`);
     res.json({
-      submissions: rows.map((row) => ({
-        ...ownView(row),
-        checks: row.checks, // reviewers see the abstracts the advisory read was given
-        accountEmail: row.account_email, // helps confirm identity, e.g. an institution's address
-        own: row.user_id === u.id
-      }))
+      submissions: [...waiting.rows, ...published.rows].map((row) => {
+        const view = ownView(row);
+        delete view.code;
+        return {
+          ...view,
+          hasCode: row.has_code,
+          checks: row.checks, // reviewers see the abstracts the advisory read was given
+          accountEmail: row.account_email, // helps confirm identity, e.g. an institution's address
+          own: row.user_id === u.id
+        };
+      })
     });
   }));
 
   router.get('/review/:id/prototype', wrap(async (req, res) => {
     const u = await user(req);
     if (!isReviewer(u) || !validId(req.params.id)) return res.status(404).type('text/plain').send('Not found.');
-    const { rows } = await db.query('SELECT prototype FROM studio_submissions WHERE id = $1', [req.params.id]);
+    const { rows } = await db.query("SELECT prototype FROM studio_submissions WHERE id = $1 AND status IN ('review', 'published')", [req.params.id]); // drafts stay private
     if (!rows[0] || !rows[0].prototype) return res.status(404).type('text/plain').send('Not found.');
     sendSandboxed(res, rows[0].prototype);
   }));
@@ -386,12 +402,20 @@ function studioRouter({ db, isProd, moderators = [], limits = {}, fetchImpl = fe
     const allowed = row.status === 'review' ? ['publish', 'changes', 'reject'] : row.status === 'published' ? ['unpublish'] : [];
     if (!allowed.includes(decision)) return res.status(409).json({ error: "That decision doesn't apply to this submission now." });
     if (decision !== 'publish' && note.length < 5) return res.status(400).json({ error: 'Add a note so the creator knows why.' });
+    // The decision is about the version the reviewer read. If the creator has withdrawn and sent it
+    // again since, the reviewer has to look at the new one first.
+    const seen = Date.parse(req.body && req.body.submittedAt);
+    if (!row.submitted_at || seen !== new Date(row.submitted_at).getTime()) {
+      return res.status(409).json({ error: 'This submission has changed since you opened the queue. Please look at the new version.' });
+    }
     const status = { publish: 'published', changes: 'changes', reject: 'rejected', unpublish: 'changes' }[decision];
-    await db.query(
+    // Only if nothing has moved it on in the meantime (a withdrawal, or another reviewer).
+    const updated = await db.query(
       `UPDATE studio_submissions SET status = $1, decision = $2::jsonb, updated_at = now(),
-              published_at = CASE WHEN $1 = 'published' THEN now() ELSE NULL END WHERE id = $3`,
-      [status, JSON.stringify({ decision, note, at: new Date().toISOString(), by: u.id }), row.id]
+              published_at = CASE WHEN $1 = 'published' THEN now() ELSE NULL END WHERE id = $3 AND status = $4`,
+      [status, JSON.stringify({ decision, note, at: new Date().toISOString(), by: u.id }), row.id, row.status]
     );
+    if (updated.rowCount !== 1) return res.status(409).json({ error: 'This submission has changed since you opened the queue. Please look at the new version.' });
     await audit(db, req, 'studio_decision', { userId: u.id, detail: { id: row.id, decision } });
     res.json({ ok: true, status });
   }));

@@ -8,11 +8,11 @@ const { createApp } = require('../app');
 const { inlineScriptHashes } = require('../security');
 const { shortIp } = require('../audit');
 
-async function start({ isProd = false } = {}) {
+async function start({ isProd = false, limits } = {}) {
   const { Pool } = newDb().adapters.createPg();
   const db = new Pool();
   await migrate(db);
-  const app = createApp({ db, isProd });
+  const app = createApp({ db, isProd, limits });
   const server = await new Promise((resolve) => { const s = app.listen(0, () => resolve(s)); });
   const base = `http://127.0.0.1:${server.address().port}`;
   const call = async (method, p, { body, raw, cookie, extra } = {}) => {
@@ -71,6 +71,18 @@ test('sign-ins, failures and deletions go to the audit log, with shortened IPs',
     assert.ok(rows.every((r) => !r.ip || /\.0$|::$/.test(r.ip)), 'IPs are shortened');
     assert.strictEqual(shortIp('203.0.113.45'), '203.0.113.0');
     assert.strictEqual(shortIp('2001:db8:1:2::5'), '2001:db8:1::');
+  } finally { await t.close(); }
+});
+
+test('hitting the overall API limit is logged once per window, not on every request', async () => {
+  const t = await start({ limits: { api: { limit: 2 } } });
+  try {
+    const statuses = [];
+    for (let i = 0; i < 6; i++) statuses.push((await t.call('GET', '/api/health')).status);
+    assert.deepStrictEqual(statuses, [200, 200, 429, 429, 429, 429]);
+    await new Promise((r) => setTimeout(r, 20)); // the log is written without holding up the reply
+    const logged = await t.db.query("SELECT count(*)::int AS n FROM audit_log WHERE event = 'api_rate_limited'");
+    assert.strictEqual(logged.rows[0].n, 1);
   } finally { await t.close(); }
 });
 

@@ -14,7 +14,7 @@ Open `account/index.html` (or `/account/` once deployed). The home page links to
 
 A small, explainable learning model that runs in the browser:
 
-- **Features** come from the answers (ranked symptoms weigh the most), plus app context: community topics from the forum (`Forum.store.topicSignals`, counts only), the person's own forum posts if they turn that on, and their play history.
+- **Features** come from the answers (ranked symptoms weigh the most), plus app context: community topics from the forum (`Forum.store.topicSignals`, counts only), the person's own forum posts if they turn that on (on the live site, the forum shares the account's sign-in), and their play history.
 - **Each game has a linear model.** Starting weights are hand-set from what each answer means, e.g. "trouble finding words" → Story Echo, hand numbness or platinum/taxane/vinca chemo → Finger Rhythm, low energy → away from longer games.
 - **It learns per person** with online logistic regression: playing a game is a positive example, "Not for me" a negative one (and hides that game for 7 days). Learned weights are bounded and slowly decay back toward the starting weights.
 - **The top 3 are kept varied,** so it doesn't suggest three memory games.
@@ -38,4 +38,3 @@ A small, explainable learning model that runs in the browser:
 - **Sign-in and saved answers** use the account server (`server/`, Postgres on Railway). Questionnaire answers, the personal model and level progress are stored per account in the `profiles` table, so they follow people across devices. They include health information, so review who can access the database and how long data is kept.
 - **Clinical review** of the questions and starting weights. The concept brief says not to ask for detailed treatment history "unless a clear, reviewed need exists"; Part 1 does ask, so it needs that review.
 - **Under-13 users** need a parental-consent plan (for example COPPA in the US) before real accounts.
-- **Linking accounts to the forum.** "Use my own forum posts" reads the forum's current demo account until real accounts connect the two.

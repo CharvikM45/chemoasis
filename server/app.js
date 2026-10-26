@@ -26,11 +26,13 @@ function createApp({ db, isProd = false, allowedOrigins = [], moderators = [], d
   app.use(compression()); // the 3D library alone is 675 KB; compressed it's about a quarter of that
 
   // An overall limit on API calls per IP, on top of the stricter sign-in and posting limits.
-  const apiLimit = createLimiter({ limit: 600, windowMs: 5 * 60 * 1000, ...(limits && limits.api) });
+  const apiLimitOptions = { limit: 600, windowMs: 5 * 60 * 1000, ...(limits && limits.api) };
+  const apiLimit = createLimiter(apiLimitOptions);
+  const apiLimitLogged = createLimiter({ ...apiLimitOptions, limit: 1 }); // one log line per IP per window
   app.use('/api', (req, res, next) => {
     const wait = apiLimit.hit(req.ip);
     if (!wait) return next();
-    if (apiLimit.hit(req.ip + ':logged') === 0) audit(db, req, 'api_rate_limited'); // once per window per IP
+    if (apiLimitLogged.hit(req.ip) === 0) audit(db, req, 'api_rate_limited');
     res.set('Retry-After', String(wait));
     res.status(429).json({ error: 'Too many requests. Please wait a few minutes and try again.' });
   });
@@ -57,7 +59,9 @@ function createApp({ db, isProd = false, allowedOrigins = [], moderators = [], d
 
   app.use('/api/profile', express.json({ limit: '128kb', reviver: safeJsonReviver })); // answers + play history (up to 96 KB, see profile.js) are bigger than a sign-in
   app.use('/api/forum', express.json({ limit: '32kb', reviver: safeJsonReviver })); // a 5,000-character post in another script can pass 10 KB
-  app.use('/api/studio', express.json({ limit: '512kb', reviver: safeJsonReviver })); // a submission carries its game's code (up to 300 KB)
+  // A draft carries its game's code (up to 300 KB) and a mock-up (up to 150 KB), and JSON escaping
+  // makes both bigger on the way in, so this is well over their sum.
+  app.use('/api/studio', express.json({ limit: '1mb', reviver: safeJsonReviver }));
   app.use('/api', express.json({ limit: '10kb', reviver: safeJsonReviver }));
 
   app.get('/api/health', async (req, res) => {
