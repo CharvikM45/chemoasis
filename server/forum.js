@@ -14,6 +14,7 @@ const express = require('express');
 const sessions = require('./sessions');
 const { createLimiter } = require('./rate-limit');
 const { audit } = require('./audit');
+const { alerts } = require('./alerts');
 
 const FORUM_JS = path.join(__dirname, '..', 'forum', 'assets', 'js');
 
@@ -65,9 +66,11 @@ function emptyForum(Forum) {
 }
 
 // One line in the server log (Railway keeps these) when a post may come from someone who needs
-// support, so the team can set up an alert on it. It names the post only, never its words or author.
+// support, and a message to the team's chat if ALERT_WEBHOOK_URL is set (alerts.js). It names the
+// post only, never its words or author.
 function supportAlert(postId) {
   console.error(JSON.stringify({ type: 'safety', level: 'alert', at: new Date().toISOString(), event: 'support_needed', postId: String(postId).slice(0, 40) }));
+  alerts.send('support_needed', { postId });
 }
 
 function forumRouter({ db, isProd, moderators = [], limits = {} }) {

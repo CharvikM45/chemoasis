@@ -126,7 +126,11 @@ test("everyday ways of saying it are caught, and ordinary chemo talk is not", (F
     "I want to disappear forever",
     "I'm going to stop my chemo and let it happen",
     "I want it all to stop",
-    "I don't see the point anymore"
+    "I don't see the point anymore",
+    // "like this" and "anymore" together (missed before, found in the site sweep, 2026-10-26).
+    "Honestly I can't go on like this anymore.",
+    "I can't keep going like this any more",
+    "I don't want to go on like this anymore!"
   ];
   for (const body of phrases) {
     const result = F.safety.review({ body });

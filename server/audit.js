@@ -1,7 +1,9 @@
 // Security audit log and monitoring.
 //   audit(db, req, event, { userId, detail }): stores the event and writes one JSON line to the
 //   server log (Railway keeps these). Repeated failed sign-ins from one address also log an alert.
+//   Alerts also go to the team's chat when ALERT_WEBHOOK_URL is set (alerts.js).
 // Never logs passwords, tokens or questionnaire answers.
+const { alerts } = require('./alerts');
 
 const FAIL_WINDOW_MS = 15 * 60 * 1000;
 const FAIL_ALERT_AT = 20;
@@ -17,7 +19,7 @@ function shortIp(ip) {
 
 function log(level, fields) {
   const line = JSON.stringify({ type: 'security', level, at: new Date().toISOString(), ...fields });
-  if (level === 'alert') console.error(line); else console.log(line);
+  if (level === 'alert') { console.error(line); alerts.send(fields.event); } else console.log(line);
 }
 
 async function audit(db, req, event, { userId = null, detail = null } = {}) {

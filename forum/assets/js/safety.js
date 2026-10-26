@@ -42,7 +42,7 @@ Forum.safety = (function () {
         // Everyday ways of saying it that the lines above miss (re-audit, 2026-10-26).
         /\b(wanna|ready to|wish i could|wish i would) die\b/i,
         /\b(want(ed|ing)? to|wanna|going to|gonna|ready to|plan(ning)? to|think(ing)? (about|of)) end(ing)? (it|things|everything)( all)?\s*([.!?,;]|$)/im,
-        /\b(do ?n['’]?t|do not|can['’]?t|can ?not|could ?n['’]?t) (want to )?(go on|keep going)( like this| anymore| any more)?\s*([.!?,;]|$)/im,
+        /\b(do ?n['’]?t|do not|can['’]?t|can ?not|could ?n['’]?t) (want to )?(go on|keep going)( like this)?( anymore| any more)?\s*([.!?,;]|$)/im,
         /\bbetter off (if|when|once) i (was|were|wasn['’]?t|weren['’]?t|am|died|die|was gone|were gone)\b/i,
         /\b(wish|want|hope|pray|think(ing)? about)\b[^.!?\n]{0,20}(\bnot|\bnever|n['’]?t) (to )?wak(e|ing) up\b/i,
         /\bsleep and (not|never) wake up\b/i,
