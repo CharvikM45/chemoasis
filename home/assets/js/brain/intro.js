@@ -208,6 +208,8 @@ const uniforms = {
   uFeatureDetail: { value: 0 }, // 1 = the featured piece is drawn by its own fine-detail copy
   uFeaturePos: { value: new THREE.Vector3(0, 0, -4) },
   uFeatureScale: { value: 4 },
+  uFlip: { value: 0 }, // the piece in front turning edge-on, to hand over to the flat piece (radians)
+  uFeatureHide: { value: 0 }, // 1 = the flat piece has taken over: don't draw the 3D one
   uSway: { value: new THREE.Vector2(0, 0) }, // how the piece in front is tilted (about the screen's x and y axes)
   // Where pieces fade into the background, in canvas pixels: right edge of the text column, the
   // top bar's lower edge (counted from the bottom), and the width of the soft edge.
@@ -424,7 +426,7 @@ function addMesh(m) {
       uniform float uAssemble; uniform float uTime; uniform sampler2D uShards;
       uniform float uFeature; uniform float uFeatureT; uniform vec3 uFeaturePos; uniform float uFeatureScale;
       uniform float uHero; uniform vec4 uWall; uniform vec2 uBlocks; uniform vec2 uView;
-      uniform vec2 uSway;
+      uniform vec2 uSway; uniform float uFlip;
       varying float vLoose; varying float vSnap; varying vec3 vRest; varying float vShard; varying float vAO; varying float vFeature;
       varying float vDim; varying float vWall; varying vec2 vWallXY; varying float vTop;
       vec3 rotY(vec3 v, float a) { float c = cos(a), s = sin(a); return vec3(c * v.x + s * v.z, v.y, -s * v.x + c * v.z); }
@@ -504,7 +506,7 @@ function addMesh(m) {
           vec3 up = rotAxis(normalize(normalMatrix * sE.xyz), faceDir, faceTurn);
           roll = atan(up.x, up.y);
           vec3 shown = rotAxis(rotAxis(vNormal, faceDir, faceTurn * feature), vec3(0.0, 0.0, 1.0), roll * feature);
-          shown = rotAxis(rotAxis(shown, vec3(1.0, 0.0, 0.0), uSway.x * feature), vec3(0.0, 1.0, 0.0), uSway.y * feature);
+          shown = rotAxis(rotAxis(shown, vec3(1.0, 0.0, 0.0), uSway.x * feature), vec3(0.0, 1.0, 0.0), uSway.y * feature + uFlip * step(0.001, feature));
           vNormal = normalize(vec3(shown.xy, shown.z / squash));
         }`)
       .replace('#include <project_vertex>', `#include <project_vertex>
@@ -526,7 +528,7 @@ function addMesh(m) {
           // (From the wall, where it lies flat, it also takes its brain shape on the way.)
           vec3 localView = mix(placed - startCenter, placedBrain - centerView, feature);
           localView = rotAxis(rotAxis(localView, faceDir, faceTurn * feature), vec3(0.0, 0.0, 1.0), roll * feature);
-          localView = rotAxis(rotAxis(localView, vec3(1.0, 0.0, 0.0), uSway.x * feature), vec3(0.0, 1.0, 0.0), uSway.y * feature);
+          localView = rotAxis(rotAxis(localView, vec3(1.0, 0.0, 0.0), uSway.x * feature), vec3(0.0, 1.0, 0.0), uSway.y * feature + uFlip);
           localView.z *= squash;
           vec3 middle = mix(startCenter, uFeaturePos, feature) + vec3(0.0, 0.15, 0.1) * sin(3.14159 * feature);
           placed = middle + localView * mix(1.0, uFeatureScale, feature);
@@ -539,7 +541,7 @@ function addMesh(m) {
       varying float vWall; varying vec2 vWallXY; varying float vTop;
       uniform vec3 uFade; uniform float uSeams;
       uniform sampler2D uSky; uniform vec2 uView;
-      uniform float uFeature; uniform float uFeatureDetail;
+      uniform float uFeature; uniform float uFeatureDetail; uniform float uFeatureHide;
       ${PUZZLE_SPACE}
       ${PUZZLE_GLSL}
       ` + shader.fragmentShader
@@ -549,9 +551,9 @@ function addMesh(m) {
         float inWall = 0.0, line = 0.0;
         vec3 wallInk = vec3(0.0);
         #ifdef DETAIL
-          if (uFeatureDetail < 0.5 || abs(vShard - uFeature) > 0.5) discard;
+          if (uFeatureDetail < 0.5 || uFeatureHide > 0.5 || abs(vShard - uFeature) > 0.5) discard;
         #else
-          if (uFeatureDetail > 0.5 && abs(vShard - uFeature) < 0.5) discard;
+          if ((uFeatureDetail > 0.5 || uFeatureHide > 0.5) && abs(vShard - uFeature) < 0.5) discard;
           if (vWall > 0.999) discard; // still standing in the wall, which the flat sheet draws
           // Keep only the part of this copy that is really inside its piece: exact jigsaw outlines.
           inWall = smoothstep(0.9, 1.0, vWall); // only just letting go of the wall
@@ -805,8 +807,8 @@ function assembleAt(y) {
 //
 // The shape: a square of 100 units with a tab (out) or a blank (in) on each side, drawn in the
 // jigsaw's own curve. Each section's piece has its blank on a different side.
-const PIECE_EDGES = [[1, 1, -1, 1], [-1, 1, 1, 1], [1, 1, 1, -1]]; // top, right, bottom, left
-const PIECE_VIEW = 148, PIECE_PAD = 24, PIECE_DIP = 22; // viewBox size, room for the tabs, how far a tab or blank reaches
+const PIECE_EDGES = [[1, 1, -1, 1], [-1, 1, 1, 1], [-1, 1, -1, 1]]; // top, right, bottom, left (blanks only top or bottom, so the words stay wide)
+const PIECE_VIEW = 148, PIECE_PAD = 24, PIECE_DIP = 19; // viewBox size, room for the tabs, how far a tab or blank reaches
 function piecePath(edges) {
   // One edge, from (0,0) to (100,0), its tab in -y: the curve leaves the line, narrows into a
   // neck and swells into a round head.
@@ -861,18 +863,16 @@ function shapeCard(index) {
   cardShapes.forEach((shape) => shape.setAttribute('d', d));
   cardWords.textContent = sections[index].quote;
 }
-// The words' box: the square body with a margin, less the side the blank bites into, in piece
-// units; then the largest type whose lines all fit in it. Measured once per section and width.
+// The words' box: the square body with a margin, kept centered on it, and pulled in from both
+// sides wherever a blank bites in, so the words never run into it. In piece units; then the
+// largest type whose lines all fit in it. Measured once per section and width.
 function fitWords(index, unit) {
-  if (cardFits[index] && cardFits[index].unit === unit) return cardFits[index];
-  const edges = PIECE_EDGES[index % PIECE_EDGES.length], m = 9;
-  const box = { x: m, y: m, w: 100 - 2 * m, h: 100 - 2 * m };
-  if (edges[0] < 0) { box.y += PIECE_DIP; box.h -= PIECE_DIP; }
-  if (edges[2] < 0) box.h -= PIECE_DIP;
-  if (edges[3] < 0) { box.x += PIECE_DIP; box.w -= PIECE_DIP; }
-  if (edges[1] < 0) box.w -= PIECE_DIP;
-  const fit = { unit, left: (box.x + PIECE_PAD) * unit, top: (box.y + PIECE_PAD) * unit, w: box.w * unit, h: box.h * unit, size: 16 };
   shapeCard(index);
+  if (cardFits[index] && cardFits[index].unit === unit) return cardFits[index];
+  const edges = PIECE_EDGES[index % PIECE_EDGES.length], m = 7;
+  const dx = edges[1] < 0 || edges[3] < 0 ? PIECE_DIP : 0, dy = edges[0] < 0 || edges[2] < 0 ? PIECE_DIP : 0;
+  const box = { x: m + dx, y: m + dy, w: 100 - 2 * (m + dx), h: 100 - 2 * (m + dy) };
+  const fit = { unit, left: (box.x + PIECE_PAD) * unit, top: (box.y + PIECE_PAD) * unit, w: box.w * unit, h: box.h * unit, size: 16 };
   cardWords.style.width = `${Math.floor(fit.w)}px`;
   cardWords.style.height = 'auto';
   for (let size = 26; size >= 16; size -= 0.5) {
@@ -929,8 +929,10 @@ function featureAt(y, current) {
   const middle = y + innerHeight * 0.5;
   for (let i = 0; i < sections.length; i++) {
     const s = sections[i], at = (middle - s.top) / s.height;
-    // A little wider for the piece already out, so it doesn't flicker at the edges.
-    const [from, to] = i === current ? [-0.12, 0.95] : [-0.06, 0.9];
+    // Out once the section is well under way, back well before the next one, so there's a stretch
+    // between pieces to watch the brain build. A little wider for the piece already out, so it
+    // doesn't flicker at the edges.
+    const [from, to] = i === current ? [0.1, 0.75] : [0.15, 0.7];
     if (at >= from && at < to) return i;
   }
   return -1;
@@ -1021,11 +1023,11 @@ function frame(now) {
   // One piece out at a time: the old one goes back before the next one comes out.
   const want = still || !featured.length ? -1 : featureAt(y, featIndex);
   if (want !== featIndex) {
-    featT = Math.max(0, featT - dt / 0.7);
+    featT = Math.max(0, featT - dt / 1.0);
     if (featT === 0) featIndex = want;
   }
   const pick = featIndex >= 0 && fontsReady && sections[featIndex] ? pickFor(featIndex) : null;
-  if (want === featIndex && pick) featT = Math.min(1, featT + dt / 1.1);
+  if (want === featIndex && pick) featT = Math.min(1, featT + dt / 1.6);
   // Choose the other sections' pieces ahead of time, one per quiet frame, so their fine copies are
   // ready and choosing never stalls a piece on its way out.
   if (finished && fontsReady && featT === 0) {
@@ -1037,8 +1039,10 @@ function frame(now) {
   uniforms.uFeatureDetail.value = pick && featT > 0 && detailReady.has(pick.piece) ? 1 : 0;
   // The piece in front tilts a little, sways slowly and leans toward the pointer, so its edges
   // and the light on it keep moving: that is what makes it read as a solid thing.
-  const swayX = SWAY_BASE[0] + 0.03 * Math.sin(t * 0.9) + 0.12 * pointer.y;
-  const swayY = SWAY_BASE[1] + 0.04 * Math.sin(t * 0.7 + 1.0) - 0.16 * pointer.x;
+  // It settles square to the screen as it turns to hand over to the flat piece (see below).
+  const turn = width >= 900 ? smooth(0.68, 0.84, featT) : 0; // phones have no room for the words
+  const swayX = (SWAY_BASE[0] + 0.03 * Math.sin(t * 0.9) + 0.12 * pointer.y) * (1 - turn);
+  const swayY = (SWAY_BASE[1] + 0.04 * Math.sin(t * 0.7 + 1.0) - 0.16 * pointer.x) * (1 - turn);
   uniforms.uSway.value.set(swayX, swayY);
   shadow.visible = !!pick && featT > 0;
   if (pick) {
@@ -1049,12 +1053,13 @@ function frame(now) {
     camera.localToWorld(shadow.position);
     const size = at.body * 2.1 * worldPerPixel * (1 + 0.12 * depth);
     shadow.scale.set(size, size * 0.9, 1);
-    // Once the 3D piece has settled in front, the flat piece with the words fades in over it (and
-    // the 3D piece draws in a little under it, so none of it shows past the flat one's edges);
-    // on the way back the flat piece fades first, then the 3D piece goes.
-    const flat = width >= 900 ? smooth(0.72, 1, featT) : 0; // phones have no room for the words
-    uniforms.uFeatureScale.value *= 1 - 0.5 * flat;
-    shadow.material.opacity = 0.6 * smooth(0.35, 1, featT) * (1 - flat);
+    // The handover to the flat piece with the words: the 3D piece turns edge-on, and the flat
+    // piece carries on the same turn from edge-on to facing you, like one piece turning over. On
+    // the way back it runs in reverse. Both are the same size and in the same place.
+    const flat = width >= 900 ? smooth(0.84, 1, featT) : 0;
+    uniforms.uFlip.value = turn * Math.PI / 2;
+    uniforms.uFeatureHide.value = featT >= 0.84 && width >= 900 ? 1 : 0;
+    shadow.material.opacity = 0.6 * smooth(0.35, 1, featT) * (1 - turn);
     if (flat > 0) {
       const wide = Math.round(clamp(at.body * 1.3, 300, 430)), unit = wide / PIECE_VIEW;
       const fit = fitWords(featIndex, unit);
@@ -1065,17 +1070,20 @@ function frame(now) {
       cardWords.style.height = `${Math.floor(fit.h)}px`;
       cardWords.style.fontSize = `${fit.size}px`;
       const lift = 4 * Math.sin(t * 0.8); // floating gently
-      card.style.opacity = String(flat);
-      card.style.transform = `translate(${(at.sx - wide / 2).toFixed(1)}px, ${(at.sy - wide / 2 + lift).toFixed(1)}px) scale(${(0.94 + 0.06 * flat).toFixed(3)})`;
-      backdrop.style.opacity = String(flat);
+      const focal = (0.5 * height) / tanHalf; // the camera's own perspective
+      card.style.opacity = String(smooth(0, 0.12, flat));
+      card.style.transform = `translate(${(at.sx - wide / 2).toFixed(1)}px, ${(at.sy - wide / 2 + lift * flat).toFixed(1)}px) perspective(${focal.toFixed(0)}px) rotateY(${(-90 * (1 - flat)).toFixed(2)}deg)`;
+      backdrop.style.opacity = String(smooth(0.55, 1, featT));
       backdrop.style.setProperty('--x', `${at.sx.toFixed(0)}px`);
       backdrop.style.setProperty('--y', `${at.sy.toFixed(0)}px`);
       backdrop.style.setProperty('--r', `${Math.round(wide * 0.95)}px`);
     } else {
-      card.style.opacity = backdrop.style.opacity = '0';
+      card.style.opacity = '0';
+      backdrop.style.opacity = String(width >= 900 ? smooth(0.55, 1, featT) : 0);
     }
   } else {
     card.style.opacity = backdrop.style.opacity = '0';
+    uniforms.uFlip.value = uniforms.uFeatureHide.value = 0;
   }
 
   canvas.style.opacity = String(appear);
