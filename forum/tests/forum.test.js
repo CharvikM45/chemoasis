@@ -111,6 +111,49 @@ test("more ways people say they want to die are caught too", (F) => {
   }
 });
 
+test("everyday ways of saying it are caught, and ordinary chemo talk is not", (F) => {
+  const phrases = [
+    "i wanna die",
+    "I want to end it.",
+    "Been thinking of ending things",
+    "I don't want to go on.",
+    "Everyone would be better off if I wasn't here",
+    "I'm saving up my pills",
+    "I wish I wouldn't wake up",
+    "I've been thinking about not waking up",
+    "I'm done fighting",
+    "I can't do this anymore",
+    "I want to disappear forever",
+    "I'm going to stop my chemo and let it happen",
+    "I want it all to stop",
+    "I don't see the point anymore"
+  ];
+  for (const body of phrases) {
+    const result = F.safety.review({ body });
+    assert(result.alert && result.notes.some((n) => /988/.test(n.message)), "missed: " + body);
+  }
+  for (const body of [
+    "I didn't wake up until noon.",
+    "I can't go on the trip this year.",
+    "I can't keep going to the gym like before, so I walk.",
+    "I want to keep going.",
+    "I am done with chemo!",
+    "I want the nausea to stop.",
+    "I collect my pills from the pharmacy on Mondays."
+  ]) {
+    assert(!F.safety.review({ body }).alert, "false alarm: " + body);
+  }
+});
+
+test("advice to skip a cycle or stop prescribed medicine is held, a personal story is not", (F) => {
+  for (const body of ["Just skip your next cycle, it's fine.", "You can stop taking your anti-nausea meds once you feel better.", "Don't take your steroids, they're poison."]) {
+    assert(F.safety.review({ body }).hold, "should hold: " + body);
+  }
+  for (const body of ["We had to delay my next cycle because my counts were low.", "I had to stop my steroids after cycle 3 and my doctor adjusted it."]) {
+    assert(!F.safety.review({ body }).hold, "should not hold: " + body);
+  }
+});
+
 test("a claim that something cures is held, but talking about a cure is not", (F) => {
   for (const body of ["This game cured my brain fog.", "Starling cures chemo brain.", "This will cure your neuropathy.", "Turmeric is a cure for cancer."]) {
     assert(F.safety.review({ body }).hold, "should hold: " + body);
@@ -122,10 +165,10 @@ test("a claim that something cures is held, but talking about a cure is not", (F
 
 test("a fever or a temperature of 100.4°F / 38°C shows the chemo fever warning", (F) => {
   const fever = (body) => F.safety.review({ body }).notes.some((n) => n.id === "fever");
-  for (const body of ["I've had a fever since last night", "My temp was 100.6 this morning", "38.4 C after my infusion", "It hit 101°F"]) {
+  for (const body of ["I've had a fever since last night", "My temp was 100.6 this morning", "38.4 C after my infusion", "It hit 101°F", "I'm running a temperature after chemo", "Spiked a temp last night"]) {
     assert(fever(body), "missed: " + body);
   }
-  for (const body of ["I slept 100 hours this week", "I reached level 38!", "My temperature was 98.6", "Normal temp, 37.2 C"]) {
+  for (const body of ["I slept 100 hours this week", "I reached level 38!", "My temperature was 98.6", "Normal temp, 37.2 C", "I have a temperature of 98.6 today"]) {
     assert(!fever(body), "false alarm: " + body);
   }
 });
@@ -180,6 +223,21 @@ test("search also looks at replies", async (F) => {
 
 test("members can't pick a name that sounds like a role", async (F) => {
   await rejects(F.store.updateMyProfile({ displayName: "Nurse Kim" }), "doesn't sound like a role");
+});
+
+test("punctuation and look-alike spellings can't slip a staff or clinician name through", async (F) => {
+  for (const name of ["Moderator_Team", "Chemoasis_Support", "Oncologist Sam", "RN Kim", "Dr.Kim", "Mod-Squad"]) {
+    await rejects(F.store.updateMyProfile({ displayName: name }), "doesn't sound like a role");
+  }
+  for (const name of ["Former  member", "Formermember", "Member_4821"]) {
+    await rejects(F.store.updateMyProfile({ displayName: name }), "gives out itself");
+  }
+});
+
+test("two members can't share a display name", async (F) => {
+  await addPerson(F, { id: "real-member", displayName: "Maya", type: "member" });
+  await rejects(F.store.updateMyProfile({ displayName: "MAYA" }), "already uses that name");
+  await rejects(F.store.updateMyProfile({ displayName: "Ma-ya" }), "already uses that name");
 });
 
 test("members can't take a name the forum gives out, but can keep their own", async (F) => {

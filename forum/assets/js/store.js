@@ -278,16 +278,30 @@ Forum.store = (function () {
       const user = me(data);
       if (!user) return fail("Please sign in first.");
       if (patch.displayName !== undefined) {
-        const name = String(patch.displayName).trim();
+        const name = String(patch.displayName).trim().replace(/\s+/g, " ");
         if (name.length < 2 || name.length > 40) return fail("Display names need 2 to 40 characters.");
-        // Names that could pass for staff, a badge or an anonymous post would mislead readers.
-        if ((user.type === "member" || user.type === "creator") && /\b(anonymous|moderator|mod|admin|chemoasis|verified|official|staff|nurse|doctor|dr)\b/i.test(name)) {
+        // Checked with symbols turned into spaces ("Moderator_Team") and with everything squashed
+        // together ("Formermember"), so punctuation can't slip a name past these checks.
+        const spaced = name.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+        const squashed = spaced.replace(/ /g, "");
+        // Names that could pass for staff, a clinician, a badge or an anonymous post would mislead readers.
+        const changed = name !== user.displayName;
+        if (
+          changed &&
+          (user.type === "member" || user.type === "creator") &&
+          (/\b(anonymous|moderators?|mods?|admins?|administrator|chemoasis|verified|official|staff|support|nurse|rn|lpn|np|doctor|dr|md|oncologist|physician|pharmacist|therapist|clinician)\b/.test(spaced) ||
+            /moderator|chemoasis|official|verified|anonymous|oncologist/.test(squashed))
+        ) {
           return fail("Please pick a name that doesn't sound like a role, a badge or the app itself.");
         }
         // Names the forum hands out itself (the neutral "Member 4821", a deleted account's
         // "Former member", the demo's "(example)" people) would let someone pass as another person.
-        if (name !== user.displayName && /^member\s*#?\d+$|\bformer member\b|\bexample\b/i.test(name)) {
+        if (changed && (/^member ?\d+$|\bexample\b/.test(spaced) || squashed.includes("formermember"))) {
           return fail("That name looks like one the forum gives out itself. Please pick another.");
+        }
+        // Two people with the same name would be easy to mix up, or to pose as each other.
+        if (changed && data.profiles.some((p) => p.id !== user.id && String(p.displayName || "").toLowerCase().replace(/[^a-z0-9]+/g, "") === squashed)) {
+          return fail("Someone in the community already uses that name. Please pick another.");
         }
         user.displayName = name;
       }

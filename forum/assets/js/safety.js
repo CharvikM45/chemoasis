@@ -30,7 +30,6 @@ Forum.safety = (function () {
         /\bbetter off (dead|without me)\b/i,
         /\bno reason to (live|go on|keep going)\b/i,
         /\bnot worth living\b/i,
-        /\bcan['’]?t go on\b/i,
         /\bdon['’]?t want to (be here|live|wake up)/i,
         /\boverdos(e|ed|ing)\b/i,
         /\btak(e|ing) my (own )?life\b/i,
@@ -39,7 +38,22 @@ Forum.safety = (function () {
         /\bun-?aliv(e|ing) myself\b/i,
         /\bkms\b/i,
         /\b(rather|better) be dead\b/i,
-        /\bwant(ed|ing)? (it all|everything|my life|it) to (all )?end\b/i
+        /\bwant(ed|ing)? (it all|everything|my life|it) to (all )?end\b/i,
+        // Everyday ways of saying it that the lines above miss (re-audit, 2026-10-26).
+        /\b(wanna|ready to|wish i could|wish i would) die\b/i,
+        /\b(want(ed|ing)? to|wanna|going to|gonna|ready to|plan(ning)? to|think(ing)? (about|of)) end(ing)? (it|things|everything)( all)?\s*([.!?,;]|$)/im,
+        /\b(do ?n['’]?t|do not|can['’]?t) (want to )?(go on|keep going)( like this| anymore| any more)?\s*([.!?,;]|$)/im,
+        /\bbetter off (if|when|once) i (was|were|wasn['’]?t|weren['’]?t|am|died|die|was gone|were gone)\b/i,
+        /\b(wish|want|hope|pray|think(ing)? about)\b[^.!?\n]{0,20}(\bnot|\bnever|n['’]?t) (to )?wak(e|ing) up\b/i,
+        /\bsleep and (not|never) wake up\b/i,
+        /\b(sav(e|ing)|stockpil(e|ing)|hoard(ing)?) (up )?(all )?(my |of my )?(pills|meds|medication|medicine|tablets)\b/i,
+        /\b(take|taking|swallow(ing)?) all (of )?my (pills|meds|medication|tablets)\b/i,
+        /\b(i['’]?m|i am) done (fighting|living|with life|with everything)\b/i,
+        /\bwant(ed|ing)? (it all|everything) to (just )?stop\b/i,
+        /\b(do ?n['’]?t|can['’]?t) see the point (anymore|any more|in (anything|living|life|going on))\b/i,
+        /\bdisappear (forever|for good|permanently)\b/i,
+        /\bcan['’]?t do this any ?more\b/i,
+        /\blet (it|death|the cancer|nature) (just )?(happen|take me|win|take its course)\b/i
       ],
       level: "support",
       alert: true,
@@ -69,7 +83,10 @@ Forum.safety = (function () {
         /\b(cured|cures) (my|your|his|her|their|our|the|it|chemo|neuropathy|brain fog|cancer)\b/i,
         /\b(will|can|could|would|helps?|this|that) cure\b/i,
         /\b(is|was|are|it['’]?s) (a|the|my) (natural |real )?cure (for|of)\b/i,
-        /\bstop (taking |going to |seeing )?(your |my |the )?(chemo|chemotherapy|medication|meds|treatment|doctor|oncologist)/i,
+        /\b(stop|quit|ditch) (taking |going to |seeing )?(your |my |the )?([\w'’-]+ ){0,2}?(chemo|chemotherapy|medications?|meds|treatment|doctor|oncologist)/i,
+        /\b(do ?n['’]?t|no need to|never) (take|bother taking) (your|the) ([\w'’-]+ ){0,2}?(medications?|meds|pills|steroids)/i,
+        // Advice to someone else ("your"), not a story about one's own schedule ("I had to delay my cycle").
+        /\b(skip|skipping|delay|delaying|postpone|cancel|push back) (your|their) (next )?(chemo |infusion )?(cycles?|doses?|infusions?|rounds?|treatments?)\b/i,
         /instead of (chemo|chemotherapy|treatment|your doctor|your oncologist|medication)/i,
         /\b(guaranteed|proven) to (heal|fix|cure|reverse)/i,
         /\brevers(e|es|ed) (neuropathy|chemo brain|nerve damage)/i,
@@ -129,6 +146,9 @@ Forum.safety = (function () {
    */
   function mentionsFever(text) {
     if (/\bfever(s|ish)?\b/i.test(text)) return true;
+    // "Running a temperature" means a fever, unless a normal reading follows ("a temperature of 98.6" is checked below).
+    if (/\b(running|run|ran|have|had|got|spik(e|ed|ing)) (a )?(high |slight |bit of a )?(temp|temperature)\b(?!\s*(of|at|was|is|reading)?\s*\d)/i.test(text)) return true;
+    if (/\btemp(erature)? spike\b/i.test(text)) return true;
     const reading = /(\btemp(erature)?\b[^.\d]{0,20})?\b(\d{2,3}(?:\.\d)?)\s*(°|º|degrees?\b|deg\b)?\s*([fc])?\b/gi;
     let match;
     while ((match = reading.exec(text))) {

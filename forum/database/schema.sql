@@ -361,7 +361,9 @@ returns boolean language sql immutable as $$
     '\y(cured|cures) (my|your|his|her|their|our|the|it|chemo|neuropathy|brain fog|cancer)\y',
     '\y(will|can|could|would|helps?|this|that) cure\y',
     '\y(is|was|are|it[''’]?s) (a|the|my) (natural |real )?cure (for|of)\y',
-    '\ystop (taking |going to |seeing )?(your |my |the )?(chemo|chemotherapy|medication|meds|treatment|doctor|oncologist)',
+    '\y(stop|quit|ditch) (taking |going to |seeing )?(your |my |the )?([[:alnum:]''’-]+ ){0,2}?(chemo|chemotherapy|medications?|meds|treatment|doctor|oncologist)',
+    '\y(do ?n[''’]?t|no need to|never) (take|bother taking) (your|the) ([[:alnum:]''’-]+ ){0,2}?(medications?|meds|pills|steroids)',
+    '\y(skip|skipping|delay|delaying|postpone|cancel|push back) (your|their) (next )?(chemo |infusion )?(cycles?|doses?|infusions?|rounds?|treatments?)\y',
     'instead of (chemo|chemotherapy|treatment|your doctor|your oncologist|medication)',
     '\y(guaranteed|proven) to (heal|fix|cure|reverse)',
     '\yrevers(e|es|ed) (neuropathy|chemo brain|nerve damage)',
@@ -383,7 +385,6 @@ returns boolean language sql immutable as $$
     '\ybetter off (dead|without me)\y',
     '\yno reason to (live|go on|keep going)\y',
     '\ynot worth living\y',
-    '\ycan[''’]?t go on\y',
     '\ydon[''’]?t want to (be here|live|wake up)',
     '\yoverdos(e|ed|ing)\y',
     '\ytak(e|ing) my (own )?life\y',
@@ -392,7 +393,21 @@ returns boolean language sql immutable as $$
     '\yun-?aliv(e|ing) myself\y',
     '\ykms\y',
     '\y(rather|better) be dead\y',
-    '\ywant(ed|ing)? (it all|everything|my life|it) to (all )?end\y'
+    '\ywant(ed|ing)? (it all|everything|my life|it) to (all )?end\y',
+    '\y(wanna|ready to|wish i could|wish i would) die\y',
+    '\y(want(ed|ing)? to|wanna|going to|gonna|ready to|plan(ning)? to|think(ing)? (about|of)) end(ing)? (it|things|everything)( all)?\s*([.!?,;]|$)',
+    '\y(do ?n[''’]?t|do not|can[''’]?t) (want to )?(go on|keep going)( like this| anymore| any more)?\s*([.!?,;]|$)',
+    '\ybetter off (if|when|once) i (was|were|wasn[''’]?t|weren[''’]?t|am|died|die|was gone|were gone)\y',
+    '\y(wish|want|hope|pray|think(ing)? about)\y[^.!?\n]{0,20}(\ynot|\ynever|n[''’]?t) (to )?wak(e|ing) up\y',
+    '\ysleep and (not|never) wake up\y',
+    '\y(sav(e|ing)|stockpil(e|ing)|hoard(ing)?) (up )?(all )?(my |of my )?(pills|meds|medication|medicine|tablets)\y',
+    '\y(take|taking|swallow(ing)?) all (of )?my (pills|meds|medication|tablets)\y',
+    '\y(i[''’]?m|i am) done (fighting|living|with life|with everything)\y',
+    '\ywant(ed|ing)? (it all|everything) to (just )?stop\y',
+    '\y(do ?n[''’]?t|can[''’]?t) see the point (anymore|any more|in (anything|living|life|going on))\y',
+    '\ydisappear (forever|for good|permanently)\y',
+    '\ycan[''’]?t do this any ?more\y',
+    '\ylet (it|death|the cancer|nature) (just )?(happen|take me|win|take its course)\y'
   ]);
 $$;
 

@@ -84,6 +84,21 @@ test('a post by one account is seen by another, and anonymous stays anonymous', 
   } finally { await t.close(); }
 });
 
+test('two members never get the same starting name', async () => {
+  // Every "Member NNNN" name is taken except 0042, so the new member has to get that one.
+  const state = olderExampleForum();
+  Object.assign(state, { threads: [], replies: [], reports: [], profiles: [] });
+  for (let n = 0; n < 10000; n++) {
+    if (n === 42) continue;
+    state.profiles.push({ id: 'p-' + n, displayName: 'Member ' + String(n).padStart(4, '0'), type: 'member', bio: '', showBio: false, createdAt: new Date().toISOString() });
+  }
+  const t = await start((db) => db.query('INSERT INTO forum_state (id, data) VALUES (1, $1::jsonb)', [JSON.stringify(state)]));
+  try {
+    const maya = await t.signUp('maya@example.com', 'Maya');
+    assert.strictEqual((await t.forum('currentUser', [], maya)).json.result.displayName, 'Member 0042');
+  } finally { await t.close(); }
+});
+
 test('the forum is saved in the database', async () => {
   const t = await start();
   try {
