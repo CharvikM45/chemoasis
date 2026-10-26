@@ -89,9 +89,7 @@ main { position: relative; z-index: 1; padding: 8px 16px 64px; }
 .eyebrow {
   margin: 0 0 14px;
   color: var(--clay);
-  font: 11px/1.5 "DM Mono";
-  letter-spacing: .17em;
-  text-transform: uppercase;
+  font: 600 15px/1.5 "Atkinson Hyperlegible Next", "DM Sans", sans-serif;
 }
 h1, h2 {
   font-family: "Playfair Display", serif;
@@ -410,7 +408,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 .check a { color: var(--clay); }
 
 .toplinks { display: flex; align-items: center; gap: clamp(14px, 2.6vw, 34px); margin-left: auto; }
-.toplinks a { color: var(--ink); text-decoration: none; font: 11px "DM Mono", monospace; letter-spacing: .11em; text-transform: uppercase; white-space: nowrap; }
+.toplinks a { color: var(--ink); text-decoration: none; font: 500 15px "Atkinson Hyperlegible Next", "DM Sans", sans-serif; white-space: nowrap; }
 .toplinks a:hover { color: var(--clay); }
 .toplinks .toplinks-cta { padding: 9px 13px; border: 1px solid rgba(231, 167, 130, .55); }
 .toplinks .toplinks-cta span { color: var(--clay); }
@@ -420,7 +418,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
   .topbar { gap: 12px; }
   .brand { font-size: 18px; }
   .toplinks { gap: 12px; flex-wrap: wrap; justify-content: flex-end; row-gap: 6px; }
-  .toplinks a { font-size: 10px; letter-spacing: .06em; }
+  .toplinks a { font-size: 14px; }
   .toplinks .toplinks-cta { padding: 6px 8px; }
   .toplinks .toplinks-cta span { display: none; }
 }
