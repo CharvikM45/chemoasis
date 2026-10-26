@@ -846,6 +846,10 @@ card.innerHTML = `<svg viewBox="${-PIECE_PAD} ${-PIECE_PAD} ${PIECE_VIEW} ${PIEC
   <path class="pq-shape" fill="none" stroke="#5a2420" stroke-opacity="0.5" stroke-width="0.9" stroke-linejoin="round"/>
 </svg><blockquote class="piece-words"></blockquote>`;
 document.body.appendChild(card);
+const backdrop = document.createElement('div'); // dims the background while the flat piece is up
+backdrop.className = 'piece-backdrop';
+backdrop.setAttribute('aria-hidden', 'true');
+document.body.appendChild(backdrop);
 const cardShapes = card.querySelectorAll('.pq-shape');
 const cardWords = card.querySelector('.piece-words');
 let cardIndex = -1; // which section's piece the card is shaped and worded for
@@ -1063,11 +1067,15 @@ function frame(now) {
       const lift = 4 * Math.sin(t * 0.8); // floating gently
       card.style.opacity = String(flat);
       card.style.transform = `translate(${(at.sx - wide / 2).toFixed(1)}px, ${(at.sy - wide / 2 + lift).toFixed(1)}px) scale(${(0.94 + 0.06 * flat).toFixed(3)})`;
+      backdrop.style.opacity = String(flat);
+      backdrop.style.setProperty('--x', `${at.sx.toFixed(0)}px`);
+      backdrop.style.setProperty('--y', `${at.sy.toFixed(0)}px`);
+      backdrop.style.setProperty('--r', `${Math.round(wide * 0.95)}px`);
     } else {
-      card.style.opacity = '0';
+      card.style.opacity = backdrop.style.opacity = '0';
     }
   } else {
-    card.style.opacity = '0';
+    card.style.opacity = backdrop.style.opacity = '0';
   }
 
   canvas.style.opacity = String(appear);
