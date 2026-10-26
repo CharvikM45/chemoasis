@@ -17,7 +17,7 @@ It is **live, shared and members-only**: everyone signed in to Chemoasis uses th
 
 ## What it does
 
-- **Categories:** introductions, sharing experiences, games and activities, questions for the community, using Chemoasis, ideas and feedback.
+- **Categories:** introductions, sharing experiences, games and activities, questions for the community, using Chemoasis, ideas and feedback, and anything else.
 - **Conversations and replies,** with search, filters by game and training area, and sorting.
 - **Post labels:** every post is a personal experience, general information (with a source link), or professional guidance (verified professionals only; no account has it, and the guidelines don't offer it until there's a way to check credentials).
 - **Safety check before posting** (`assets/js/safety.js`):
@@ -79,7 +79,7 @@ The review queue marks these posts "This person may need support". Moderators ar
 
 ## Testing
 
-- `npm test` runs everything. `node forum/tests/forum.test.js` runs 38 checks of the forum's rules in a few seconds, with no installs.
+- `npm test` runs everything. `node forum/tests/forum.test.js` runs 44 checks of the forum's rules in a few seconds, with no installs.
 - `server/tests/forum.test.js` checks the live API: signed-out visitors can't read, posting with an account, anonymous posts staying anonymous to others, neutral starting names, moderators by email, saving to Postgres, deleting an account erasing its words, example posts staying off the live forum, and the log alert when a post may need support.
 - The pages were checked in a real browser (Chromium) in demo and live mode, on desktop and phone sizes.
 - `database/schema.sql` was loaded into PostgreSQL 16 on top of the accounts tables, and its rules were checked there (for example: writes with no signed-in person are refused, anonymous authors stay hidden, held posts can't be released by their author, and members can't post professional guidance). `forum_needs_review` and `forum_needs_support` copy the phrase lists in `assets/js/safety.js`, so change both together.
