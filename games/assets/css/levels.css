@@ -29,7 +29,7 @@
   box-shadow: 0 24px 90px rgba(0, 0, 0, .6);
   animation: level-rise .45s cubic-bezier(.2, .7, .2, 1) both;
 }
-.level-kicker { margin: 0 0 12px; color: var(--accent-2, #d9a07d); font: 11px "DM Mono", monospace; letter-spacing: .19em; text-transform: uppercase; }
+.level-kicker { margin: 0 0 12px; color: var(--accent-2, #d9a07d); font: 600 15px "Atkinson Hyperlegible Next", "DM Sans", sans-serif; }
 .level-panel h2 { margin: 0; font: 400 clamp(32px, 4.4vw, 52px)/1 "Playfair Display", serif; letter-spacing: -.045em; }
 .level-panel h2 em { color: var(--accent, #e7a782); }
 .level-lede { margin: 14px 0 0; max-width: 540px; color: var(--soft, #cdbcae); font-size: 16px; line-height: 1.6; }
@@ -38,9 +38,9 @@
 /* "How to play": the same box, in the same place (right under the title), on every game screen:
    the level list, the start card and the pause card, in 2D and in 3D. */
 .howto { margin: 20px 0 0; padding: 14px 18px 13px; border: 1px solid var(--line, rgba(255, 236, 220, .13)); border-left: 3px solid var(--tone, #e7a782); background: rgba(255, 236, 220, .05); color: var(--ink, #f4ebe2); text-align: left; text-shadow: none; }
-.howto h3 { margin: 0 0 7px; color: var(--accent, #e7a782); font: 500 11px "DM Mono", monospace; letter-spacing: .16em; text-transform: uppercase; }
+.howto h3 { margin: 0 0 7px; color: var(--accent, #e7a782); font: 600 15px "Atkinson Hyperlegible Next", "DM Sans", sans-serif; }
 .howto ol { margin: 0; padding-left: 22px; display: grid; gap: 5px; font-size: 17px; line-height: 1.5; }
-.howto li::marker { color: var(--accent, #e7a782); font: 500 14px "DM Mono", monospace; }
+.howto li::marker { color: var(--accent, #e7a782); font: 600 16px "Atkinson Hyperlegible Next", "DM Sans", sans-serif; }
 .howto b { color: #fff3e6; font-weight: 600; }
 .howto .howto-meta { margin: 9px 0 0; color: var(--muted, #a8978a); font-size: 13px; line-height: 1.45; }
 .howto .howto-meta b { color: var(--soft, #cdbcae); }
@@ -58,11 +58,11 @@
 .level-views button:disabled { opacity: .45; cursor: not-allowed; }
 .level-view-note { margin: 8px 0 0; color: var(--muted, #a8978a); font-size: 13px; line-height: 1.45; }
 
-.level-heading { margin: 28px 0 0; color: var(--accent-2, #d9a07d); font: 11px "DM Mono", monospace; letter-spacing: .19em; text-transform: uppercase; }
+.level-heading { margin: 28px 0 0; color: var(--accent-2, #d9a07d); font: 600 15px "Atkinson Hyperlegible Next", "DM Sans", sans-serif; }
 .level-heading small { margin-left: 10px; color: var(--muted, #a8978a); font: 14px "DM Sans", sans-serif; letter-spacing: 0; text-transform: none; }
 .level-fine { margin: 16px 0 0; color: var(--muted, #a8978a); font-size: 12px; line-height: 1.5; }
 .level-about { margin: 2px 0 0; max-width: 620px; color: var(--soft, #cdbcae); font-size: 14px; line-height: 1.6; }
-.level-about summary { display: inline-block; min-height: 40px; padding: 9px 0; color: var(--accent-2, #d9a07d); font: 11px "DM Mono", monospace; letter-spacing: .1em; text-transform: uppercase; cursor: pointer; }
+.level-about summary { display: inline-block; min-height: 40px; padding: 9px 0; color: var(--accent-2, #d9a07d); font: 600 15px "Atkinson Hyperlegible Next", "DM Sans", sans-serif; cursor: pointer; }
 .level-about summary:focus-visible { outline: 3px solid rgba(231, 167, 130, .6); outline-offset: 3px; }
 .level-about p { margin: 2px 0 8px; }
 .level-about a { color: var(--accent, #e7a782); }
@@ -96,10 +96,10 @@
 }
 .level-grid button:hover, .level-grid button:focus-visible { background: #1a1316; box-shadow: inset 0 -2px 0 var(--accent, #e7a782); outline: none; }
 .level-grid button:focus-visible { box-shadow: inset 0 0 0 2px var(--accent, #e7a782); }
-.level-grid .level-num { color: var(--accent-2, #d9a07d); font: 10px "DM Mono", monospace; letter-spacing: .16em; text-transform: uppercase; }
+.level-grid .level-num { color: var(--accent-2, #d9a07d); font: 600 14px "Atkinson Hyperlegible Next", "DM Sans", sans-serif; }
 .level-grid b { font: 400 22px/1.1 "Playfair Display", serif; letter-spacing: -.03em; }
 .level-grid small { color: var(--soft, #cdbcae); font-size: 13px; line-height: 1.45; }
-.level-grid em { margin-top: auto; padding-top: 6px; font: normal 10px "DM Mono", monospace; letter-spacing: .12em; text-transform: uppercase; color: #a9d8b8; }
+.level-grid em { margin-top: auto; padding-top: 6px; font: 600 13px "Atkinson Hyperlegible Next", "DM Sans", sans-serif; color: #a9d8b8; }
 .level-grid button.is-next { box-shadow: inset 0 0 0 1px var(--accent, #e7a782); }
 .level-grid button.is-next em { color: var(--accent, #e7a782); }
 

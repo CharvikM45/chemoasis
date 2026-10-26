@@ -745,7 +745,7 @@ let featIndex = -1, featT = 0;
 let picks = []; // per section: { piece, fit }, chosen the first time it's needed
 const stagePoint = new THREE.Vector3();
 let fontsReady = false;
-document.fonts.load('italic 500 20px "Playfair Display"').catch(() => {}).then(() => { fontsReady = true; picks = []; });
+document.fonts.load('600 20px "Atkinson Hyperlegible Next"').catch(() => {}).then(() => { fontsReady = true; picks = []; });
 
 // Where the featured piece comes to: in front of the brain, halfway down the screen (near the top
 // on phones), with its square body about 300 pixels across. Returns that point on screen.
