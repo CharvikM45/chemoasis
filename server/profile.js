@@ -115,6 +115,28 @@ function profileRouter({ db, isProd, dataKey }) {
     res.json({ profile });
   }));
 
+  // Saves only the fields sent, on top of what is stored now. A page that has been open a while
+  // (or brought back with the Back button) then can't wipe results, levels or plays saved since
+  // it loaded. `since` is the updatedAt the page loaded: plays logged after it are kept in the model.
+  router.patch('/', handle(async (req, res, user) => {
+    const patch = cleanProfile(req.body && req.body.profile);
+    const since = Date.parse((req.body && req.body.since) || '') || 0;
+    const row = await load(user.id);
+    const data = (row && row.data) || {};
+    const next = { ...data, ...patch };
+    if (isObject(patch.model) && isObject(data.model) && Array.isArray(data.model.events) && since) {
+      const events = Array.isArray(patch.model.events) ? patch.model.events : [];
+      const key = (e) => [e && e.game, e && e.kind, e && e.at].join('|');
+      const known = new Set(events.map(key));
+      const newer = data.model.events.filter((e) => isObject(e) && Number(e.at) > since && !known.has(key(e)));
+      if (newer.length) next.model = { ...patch.model, events: events.concat(newer) };
+    }
+    const profile = cleanProfile(next);
+    await store(user.id, profile);
+    const saved = await load(user.id);
+    res.json({ profile, updatedAt: saved ? saved.updated_at : null });
+  }));
+
   // A game was opened from the home page: one more positive example for the recommender.
   router.post('/play', handle(async (req, res, user) => {
     const game = String((req.body && req.body.game) || '');

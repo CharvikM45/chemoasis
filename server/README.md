@@ -13,6 +13,7 @@ A small Node server that serves the Chemoasis website and the account API, deplo
 | DELETE | `/api/auth/me` | Deletes the account, its sessions and its profile |
 | GET | `/api/profile` | The signed-in person's questionnaire answers, recommender model and level progress |
 | PUT | `/api/profile` | `{ profile }` → replaces them (unknown fields dropped, play history capped at 300, 96 KB max) |
+| PATCH | `/api/profile` | `{ profile, since }` → saves only the fields sent on top of what's stored, keeping plays logged after `since` (the `updatedAt` the page loaded). The Your games page uses this, so a stale tab can't wipe results |
 | POST | `/api/profile/play` | `{ game }` → logs a play for the recommender |
 | POST | `/api/profile/level` | `{ game, level }` → records a finished level |
 | POST | `/api/profile/result` | `{ game, level, score }` → one point on that game's progress chart |
