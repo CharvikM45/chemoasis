@@ -121,9 +121,7 @@ h1 em, h2 em { color: var(--accent); }
   border: 1px solid rgba(255, 236, 220, .4);
   background: rgba(10, 8, 10, .6);
   color: var(--ink);
-  font: 500 12px "DM Mono", monospace;
-  letter-spacing: .08em;
-  text-transform: uppercase;
+  font: 600 16px "Atkinson Hyperlegible Next", "DM Sans", sans-serif;
   text-decoration: none;
   cursor: pointer;
   transition: background .2s, color .2s, border-color .2s;
