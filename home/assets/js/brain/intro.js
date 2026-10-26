@@ -218,9 +218,9 @@ const brain = new THREE.Group();
 stage.add(brain);
 let ready = false;
 let material = null, brainMesh = null;
-let pieceSize = null; // per piece: how far its farthest point is from its centre
+let pieceSize = null; // per piece: how far its farthest point is from its center
 let pieceBox = null; // per piece: the box around it, [min x, y, z, max x, y, z]
-let pieceCentre = null, pieceOut = null; // per piece: its middle and outward direction (from the mesh)
+let pieceCenter = null, pieceOut = null; // per piece: its middle and outward direction (from the mesh)
 let detailMaterial = null;
 let featured = []; // the clean pieces that can come forward: [right side, left side], best first
 
@@ -253,7 +253,7 @@ const PUZZLE_GLSL = `
     st = clamp(st, 0.0, PN - 1e-4);
     seamGrid = st;
     vec2 cell = floor(st), f = st - cell, piece = cell;
-    const float R = 0.18, C = 0.14, NECK = 0.11; // tab radius, how far its centre sits past the edge, half its neck
+    const float R = 0.18, C = 0.14, NECK = 0.11; // tab radius, how far its center sits past the edge, half its neck
     seam = 9.0;
     float tabSeam = -1.0; // inside a tab: how far in from the tab's round edge
     bool tab; float d;
@@ -289,7 +289,7 @@ const PUZZLE_GLSL = `
 `;
 
 // Where a point of the brain sits on its own cube face's grid (0..PN across and up), even when
-// the point itself leans a little toward a neighbouring face. Used to lay the pieces out flat.
+// the point itself leans a little toward a neighboring face. Used to lay the pieces out flat.
 const FACE_GLSL = `
   vec2 faceGrid(vec3 p, float face) {
     vec3 q = puzzleSpace(p);
@@ -371,13 +371,13 @@ function toGeometry(m) {
 function addMesh(m) {
   const geo = toGeometry(m);
 
-  // Per piece, 5 texels: [centre, delay] [loose position, turn] [turn axis, swirl speed]
+  // Per piece, 5 texels: [center, delay] [loose position, turn] [turn axis, swirl speed]
   // [outward direction, when it leaves the wall] [the piece's "up" on its cube face, unused].
   const W = 5;
   const UP = [[0, 1, 0], [0, 1, 0], [0, 0, -1], [0, 0, 1], [0, 1, 0], [0, 1, 0]]; // per face, as in puzzleCell
   const data = new Float32Array(m.shards * W * 4);
   for (let s = 0; s < m.shards; s++) {
-    const cx = m.centre[s * 3], cy = m.centre[s * 3 + 1], cz = m.centre[s * 3 + 2];
+    const cx = m.center[s * 3], cy = m.center[s * 3 + 1], cz = m.center[s * 3 + 2];
     const ox = m.out[s * 3], oy = m.out[s * 3 + 1], oz = m.out[s * 3 + 2];
     // Loose pieces drift in a loose shell around the brain, so the cloud keeps its shape.
     const dist = 0.2 + 0.45 * seeded(s + 1);
@@ -397,7 +397,7 @@ function addMesh(m) {
   tex.needsUpdate = true;
   if (uniforms.uShards.value) uniforms.uShards.value.dispose();
   uniforms.uShards.value = tex;
-  pieceCentre = m.centre;
+  pieceCenter = m.center;
   pieceOut = m.out;
   pickFeatured(m);
 
@@ -481,7 +481,7 @@ function addMesh(m) {
         vec3 loosePos = rotY(sA.xyz + (sB.xyz - sA.xyz) * (1.0 - 0.5 * uAssemble), swirl);
         vec3 local = (position - sA.xyz) * mix(0.94, 1.0, k); // small gaps between loose pieces
         vec3 transformed = mix(loosePos + rotY(rotAxis(local, sC.xyz, turn), spin), sA.xyz + local, k);
-        vec3 centreObj = mix(loosePos, sA.xyz, k); // where the piece's middle is right now`)
+        vec3 centerObj = mix(loosePos, sA.xyz, k); // where the piece's middle is right now`)
       .replace('#include <normal_vertex>', `#include <normal_vertex>
         vNormal = normalize(mix(vNormal, vec3(0.0, 0.0, 1.0), 1.0 - lift)); // flat on the wall
         // The featured piece turns, as one solid thing, so its outer side faces the viewer and its
@@ -511,25 +511,25 @@ function addMesh(m) {
       .replace('#include <project_vertex>', `#include <project_vertex>
         vec3 placedBrain = mvPosition.xyz; // where it is in the brain or the cloud
         vec3 placed = placedBrain;
-        vec3 centreView = (modelViewMatrix * vec4(centreObj, 1.0)).xyz; // the piece's middle there
-        vec3 startCentre = centreView;
+        vec3 centerView = (modelViewMatrix * vec4(centerObj, 1.0)).xyz; // the piece's middle there
+        vec3 startCenter = centerView;
         if (w > 0.0) {
           // Outer layers sit a hair in front of inner ones, so the wall draws cleanly.
           vec3 onWall = vec3(wallXY, -uWall.y + 0.02 * length(puzzleSpace(position)));
           // Lift toward the viewer as it lets go, then drift back to its place by the brain.
           vec3 arc = vec3(0.0, 0.0, 0.7) * sin(3.14159 * lift);
           placed = mix(onWall, placed, lift) + arc;
-          startCentre = mix(vec3(pieceXY, -uWall.y), centreView, lift) + arc;
+          startCenter = mix(vec3(pieceXY, -uWall.y), centerView, lift) + arc;
         }
         if (feature > 0.0) {
           // The piece turns about its own middle on the way, grows as it comes, and travels along a
           // gentle curve, so it reads as one object turning toward you rather than a shape morphing.
           // (From the wall, where it lies flat, it also takes its brain shape on the way.)
-          vec3 localView = mix(placed - startCentre, placedBrain - centreView, feature);
+          vec3 localView = mix(placed - startCenter, placedBrain - centerView, feature);
           localView = rotAxis(rotAxis(localView, faceDir, faceTurn * feature), vec3(0.0, 0.0, 1.0), roll * feature);
           localView = rotAxis(rotAxis(localView, vec3(1.0, 0.0, 0.0), uSway.x * feature), vec3(0.0, 1.0, 0.0), uSway.y * feature);
           localView.z *= squash;
-          vec3 middle = mix(startCentre, uFeaturePos, feature) + vec3(0.0, 0.15, 0.1) * sin(3.14159 * feature);
+          vec3 middle = mix(startCenter, uFeaturePos, feature) + vec3(0.0, 0.15, 0.1) * sin(3.14159 * feature);
           placed = middle + localView * mix(1.0, uFeatureScale, feature);
         }
         if (w > 0.0 || feature > 0.0) {
@@ -578,7 +578,7 @@ function addMesh(m) {
         diffuseColor.rgb *= 1.0 - 0.35 * line * vLoose * (1.0 - vFeature); // seams show only while a piece is loose
         diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.98, 0.84, 0.77), 0.28 * vFeature); // paler up close, behind the words`)
       .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
-        roughnessFactor = mix(roughnessFactor, 0.34, vFeature); // a glossier, ceramic finish up close`)
+        roughnessFactor = mix(roughnessFactor, 0.48, vFeature); // a smooth satin finish up close`)
       .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
         // A soft glow at the edges, as light passes through the surface (subsurface scattering).
         float facing = max(dot(normal, normalize(vViewPosition)), 0.0);
@@ -592,7 +592,7 @@ function addMesh(m) {
         reflectedLight.indirectSpecular *= mix(0.15, 1.0, vAO);
         reflectedLight.directSpecular *= mix(0.25, 1.0, vAO);`)
       .replace('#include <dithering_fragment>', `#include <dithering_fragment>
-        // Pieces letting go of the wall turn from its plum to the brain's own colour.
+        // Pieces letting go of the wall turn from its plum to the brain's own color.
         gl_FragColor.rgb = mix(gl_FragColor.rgb, wallInk, inWall);
         // Loose pieces (off the wall, not yet in the brain) fade into the background while they pass
         // behind the text column or the top bar, so the words stay easy to read.
@@ -636,7 +636,7 @@ function pickFeatured(m) {
     const [face, i, j] = puzzleCell(x, y, z);
     if (face * N * N + j * N + i !== s) continue;
     count[s]++;
-    const dx = x - m.centre[s * 3], dy = y - m.centre[s * 3 + 1], dz = z - m.centre[s * 3 + 2];
+    const dx = x - m.center[s * 3], dy = y - m.center[s * 3 + 1], dz = z - m.center[s * 3 + 2];
     pieceSize[s] = Math.max(pieceSize[s], Math.hypot(dx, dy, dz));
     const depth = dx * m.out[s * 3] + dy * m.out[s * 3 + 1] + dz * m.out[s * 3 + 2];
     near[s] = Math.min(near[s], depth);
@@ -661,7 +661,7 @@ let finished = false; // the detailed brain is in (not just the rough one)
 function build() {
   const step = lowPower ? 0.023 : 0.017;
   try {
-    builder = new Worker(new URL('./build-worker.js?v=9', import.meta.url), { type: 'module' });
+    builder = new Worker(new URL('./build-worker.js?v=10', import.meta.url), { type: 'module' });
     let got = 0;
     builder.onmessage = (e) => {
       if (e.data.piece !== undefined) { addDetail(e.data); return; }
@@ -686,9 +686,9 @@ build();
 
 // A piece that comes up close is shown about four times its size, and the brain's own mesh is a
 // thin, coarse sheet: up close it would look flat, faceted and blurry. So each piece picked for a
-// quote is built again on its own as a solid object (buildPieceSolid in mesh.js: the brain's
-// surface on top, straight sides along its exact outline, a flat back, rounded edges), about three
-// times finer, and drawn in place of its thin copy while it's out.
+// quote is built again on its own as a solid object (buildPieceSolid in mesh.js: a clean slab with
+// a gentle curve on top, straight sides along its exact outline, a flat back, lightly softened
+// edges), about three times finer, and drawn in place of its thin copy while it's out.
 const detailed = new Set(); // pieces asked for
 const detailReady = new Set(); // pieces whose solid copy is in
 function requestDetail(piece) {
@@ -696,8 +696,8 @@ function requestDetail(piece) {
   detailed.add(piece);
   const b = pieceBox.subarray(piece * 6, piece * 6 + 6), pad = 0.02;
   builder.postMessage({
-    piece, step: lowPower ? 0.0085 : 0.006, thickness: 0.032, bevel: 0.012, soft: 0.45,
-    centre: Array.from(pieceCentre.subarray(piece * 3, piece * 3 + 3)), out: Array.from(pieceOut.subarray(piece * 3, piece * 3 + 3)),
+    piece, step: lowPower ? 0.0065 : 0.0045, thickness: 0.026, bevel: 0.007,
+    center: Array.from(pieceCenter.subarray(piece * 3, piece * 3 + 3)), out: Array.from(pieceOut.subarray(piece * 3, piece * 3 + 3)),
     box: [[b[0] - pad, b[1] - pad, b[2] - pad], [b[3] + pad, b[4] + pad, b[5] + pad]]
   });
 }
@@ -776,7 +776,7 @@ function resize() {
   renderer.setRenderTarget(null);
 
   // Size the brain to the free space right of the text (at most 40% of the screen's width and 70%
-  // of its height), with the camera looking straight ahead, and centre it in that space.
+  // of its height), with the camera looking straight ahead, and center it in that space.
   const copy = document.querySelector('.hero .copy');
   const copyRight = copy ? copy.getBoundingClientRect().right : width / 2;
   const textRight = copyRight / width;
@@ -829,7 +829,7 @@ function placeFeature(piece) {
   const depth = Math.min(camera.position.z * 0.55, WALL_DISTANCE * 0.8);
   const halfH = depth * tanHalf;
   uniforms.uFeaturePos.value.set((sx / width * 2 - 1) * halfH * camera.aspect, (1 - sy / height * 2) * halfH, -depth);
-  // The piece's farthest point from its centre is about half its square body's diagonal.
+  // The piece's farthest point from its center is about half its square body's diagonal.
   const body = wide ? clamp(width * 0.21, 260, 330) : 200;
   const size = Math.max(0.02, pieceSize[piece] || 0.08);
   uniforms.uFeatureScale.value = (body * 0.72) / (size * (height / (2 * halfH)));
@@ -884,7 +884,7 @@ function pieceMask(piece, at) {
 // The biggest text box that fits inside the piece with a clear margin all round, and the largest
 // type that fits that box: the grid is first shrunk by the margin (a pixel stays only if the whole
 // square around it is piece), then the widest-area rectangle, no taller than it is wide, is found
-// row by row. Returns the box (centre, size, font size, relative to the point the piece comes to),
+// row by row. Returns the box (center, size, font size, relative to the point the piece comes to),
 // or null if the quote won't fit at a readable size, or undefined if the piece didn't draw at all
 // (so nothing could be measured, and it should be tried again).
 const MARGIN = 18; // screen pixels kept clear between the words and the piece's edge
@@ -1026,7 +1026,7 @@ function frame(now) {
   dust.material.uniforms.uOpacity.value = 0.55 * appear * (1 - wall);
   dust.material.uniforms.uSize.value = 22 * pixelRatio;
   // The dark edge shading only makes sense once the wall has (nearly) gone: on the wall it would
-  // just muddy the colour behind the headline.
+  // just muddy the color behind the headline.
   const shade = Math.round(smooth(0.5, 1, 1 - wall) * 50) / 50;
   if (shade !== vignetteShown && vignette) { vignette.style.opacity = String(shade); vignetteShown = shade; }
 
@@ -1103,7 +1103,7 @@ function frame(now) {
   }
 
   canvas.style.opacity = String(appear);
-  // Once the 3D wall is fully showing, the hero's flat stand-in colour can go.
+  // Once the 3D wall is fully showing, the hero's flat stand-in color can go.
   if (appear === 1 && !document.body.classList.contains('wall-live')) document.body.classList.add('wall-live');
   renderer.render(scene, camera);
 }

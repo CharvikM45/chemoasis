@@ -172,22 +172,17 @@ function folds(x, y, z, ax) {
   let depth = 0.072 * (1 - Math.sqrt(Math.max(0, 1 - g * g)));
   depth *= 0.45 + 0.55 * smoothstep(0.02, 0.12, ax); // gentler on the hidden inner side
 
-  // The central sulcus is a little deeper than its neighbours; the lateral fissure much deeper.
+  // The central sulcus is a little deeper than its neighbors; the lateral fissure much deeper.
   depth += 0.02 * Math.exp(-((c / 0.02) ** 2)) * wCentral;
   depth += 0.085 * Math.exp(-((below / 0.03) ** 2)) * smoothstep(0.28, 0.42, ax) * smoothstep(-0.32, -0.12, z);
   return depth;
 }
 
-// soft (0 to 1) scales the folds down toward a smooth surface at their average depth, for the
-// gentler look of a piece shown up close.
-function cerebrum(x, y, z, soft = 1) {
+function cerebrum(x, y, z) {
   const ax = Math.abs(x);
   const d = hemisphere(ax, y, z);
   if (d > 0.13 || d < -0.2) return d; // far from the surface: the folds don't matter
-  const f = folds(x, y, z, ax);
-  // A softer surface (the solid close-up piece) also keeps its deepest grooves shallow, so none
-  // of them cuts right through the piece.
-  return d - 0.03 + 0.035 * (1 - soft) + soft * (soft < 1 ? Math.min(f, 0.05) : f);
+  return d - 0.03 + folds(x, y, z, ax);
 }
 
 /* ---------- cerebellum and brainstem ---------- */
@@ -211,9 +206,9 @@ function brainstem(x, y, z) {
   return smin(stem, pons, 0.08);
 }
 
-export function field(x, y, z, soft = 1) {
+export function field(x, y, z) {
   // Hard joins keep visible creases between the cerebrum, cerebellum and brainstem.
-  return Math.min(cerebrum(x, y, z, soft), cerebellum(x, y, z), brainstem(x, y, z));
+  return Math.min(cerebrum(x, y, z), cerebellum(x, y, z), brainstem(x, y, z));
 }
 
 export const BOUNDS = { min: [-0.82, -0.98, -1.0], max: [0.82, 0.76, 1.0] };

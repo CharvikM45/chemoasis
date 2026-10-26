@@ -3,7 +3,7 @@
 // Later, on request, single pieces as fine, solid objects for when they come up close.
 import { buildBrainMesh, buildPieceSolid } from './mesh.js';
 
-const send = (mesh) => self.postMessage(mesh, [mesh.position.buffer, mesh.normal.buffer, mesh.ao.buffer, mesh.shard.buffer, mesh.index.buffer, mesh.centre.buffer, mesh.out.buffer]);
+const send = (mesh) => self.postMessage(mesh, [mesh.position.buffer, mesh.normal.buffer, mesh.ao.buffer, mesh.shard.buffer, mesh.index.buffer, mesh.center.buffer, mesh.out.buffer]);
 
 self.onmessage = (e) => {
   const { step, preview, piece } = e.data || {};

@@ -6,7 +6,7 @@
  *
  * Pieces: the brain is wrapped in a cube (each face a PUZZLE_N × PUZZLE_N grid) and every point
  * belongs to the grid cell it points toward. Here quads are only sorted roughly (into the cell and
- * its neighbours); the shader cuts the exact jigsaw outline, tabs and all (see intro.js).
+ * its neighbors); the shader cuts the exact jigsaw outline, tabs and all (see intro.js).
  *
  * The same code also builds a single piece on its own, much finer, for when it comes up close:
  * pass the piece (only) and the box around it (box: [min, max]), or see buildPieceSolid, which
@@ -52,7 +52,7 @@ export const EDGE_HASH_GLSL = `
 
 // The piece a point on a face's grid (s, t: 0..PN across and up) belongs to, and how far it is
 // from that piece's outline. Returns [piece, seam].
-const TAB_R = 0.18, TAB_C = 0.14, TAB_NECK = 0.11; // tab radius, how far its centre sits past the edge, half its neck
+const TAB_R = 0.18, TAB_C = 0.14, TAB_NECK = 0.11; // tab radius, how far its center sits past the edge, half its neck
 export function pieceOnFace(face, s, t) {
   const N = PUZZLE_N;
   s = Math.min(N - 1e-4, Math.max(0, s)); t = Math.min(N - 1e-4, Math.max(0, t));
@@ -97,18 +97,21 @@ function outlineDistance(piece, x, y, z) {
 function smin(a, b, k) { const h = Math.min(1, Math.max(0, 0.5 + 0.5 * (b - a) / k)); return b + (a - b) * h - k * h * (1 - h); }
 const smax = (a, b, k) => -smin(-a, -b, k);
 
-// One jigsaw piece as a solid object, for showing up close: the brain's surface on top (its folds
-// softened a little), a flat back a set thickness behind the piece's middle, straight sides cut
-// along its exact outline, tabs and all, and rounded edges all round. Built the same way as the
-// brain, from a distance field: piece is its number, centre and out its middle and outward
-// direction (from the brain's own mesh), box the box around it.
-export function buildPieceSolid({ piece, centre, out, box, step = 0.006, thickness = 0.032, bevel = 0.012, soft = 0.45 }) {
+// One jigsaw piece as a solid object, for showing up close: a clean, smooth slab with the brain's
+// gentle overall curve on top (no folds), a flat back a set thickness behind the piece's middle,
+// straight sides cut along its exact outline, tabs and all, and lightly softened edges. Built the
+// same way as the brain, from a distance field: piece is its number, center and out its middle and
+// outward direction (from the brain's own mesh), box the box around it.
+export function buildPieceSolid({ piece, center, out, box, step = 0.0045, thickness = 0.026, bevel = 0.007, curve = 0.55 }) {
   const CELL = 0.11; // about how long one grid cell is on the brain, in its own units
   const grow = thickness + bevel + 0.02;
   const solidBox = [box[0].map((v) => v - grow), box[1].map((v) => v + grow)];
+  // The top is part of a big sphere through the piece's middle, so it's almost flat but the light
+  // still changes a little across it.
+  const cx = center[0] - out[0] * curve, cy = center[1] - out[1] * curve, cz = center[2] - out[2] * curve;
   const fn = (x, y, z) => {
-    const top = field(x, y, z, soft);
-    const back = -(((x - centre[0]) * out[0] + (y - centre[1]) * out[1] + (z - centre[2]) * out[2]) + thickness);
+    const top = Math.hypot(x - cx, y - cy, z - cz) - curve;
+    const back = -(((x - center[0]) * out[0] + (y - center[1]) * out[1] + (z - center[2]) * out[2]) + thickness);
     const side = outlineDistance(piece, x, y, z) * CELL;
     return smax(smax(top, back, bevel), side, bevel);
   };
@@ -254,7 +257,7 @@ export function buildBrainMesh({ step = 0.017, box = null, only = -1, whole = fa
   }
 
   // 6. Pieces. A quad goes into the cell each of its corners (and its middle) points toward, plus
-  //    the neighbouring cell when it's near an edge, where a tab may reach across. The shader keeps
+  //    the neighboring cell when it's near an edge, where a tab may reach across. The shader keeps
   //    only the part of each copy that is really inside that piece.
   const shards = 6 * PUZZLE_N * PUZZLE_N;
   const reach = 0.36; // a tab reaches 0.32 of a piece across an edge (see the shader)
@@ -299,16 +302,16 @@ export function buildBrainMesh({ step = 0.017, box = null, only = -1, whole = fa
     }
   }
 
-  // Per shard: centre and outward direction.
-  const centre = new Float32Array(shards * 3), out = new Float32Array(shards * 3), count = new Uint32Array(shards);
+  // Per shard: center and outward direction.
+  const center = new Float32Array(shards * 3), out = new Float32Array(shards * 3), count = new Uint32Array(shards);
   for (let p = 0; p < outShard.length; p++) {
     const s = outShard[p];
-    for (let c = 0; c < 3; c++) { centre[s * 3 + c] += outPos[p * 3 + c]; out[s * 3 + c] += outNor[p * 3 + c]; }
+    for (let c = 0; c < 3; c++) { center[s * 3 + c] += outPos[p * 3 + c]; out[s * 3 + c] += outNor[p * 3 + c]; }
     count[s]++;
   }
   for (let s = 0; s < shards; s++) {
     const n = count[s] || 1;
-    for (let c = 0; c < 3; c++) centre[s * 3 + c] /= n;
+    for (let c = 0; c < 3; c++) center[s * 3 + c] /= n;
     const l = Math.hypot(out[s * 3], out[s * 3 + 1], out[s * 3 + 2]) || 1;
     for (let c = 0; c < 3; c++) out[s * 3 + c] /= l;
   }
@@ -319,7 +322,7 @@ export function buildBrainMesh({ step = 0.017, box = null, only = -1, whole = fa
     ao: new Float32Array(outAo),
     shard: new Float32Array(outShard),
     index: outShard.length > 65535 ? new Uint32Array(index) : new Uint16Array(index),
-    centre, out, shards
+    center, out, shards
   };
 }
 
