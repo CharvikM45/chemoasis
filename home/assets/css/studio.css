@@ -1,8 +1,8 @@
 /* Open Research Studio pages (research.html and the studio-*.html pages). Builds on home.css: same
-   colours, fonts, nav and buttons, with no 3D brain behind it.
+   colors, fonts, nav and buttons, with no 3D brain behind it.
    One visual language throughout: dark cards with a hairline border (like the home page's
    panels), gold for the eyebrow and small labels, copper for italic words and the main button.
-   The site's added colours: a plum band behind "How it works", pink for step numbers and card
+   The site's added colors: a plum band behind "How it works", pink for step numbers and card
    icons, blue for ticks, passed checks and the Verified badge. The fallbacks match home.css. */
 
 .rs { background: radial-gradient(90% 60% at 85% 0%, #2a140d 0, rgba(42, 20, 13, 0) 60%) var(--bg) no-repeat; }

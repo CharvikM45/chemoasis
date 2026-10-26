@@ -2,7 +2,7 @@
    (games/assets/js/experience.js). Builds on new-worlds-3d.css, restyled to match the rest of
    the site (home/assets/css/home.css): warm near-black, cream text, the peach accent, square
    cards with thin warm lines, Atkinson Hyperlegible Next buttons and Playfair headings. Each game keeps its own
-   colour (--tone) for the pieces you play with. */
+   color (--tone) for the pieces you play with. */
 
 /* ---------- the games library ---------- */
 
@@ -185,8 +185,8 @@ kbd.bg-key { font: inherit; }
   box-shadow: inset 0 0 60px rgba(127, 184, 255, .12), 0 0 50px rgba(127, 184, 255, .08);
 }
 .sky::before { content: ""; position: absolute; left: 12%; top: 12%; width: 76%; height: 76%; border: 1px dashed rgba(127, 184, 255, .22); border-radius: 50%; pointer-events: none; }
-.sky-centre { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 66px; height: 66px; display: grid; place-items: center; border: 1px solid rgba(255, 255, 255, .3); border-radius: 50%; background: rgba(6, 5, 7, .7); box-shadow: 0 0 24px rgba(127, 184, 255, .25); font-size: 36px; color: #fff; }
-/* The eight comet spots sit on the dashed ring, 38% of the sky out from the centre (placed in
+.sky-center { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 66px; height: 66px; display: grid; place-items: center; border: 1px solid rgba(255, 255, 255, .3); border-radius: 50%; background: rgba(6, 5, 7, .7); box-shadow: 0 0 24px rgba(127, 184, 255, .25); font-size: 36px; color: #fff; }
+/* The eight comet spots sit on the dashed ring, 38% of the sky out from the center (placed in
    brain-games.js), so they spread out with the sky and stay easy to tap. */
 .sky-slot { position: absolute; width: 56px; height: 56px; transform: translate(-50%, -50%); border: 1px solid transparent; border-radius: 50%; background: transparent; color: #fff3e6; font-size: 28px; cursor: pointer; }
 .sky-slot:not(:disabled) { border-color: rgba(255, 255, 255, .4); background: rgba(127, 184, 255, .08); }
@@ -268,7 +268,7 @@ button.tol-peg:hover, button.tol-peg:focus-visible { background: linear-gradient
 .brain-game .pad.active small { color: #10241e; }
 .brain-game .pad.good { background: #a9d8b8; border-color: #a9d8b8; color: #0d2414; }
 .brain-game .pad.bad { background: #f2b48e; border-color: #f2b48e; color: #2a0d08; }
-/* A symbol as well as a colour, so right and wrong don't depend on telling green from red. */
+/* A symbol as well as a color, so right and wrong don't depend on telling green from red. */
 .brain-game .pad.good::after, .brain-game .pad.bad::after { position: absolute; top: 12%; right: 16%; font-size: 22px; font-weight: 700; }
 .brain-game .pad.good::after { content: "✓"; }
 .brain-game .pad.bad::after { content: "✗"; }

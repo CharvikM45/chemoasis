@@ -1,4 +1,4 @@
-/* The games library (games/assets/js/experience.js): layout only. Colours and the site look are
+/* The games library (games/assets/js/experience.js): layout only. Colors and the site look are
    in brain-games.css. */
 #experience-view { position: fixed; z-index: 40; inset: 0; overflow: auto; background: var(--cream); color: var(--ink); padding: 28px clamp(22px, 7vw, 110px) 80px; }
 #experience-view[hidden] { display: none; }

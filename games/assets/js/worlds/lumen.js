@@ -5,7 +5,7 @@
  */
 import { Walk, mat, label, reduceMotion, shuffle, esc } from './walk.js';
 
-// [name, x, z, colour]
+// [name, x, z, color]
 const PLANTS = [['Moonfern', -3.6, 6.4, '#e46eff'], ['Prism bloom', 3.4, -0.8, '#75edff'], ['Star reed', -3.9, -8.1, '#ffd366'], ['Sunbud', 4.2, -12.4, '#ff8ec5'], ['Dawn orchid', -5.7, -14.7, '#8effc9']];
 const hue = Object.fromEntries(PLANTS.map(([name, , , c]) => [name, c]));
 
