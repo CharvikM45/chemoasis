@@ -103,8 +103,9 @@
 
 .rs-footer { max-width: 1180px; margin: 0 auto; padding: 40px 0 56px; border-top: 1px solid var(--line); }
 .rs-footer .disclaimer { margin: 0; }
-.rs-footer__links { display: flex; flex-wrap: wrap; gap: 10px 24px; margin-top: 22px; }
-.rs-footer__links a { color: var(--gold, #f2c35b); font: 500 15px "Atkinson Hyperlegible Next", "DM Sans", sans-serif; text-decoration: none; }
+.rs-footer__links { display: flex; flex-wrap: wrap; gap: 4px 24px; margin-top: 16px; }
+/* 44px tall, so each link is easy to tap on a phone */
+.rs-footer__links a { display: inline-flex; align-items: center; min-height: 44px; color: var(--gold, #f2c35b); font: 500 15px "Atkinson Hyperlegible Next", "DM Sans", sans-serif; text-decoration: none; }
 .rs-footer__links a:hover { color: var(--ink); }
 
 /* the agreement as a numbered list (studio-submit.html) */
