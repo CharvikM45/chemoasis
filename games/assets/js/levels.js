@@ -54,6 +54,7 @@
 
   const escape = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 
+  let overlayCount = 0;
   function overlay(host, html) {
     host.querySelector(':scope > .level-screen')?.remove();
     if (document.pointerLockElement) document.exitPointerLock();
@@ -62,6 +63,14 @@
     el.setAttribute('role', 'dialog');
     el.setAttribute('aria-modal', 'true');
     el.innerHTML = `<div class="level-panel">${html}</div>`;
+    // Screen readers announce the dialog by its first heading ("Choose a level", "Level 1 complete").
+    const heading = el.querySelector('h1, h2, h3');
+    if (heading) {
+      heading.id = heading.id || `level-screen-title-${++overlayCount}`;
+      el.setAttribute('aria-labelledby', heading.id);
+    } else {
+      el.setAttribute('aria-label', 'Game');
+    }
     // Keep clicks on the screen from reaching the game underneath.
     el.addEventListener('mousedown', (e) => e.stopPropagation());
     el.addEventListener('click', (e) => e.stopPropagation());

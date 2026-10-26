@@ -51,6 +51,21 @@ Forum.store = (function () {
   const copy = (value) => JSON.parse(JSON.stringify(value));
   const done = (value) => Promise.resolve(value === undefined ? undefined : copy(value));
   const fail = (message) => Promise.reject(new Error(message));
+
+  // A name with disguises undone: full-width letters ("Ｌｕｎａ"), Cyrillic and Greek look-alikes
+  // ("Lunа" with a Cyrillic "а") and capitals inside a word ("DrAmber" -> "dr amber").
+  // nameWords keeps the words apart; nameKey squashes them together to compare two names.
+  function plainName(name) {
+    const lookAlike = (Forum.safety && Forum.safety.CONFUSABLE) || {};
+    return String(name || "")
+      .normalize("NFKC")
+      .replace(/([a-z])([A-Z])/g, "$1 $2")
+      .replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2")
+      .toLowerCase()
+      .replace(/./gu, (c) => lookAlike[c] || c);
+  }
+  const nameWords = (name) => plainName(name).replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+  const nameKey = (name) => plainName(name).replace(/[^\p{L}\p{N}]+/gu, "");
   const newId = (prefix) => prefix + "-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 
   // ---------- people ----------
@@ -280,17 +295,20 @@ Forum.store = (function () {
       if (patch.displayName !== undefined) {
         const name = String(patch.displayName).trim().replace(/\s+/g, " ");
         if (name.length < 2 || name.length > 40) return fail("Display names need 2 to 40 characters.");
-        // Checked with symbols turned into spaces ("Moderator_Team") and with everything squashed
-        // together ("Formermember"), so punctuation can't slip a name past these checks.
-        const spaced = name.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-        const squashed = spaced.replace(/ /g, "");
+        // Checked after undoing disguises: full-width and look-alike letters ("Ｄｒ", a Cyrillic "о"),
+        // joined words ("DrAmber", "AmberRN"), dots ("R.N.") and symbols ("Moderator_Team"), so
+        // none of them can slip a staff or clinician name past these checks.
+        const spaced = nameWords(name);
+        const squashed = nameKey(name);
+        const letters = spaced.replace(/\b(\w) (?=\w\b)/g, "$1"); // "n p amber" -> "np amber"
         // Names that could pass for staff, a clinician, a badge or an anonymous post would mislead readers.
         const changed = name !== user.displayName;
+        const ROLE_WORDS = /\b(anonymous|moderators?|mods?|admins?|administrator|chemoasis|verified|official|staff|support|nurses?|rn|lpn|np|doctors?|dr|md|oncologists?|physicians?|pharmacists?|therapists?|clinicians?|care ?team|site ?owner)\b/;
         if (
           changed &&
           (user.type === "member" || user.type === "creator") &&
-          (/\b(anonymous|moderators?|mods?|admins?|administrator|chemoasis|verified|official|staff|support|nurse|rn|lpn|np|doctor|dr|md|oncologist|physician|pharmacist|therapist|clinician)\b/.test(spaced) ||
-            /moderator|chemoasis|official|verified|anonymous|oncologist/.test(squashed))
+          (ROLE_WORDS.test(spaced) || ROLE_WORDS.test(letters) ||
+            /moderator|chemoasis|official|verified|anonymous|oncologist|doctor|physician|pharmacist|therapist|clinician|careteam|siteowner|administrator/.test(squashed))
         ) {
           return fail("Please pick a name that doesn't sound like a role, a badge or the app itself.");
         }
@@ -299,8 +317,9 @@ Forum.store = (function () {
         if (changed && (/^member ?\d+$|\bexample\b/.test(spaced) || squashed.includes("formermember"))) {
           return fail("That name looks like one the forum gives out itself. Please pick another.");
         }
-        // Two people with the same name would be easy to mix up, or to pose as each other.
-        if (changed && data.profiles.some((p) => p.id !== user.id && String(p.displayName || "").toLowerCase().replace(/[^a-z0-9]+/g, "") === squashed)) {
+        // Two people with the same name would be easy to mix up, or to pose as each other,
+        // including with look-alike letters ("Lunа" with a Cyrillic "а").
+        if (changed && data.profiles.some((p) => p.id !== user.id && nameKey(p.displayName) === squashed)) {
           return fail("Someone in the community already uses that name. Please pick another.");
         }
         user.displayName = name;
