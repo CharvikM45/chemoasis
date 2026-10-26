@@ -314,6 +314,14 @@ html {
 }
 
 .f-page .f-account a {
+  /* a 44px-tall tap target with readable text, not the 11px label style around it */
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 0.25rem;
+  font: 500 14px "Atkinson Hyperlegible Next", "DM Sans", sans-serif;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--f-accent);
   text-decoration: none;
 }
