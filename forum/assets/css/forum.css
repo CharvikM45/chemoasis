@@ -164,9 +164,7 @@ html {
   display: inline-block;
   margin: 0 0 1rem;
   color: var(--f-accent-2);
-  font: 0.7rem "DM Mono", ui-monospace, monospace;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
+  font: 600 0.95rem "Atkinson Hyperlegible Next", "DM Sans", sans-serif;
   text-decoration: none;
 }
 
@@ -243,9 +241,7 @@ html {
 
 .f-page .f-top__link {
   color: var(--f-ink);
-  font: 11px "DM Mono", ui-monospace, monospace;
-  letter-spacing: 0.11em;
-  text-transform: uppercase;
+  font: 500 15px "Atkinson Hyperlegible Next", "DM Sans", sans-serif;
   text-decoration: none;
   white-space: nowrap;
 }
@@ -289,9 +285,7 @@ html {
 
 .f-nav a {
   padding: 0.35rem 0;
-  font: 11px "DM Mono", ui-monospace, monospace;
-  letter-spacing: 0.11em;
-  text-transform: uppercase;
+  font: 500 15px "Atkinson Hyperlegible Next", "DM Sans", sans-serif;
   text-decoration: none;
   border-bottom: 2px solid transparent;
 }
@@ -1081,8 +1075,7 @@ html {
   }
 
   .f-page .f-top__link {
-    font-size: 10px;
-    letter-spacing: 0.06em;
+    font-size: 14px;
   }
 
   .f-page .f-top__cta {
