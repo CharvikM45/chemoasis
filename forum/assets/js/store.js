@@ -284,6 +284,11 @@ Forum.store = (function () {
         if ((user.type === "member" || user.type === "creator") && /\b(anonymous|moderator|mod|admin|chemoasis|verified|official|staff|nurse|doctor|dr)\b/i.test(name)) {
           return fail("Please pick a name that doesn't sound like a role, a badge or the app itself.");
         }
+        // Names the forum hands out itself (the neutral "Member 4821", a deleted account's
+        // "Former member", the demo's "(example)" people) would let someone pass as another person.
+        if (name !== user.displayName && /^member\s*#?\d+$|\bformer member\b|\bexample\b/i.test(name)) {
+          return fail("That name looks like one the forum gives out itself. Please pick another.");
+        }
         user.displayName = name;
       }
       if (patch.bio !== undefined) user.bio = String(patch.bio).trim().slice(0, 300);

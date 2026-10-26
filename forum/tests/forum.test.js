@@ -182,6 +182,15 @@ test("members can't pick a name that sounds like a role", async (F) => {
   await rejects(F.store.updateMyProfile({ displayName: "Nurse Kim" }), "doesn't sound like a role");
 });
 
+test("members can't take a name the forum gives out, but can keep their own", async (F) => {
+  for (const name of ["Member 4821", "Former member", "Sam (example)"]) {
+    await rejects(F.store.updateMyProfile({ displayName: name }), "gives out itself");
+  }
+  // River's demo name has "(example)" in it, and saving the profile resends it unchanged.
+  const saved = await F.store.updateMyProfile({ displayName: "River (example)", bio: "New bio." });
+  assert(saved.displayName === "River (example)" && saved.bio === "New bio.");
+});
+
 // ---------- reports and moderation ----------
 
 test("three different reporters hide a post until a moderator decides", async (F) => {

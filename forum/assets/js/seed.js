@@ -18,7 +18,7 @@ Forum.seed = function () {
       id: "u-river",
       displayName: "River (example)",
       type: "member",
-      bio: "Here mostly for the puzzle games on slower days.",
+      bio: "Finished chemo last spring. Here mostly for the puzzle games on slower days.",
       showBio: true,
       createdAt: daysAgo(40)
     },
@@ -34,7 +34,7 @@ Forum.seed = function () {
       id: "u-june",
       displayName: "June (example)",
       type: "member",
-      bio: "I like short activities I can do sitting down.",
+      bio: "I like short activities I can do sitting down on infusion days.",
       showBio: true,
       createdAt: daysAgo(25)
     },
@@ -70,7 +70,7 @@ Forum.seed = function () {
       categoryId: "welcome",
       authorId: "u-alex",
       title: "Hi from a new member",
-      body: "Hi everyone. I just found Chemoasis and wanted to say hello. I'm mostly looking for short activities for low-energy days.",
+      body: "Hi everyone. I'm a few cycles into chemo and just found Chemoasis. I'm mostly looking for short activities for low-energy days, and a small way to feel a bit more in control.",
       label: "experience",
       gameIds: [],
       createdAt: daysAgo(3)
@@ -90,7 +90,7 @@ Forum.seed = function () {
       categoryId: "experiences",
       authorId: "u-june",
       title: "Writing the day's plan down first thing",
-      body: "Writing my plans down in the morning helps me feel less scattered. I'm not saying it works for everyone, just sharing what I do. What small habits help you?",
+      body: "Since starting chemo, writing my plans down in the morning helps me feel less scattered. I'm not saying it works for everyone, just sharing what I do. What small habits help you?",
       label: "experience",
       gameIds: [],
       createdAt: daysAgo(5)
@@ -100,7 +100,7 @@ Forum.seed = function () {
       categoryId: "ask-a-professional",
       authorId: "u-alex",
       title: "Is it common to feel foggy some days and fine on others?",
-      body: "Some days my focus feels fine and other days it really doesn't. Is that something other people notice too?",
+      body: "Some days my focus feels fine and other days it really doesn't, especially in the few days after an infusion. Is that something other people notice too?",
       label: "experience",
       gameIds: [],
       createdAt: daysAgo(1.5)
@@ -120,7 +120,7 @@ Forum.seed = function () {
       categoryId: "ideas",
       authorId: "u-june",
       title: "Idea: a movement or balance activity",
-      body: "It would help to have a gentle movement or balance activity, with a seated option. Some days standing up for long isn't realistic.",
+      body: "It would help to have a gentle movement or balance activity, with a seated option. Some days during treatment, standing up for long isn't realistic.",
       label: "experience",
       gameIds: [],
       createdAt: daysAgo(4)
