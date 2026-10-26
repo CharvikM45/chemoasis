@@ -36,6 +36,15 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: "DM San
     linear-gradient(180deg, #100d2c 0%, #231a4d 55%, #33276a 100%);
 }
 .wall.wall-live:not(.no-brain) .hero { background: transparent; }
+/* Over the nebula the hero's text gets a soft dark pool behind it, crisper shadows and lighter
+   small text, so it reads easily; the sky still shows around it. */
+.wall:not(.no-brain) .hero::before { content: ""; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse 58% 62% at 24% 52%, rgba(7, 5, 14, .7) 0, rgba(7, 5, 14, .45) 50%, rgba(7, 5, 14, 0) 80%); }
+.wall:not(.no-brain) .hero .copy { position: relative; }
+.wall:not(.no-brain) .hero h1 { text-shadow: 0 2px 6px rgba(7, 5, 14, .5), 0 2px 40px rgba(0, 0, 0, .6); }
+.wall:not(.no-brain) .hero .eyebrow { color: #f2bc9a; text-shadow: 0 1px 3px rgba(7, 5, 14, .9), 0 0 16px rgba(7, 5, 14, .8); }
+.wall:not(.no-brain) .hero .lede { color: #efe5dc; text-shadow: 0 1px 3px rgba(7, 5, 14, .8), 0 0 22px rgba(7, 5, 14, .9); }
+.wall:not(.no-brain) .hero .button:not(.primary) { background: rgba(9, 7, 14, .82); border-color: rgba(255, 236, 220, .62); }
+.wall:not(.no-brain) .hero .scroll-cue { color: var(--soft); text-shadow: 0 1px 3px rgba(7, 5, 14, .9); }
 .wall:not(.no-brain) .vignette { opacity: 0; }
 
 /* The quote set on the piece that comes out of the brain for each section (brain/intro.js). The
@@ -189,6 +198,7 @@ h1 em, h2 em { color: var(--accent); }
   .hero .copy { text-align: center; }
   .hero .lede { margin-left: auto; margin-right: auto; }
   .hero .actions { justify-content: center; }
+  .wall:not(.no-brain) .hero::before { background: radial-gradient(ellipse 90% 55% at 50% 66%, rgba(7, 5, 14, .7) 0, rgba(7, 5, 14, .4) 55%, rgba(7, 5, 14, 0) 85%); }
   .band { min-height: auto; padding-top: 90px; padding-bottom: 90px; }
   .band .copy { padding: 26px 20px; background: rgba(6, 5, 7, .8); } /* the brain's pieces pass behind it */
   .closing { min-height: 100vh; padding-bottom: 24px; } /* low, so the finished brain shows above it */
