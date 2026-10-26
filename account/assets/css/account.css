@@ -116,7 +116,7 @@ em { color: var(--clay); }
   min-height: 52px;
   padding: 12px 28px;
   border-radius: 999px;
-  font: 500 17px "DM Sans";
+  font: 600 17px "Atkinson Hyperlegible Next", "DM Sans", sans-serif;
   text-decoration: none;
   cursor: pointer;
   transition: transform .3s, background .3s, border-color .3s;
@@ -149,7 +149,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
   border-radius: 999px;
   background: transparent;
   color: var(--muted);
-  font: 500 16px "DM Sans";
+  font: 600 16px "Atkinson Hyperlegible Next", "DM Sans", sans-serif;
   cursor: pointer;
 }
 .tabs button[aria-selected="true"] { background: rgba(231, 167, 130, .16); color: var(--ink); }
