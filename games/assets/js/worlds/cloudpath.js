@@ -8,7 +8,8 @@
 import { Walk, mat, label, esc } from './walk.js';
 
 const LINKS = { Harbor: ['Moss', 'Wind'], Moss: ['Harbor', 'Falls'], Wind: ['Harbor', 'Falls'], Falls: ['Moss', 'Wind', 'Beacon'], Beacon: ['Falls'] };
-const AT = { Harbor: [0, 0, 12], Moss: [-7, 1, 4], Wind: [7, 1, 4], Falls: [0, 2, -4], Beacon: [0, 3, -13] };
+const AT = { Harbor: [0, 0, 12], Moss: [-7, 1, 4], Wind: [7, 1, 4], Falls: [0, 2, -4], Beacon: [4.5, 4.5, -13] };
+// The Beacon sits up and to the right, so Falls doesn't hide it from the start at Harbor.
 const BRIDGES = [['Harbor', 'Moss'], ['Harbor', 'Wind'], ['Moss', 'Falls'], ['Wind', 'Falls'], ['Falls', 'Beacon']];
 
 function build(T, walk) {

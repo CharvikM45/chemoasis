@@ -211,8 +211,9 @@ h1 em, h2 em { color: var(--accent); }
 @media (max-width: 480px) {
   .nav { gap: 12px; }
   .brand { font-size: 18px; }
-  .nav-links { gap: 12px; flex-wrap: wrap; justify-content: flex-end; row-gap: 6px; }
-  .nav-link { font-size: 14px; }
+  .nav-links { gap: 12px; flex-wrap: wrap; justify-content: flex-end; row-gap: 2px; }
+  /* Each link is at least 24px tall, an easier tap with numb fingertips. */
+  .nav-link { font-size: 14px; padding: 4px 0; min-height: 24px; }
   .nav-cta { padding: 6px 8px; }
   .nav-cta span { display: none; }
   .hero, .band { padding-left: 16px; padding-right: 16px; }

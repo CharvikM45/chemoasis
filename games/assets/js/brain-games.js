@@ -74,7 +74,7 @@ const hasMouse = () => matchMedia('(any-pointer: fine)').matches && 'requestPoin
 const why3DOff = () => (window.reframeCalm ? '3D worlds are off in Calm mode. Turn Calm mode off in the top bar to use them.' : '');
 const viewOf = (game) => (game.w3 && hasMouse() && !why3DOff() && readJSON(VIEW)[game.id] === '3d' ? '3d' : '2d');
 function saveView(game, view) { const all = readJSON(VIEW); all[game] = view; writeJSON(VIEW, all); }
-const W3 = { lumen: () => import('./worlds/lumen.js'), starling: () => import('./worlds/starling.js'), cloudpath: () => import('./worlds/cloudpath.js') };
+const W3 = { lumen: () => import('./worlds/lumen.js?v=2'), starling: () => import('./worlds/starling.js?v=2'), cloudpath: () => import('./worlds/cloudpath.js?v=2') };
 
 /* ---------- the world around each game: a calm 3D backdrop and a panel ---------- */
 
@@ -425,8 +425,8 @@ const lumen = {
   about: { text: 'Practises working memory: holding a short sequence in mind and replaying it. Inspired by span tasks used in research. A small pilot with childhood cancer survivors found gains on similar tasks; results in adults after cancer are early and mixed, and this game itself hasn’t been studied.', cite: 'Hardy et al., Psycho-Oncology 2013', href: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC4820841/' },
   levels: [
     // span: where paths start; min and max: how short and long they get, here and when picked up next time.
-    { name: 'Forward paths', desc: '3 × 3 garden. Paths of 3 to 5 lights.', size: 3, span: 3, min: 2, max: 5, on: 650 },
-    { name: 'Longer paths', desc: '3 × 3 garden. Paths of 4 to 8 lights, a little faster.', size: 3, span: 4, min: 3, max: 8, on: 520 },
+    { name: 'Forward paths', desc: '3 × 3 garden. Paths of 2 to 5 lights, starting at 3.', size: 3, span: 3, min: 2, max: 5, on: 650 },
+    { name: 'Longer paths', desc: '3 × 3 garden. Paths of 3 to 8 lights, starting at 4, a little faster.', size: 3, span: 4, min: 3, max: 8, on: 520 },
     // Backwards was level 4 until levels went from four to three, so it still saves as L4.
     { name: 'Backwards', desc: '3 × 3 garden. Tap the path in reverse order, from 3 lights.', size: 3, span: 3, min: 2, max: 7, on: 650, backward: true, save: 'L4' }
   ],
@@ -503,7 +503,7 @@ lumen.w3 = {
     const { mistakes, peeks } = result;
     const extra = [mistakes && `${mistakes} wrong ${mistakes === 1 ? 'pick' : 'picks'}`, peeks && `${peeks} ${peeks === 1 ? 'peek' : 'peeks'} at the path`].filter(Boolean);
     // Fewer is better, and a peek counts like a wrong pick, so peeking can't set an easy best.
-    finish3D(world, lumen, level, [`You found all ${level.count} plants in order${extra.length ? `, with ${extra.join(' and ')}` : ', with no wrong picks'}.`], best3D(world, mistakes + peeks, 'wrong picks and peeks'));
+    finish3D(world, lumen, level, [`You found ${level.count === 2 ? 'both plants' : `all ${level.count} plants`} in order${extra.length ? `, with ${extra.join(' and ')}` : ', with no wrong picks'}.`], best3D(world, mistakes + peeks, 'wrong picks and peeks'));
   }
 };
 
@@ -630,7 +630,7 @@ starling.w3 = {
   async play(world, level, alive) {
     const result = await play3D(world, starling, level, alive);
     if (!result) return;
-    finish3D(world, starling, level, [`You found ${level.count === 1 ? 'the object' : `all ${level.count} objects`}${result.mistakes ? `, with ${result.mistakes} wrong ${result.mistakes === 1 ? 'pick' : 'picks'}` : ' without a wrong pick'}.`], best3D(world, result.mistakes, 'wrong picks'));
+    finish3D(world, starling, level, [`You found ${level.count === 1 ? 'the object' : level.count === 2 ? 'both objects' : `all ${level.count} objects`}${result.mistakes ? `, with ${result.mistakes} wrong ${result.mistakes === 1 ? 'pick' : 'picks'}` : ' without a wrong pick'}.`], best3D(world, result.mistakes, 'wrong picks'));
   }
 };
 
@@ -775,15 +775,17 @@ cloudpath.w3 = {
  * 4. Story Echo: verbal memory (word lists, with a linking strategy)
  * ==================================================================== */
 
+// 25 words in each of 8 groups, so a whole session can use fresh words (a Challenge level 3
+// session shows 68 list words and 68 lures) and still keep never-shown words for the last check.
 const WORDS = {
-  fruit: ['apple', 'lemon', 'grape', 'peach', 'cherry', 'mango', 'plum', 'melon', 'pear', 'kiwi'],
-  animals: ['horse', 'otter', 'eagle', 'tiger', 'rabbit', 'whale', 'goose', 'zebra', 'camel', 'fox'],
-  tools: ['hammer', 'ladder', 'shovel', 'wrench', 'needle', 'brush', 'drill', 'rake', 'saw', 'chisel'],
-  places: ['beach', 'castle', 'garden', 'harbor', 'library', 'market', 'meadow', 'museum', 'island', 'bridge'],
-  clothing: ['scarf', 'jacket', 'boot', 'glove', 'apron', 'sweater', 'sock', 'belt', 'vest', 'sandal'],
-  weather: ['thunder', 'breeze', 'frost', 'rain', 'fog', 'hail', 'sunshine', 'snow', 'storm', 'drizzle'],
-  music: ['violin', 'drum', 'flute', 'piano', 'harp', 'trumpet', 'guitar', 'cello', 'banjo', 'organ'],
-  kitchen: ['kettle', 'spoon', 'ladle', 'oven', 'plate', 'whisk', 'teapot', 'bowl', 'grater', 'skillet']
+  fruit: ['apple', 'lemon', 'grape', 'peach', 'cherry', 'mango', 'plum', 'melon', 'pear', 'kiwi', 'lime', 'orange', 'banana', 'apricot', 'papaya', 'coconut', 'fig', 'date', 'guava', 'berry', 'olive', 'raisin', 'quince', 'nectarine', 'tangerine'],
+  animals: ['horse', 'otter', 'eagle', 'tiger', 'rabbit', 'whale', 'goose', 'zebra', 'camel', 'fox', 'badger', 'beaver', 'donkey', 'falcon', 'lizard', 'monkey', 'panda', 'parrot', 'salmon', 'turtle', 'wolf', 'moose', 'robin', 'shark', 'llama'],
+  tools: ['hammer', 'ladder', 'shovel', 'wrench', 'needle', 'brush', 'drill', 'rake', 'saw', 'chisel', 'pliers', 'anvil', 'axe', 'trowel', 'bucket', 'clamp', 'funnel', 'hatchet', 'crowbar', 'mallet', 'rope', 'scissors', 'spade', 'tape', 'sander'],
+  places: ['beach', 'castle', 'garden', 'harbor', 'library', 'market', 'meadow', 'museum', 'island', 'bridge', 'airport', 'bakery', 'canyon', 'chapel', 'desert', 'forest', 'lake', 'mountain', 'office', 'palace', 'prairie', 'school', 'stadium', 'temple', 'village'],
+  clothing: ['scarf', 'jacket', 'boot', 'glove', 'apron', 'sweater', 'sock', 'belt', 'vest', 'sandal', 'blouse', 'cap', 'coat', 'dress', 'hoodie', 'mitten', 'pajamas', 'poncho', 'robe', 'shirt', 'shoe', 'skirt', 'slipper', 'tie', 'tuxedo'],
+  weather: ['thunder', 'breeze', 'frost', 'rain', 'fog', 'hail', 'sunshine', 'snow', 'storm', 'drizzle', 'cloud', 'gale', 'lightning', 'mist', 'rainbow', 'sleet', 'tornado', 'blizzard', 'dew', 'drought', 'flood', 'heatwave', 'hurricane', 'monsoon', 'gust'],
+  music: ['violin', 'drum', 'flute', 'piano', 'harp', 'trumpet', 'guitar', 'cello', 'banjo', 'organ', 'accordion', 'bagpipe', 'bugle', 'cymbal', 'fiddle', 'gong', 'harmonica', 'kazoo', 'lute', 'oboe', 'tambourine', 'trombone', 'tuba', 'ukulele', 'xylophone'],
+  kitchen: ['kettle', 'spoon', 'ladle', 'oven', 'plate', 'whisk', 'teapot', 'bowl', 'grater', 'skillet', 'blender', 'colander', 'fork', 'jar', 'knife', 'mug', 'napkin', 'pan', 'pitcher', 'saucer', 'sieve', 'spatula', 'toaster', 'tray', 'cup']
 };
 // Gentle lists stop growing at 12 words so the recall screen stays short.
 const echoMax = (mode, level) => Math.min(level ? level.max : 16, mode === 'challenge' ? 16 : 12);
@@ -818,13 +820,16 @@ const echo = {
     let n = Math.min(startAt ?? level.words, max), bestLen = 0, totalHits = 0, totalShown = 0;
     let typedHits = 0, typedShown = 0; // Challenge: words typed from memory, before the list
     const seen = [], used = new Set(); // every listed word, and every word shown on any screen
+    // Challenge keeps 8 words aside that no list or lure uses, so the last check always has
+    // never-shown words to mix in, however long the session.
+    const reserved = new Set(gentle ? [] : shuffle(Object.values(WORDS).flat()).slice(0, 8));
     let speak = false;
     for (let list = 0; list < LISTS && alive(); list++) {
       const groups = shuffle(Object.keys(WORDS)).slice(0, Math.ceil(n / 2));
       const chosen = [], lures = [];
       // Words not yet seen this session come first, so the same word doesn't turn up on two lists
       // (long Challenge sessions can run out, and only then reuse words).
-      groups.forEach((g) => { const w = [...shuffle(WORDS[g].filter((x) => !used.has(x))), ...shuffle(WORDS[g].filter((x) => used.has(x)))]; chosen.push(...w.slice(0, 2)); lures.push(...w.slice(2, 4)); });
+      groups.forEach((g) => { const pool = WORDS[g].filter((x) => !reserved.has(x)); const w = [...shuffle(pool.filter((x) => !used.has(x))), ...shuffle(pool.filter((x) => used.has(x)))]; chosen.push(...w.slice(0, 2)); lures.push(...w.slice(2, 4)); });
       const list_ = shuffle(chosen.slice(0, n));
       const foils = shuffle(lures).slice(0, n);
       seen.push(...list_);
@@ -923,7 +928,7 @@ const echo = {
     if (!alive()) return;
     // Challenge: a last check a few minutes on. Which of these words were on an earlier list?
     let later = '';
-    if (!gentle && Object.values(WORDS).flat().some((w) => !used.has(w))) {
+    if (!gentle) {
       // As many never-shown words as earlier ones, so guessing "all of them" doesn't pay.
       const unseen = Object.values(WORDS).flat().filter((w) => !used.has(w));
       const old = shuffle([...new Set(seen)]).slice(0, Math.min(8, unseen.length));
