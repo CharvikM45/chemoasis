@@ -12,6 +12,7 @@
   --plum: #3b1832;
   --pink: #d3a5c9; /* people and steps: labels, step numbers, card icons */
   --blue: #a7bcdd; /* games and checks: game chips, ticks, Verified */
+  --gold: #f2c35b; /* small labels and source links: eyebrows, kickers, step numbers */
 }
 
 * { box-sizing: border-box; }
@@ -41,7 +42,7 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: "DM San
 .wall:not(.no-brain) .hero::before { content: ""; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse 58% 62% at 24% 52%, rgba(7, 5, 14, .7) 0, rgba(7, 5, 14, .45) 50%, rgba(7, 5, 14, 0) 80%); }
 .wall:not(.no-brain) .hero .copy { position: relative; }
 .wall:not(.no-brain) .hero h1 { text-shadow: 0 2px 6px rgba(7, 5, 14, .5), 0 2px 40px rgba(0, 0, 0, .6); }
-.wall:not(.no-brain) .hero .eyebrow { color: #f2bc9a; text-shadow: 0 1px 3px rgba(7, 5, 14, .9), 0 0 16px rgba(7, 5, 14, .8); }
+.wall:not(.no-brain) .hero .eyebrow { color: #f6cd6c; text-shadow: 0 1px 3px rgba(7, 5, 14, .9), 0 0 16px rgba(7, 5, 14, .8); }
 .wall:not(.no-brain) .hero .lede { color: #efe5dc; text-shadow: 0 1px 3px rgba(7, 5, 14, .8), 0 0 22px rgba(7, 5, 14, .9); }
 .wall:not(.no-brain) .hero .button:not(.primary) { background: rgba(9, 7, 14, .82); border-color: rgba(255, 236, 220, .62); }
 .wall:not(.no-brain) .hero .scroll-cue { color: var(--soft); text-shadow: 0 1px 3px rgba(7, 5, 14, .9); }
@@ -104,7 +105,7 @@ main { position: relative; z-index: 2; }
 .band { min-height: 110vh; }
 .copy { width: min(600px, 100%); }
 
-.eyebrow { margin: 0 0 20px; color: var(--accent-2); font: 600 15px "Atkinson Hyperlegible Next", "DM Sans", sans-serif; }
+.eyebrow { margin: 0 0 20px; color: var(--gold); font: 600 15px "Atkinson Hyperlegible Next", "DM Sans", sans-serif; }
 h1, h2 { margin: 0; font-family: "Playfair Display", serif; font-weight: 400; letter-spacing: -.045em; }
 h1 { font-size: clamp(48px, 7vw, 96px); line-height: .95; text-shadow: 0 2px 40px rgba(0, 0, 0, .6); }
 h2 { font-size: clamp(32px, 4vw, 52px); line-height: 1.03; text-shadow: 0 2px 30px rgba(0, 0, 0, .7); }
@@ -145,7 +146,7 @@ h1 em, h2 em { color: var(--accent); }
 .stat { display: flex; flex-direction: column; gap: 10px; padding: 20px; }
 .stat-number { font: 400 clamp(34px, 3.6vw, 46px)/1 "Playfair Display", serif; letter-spacing: -.04em; color: var(--ink); }
 .stat p { margin: 0; color: var(--soft); font-size: 14px; line-height: 1.5; }
-.stat a, .panel a { margin-top: auto; color: var(--accent-2); font: 500 14px/1.5 "Atkinson Hyperlegible Next", "DM Sans", sans-serif; text-decoration: none; }
+.stat a, .panel a { margin-top: auto; color: var(--gold); font: 500 14px/1.5 "Atkinson Hyperlegible Next", "DM Sans", sans-serif; text-decoration: none; }
 .stat a:hover, .panel a:hover { color: var(--ink); text-decoration: underline; }
 .stat-accent { border-color: rgba(231, 167, 130, .55); }
 .stat-accent .stat-number { color: var(--accent); }
@@ -153,13 +154,13 @@ h1 em, h2 em { color: var(--accent); }
 .panel { margin-top: 12px; padding: 22px; display: grid; gap: 10px; }
 .panel p { margin: 0; color: var(--soft); font-size: 15px; line-height: 1.6; }
 .panel strong { color: var(--ink); font-weight: 600; }
-.panel .panel-kicker { color: var(--accent-2); font: 600 15px "Atkinson Hyperlegible Next", "DM Sans", sans-serif; }
+.panel .panel-kicker { color: var(--gold); font: 600 15px "Atkinson Hyperlegible Next", "DM Sans", sans-serif; }
 
 /* ---------- approach ---------- */
 
 .steps { list-style: none; margin: 30px 0 0; padding: 0; display: grid; gap: 10px; }
 .steps li { display: grid; grid-template-columns: 44px 1fr; gap: 14px; padding: 18px 20px; }
-.steps span { color: var(--accent); font: 600 15px "Atkinson Hyperlegible Next", "DM Sans", sans-serif; padding-top: 3px; }
+.steps span { color: var(--gold); font: 600 15px "Atkinson Hyperlegible Next", "DM Sans", sans-serif; padding-top: 3px; }
 .steps b { display: block; font: 400 21px/1.2 "Playfair Display", serif; letter-spacing: -.02em; }
 .steps p { margin: 6px 0 0; color: var(--soft); font-size: 14px; line-height: 1.55; }
 

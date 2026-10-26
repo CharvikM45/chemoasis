@@ -15,6 +15,7 @@
   --f-muted: #a8978a;
   --f-accent: #e7a782;
   --f-accent-2: #d9a07d;
+  --f-gold: #f2c35b; /* small labels: eyebrows */
   --f-accent-ink: #1c120d;
   --f-line: rgba(255, 236, 220, 0.13);
   --f-line-strong: rgba(255, 236, 220, 0.28);
@@ -163,14 +164,14 @@ html {
 .f-page .eyebrow {
   display: inline-block;
   margin: 0 0 1rem;
-  color: var(--f-accent-2);
+  color: var(--f-gold);
   font: 600 0.95rem "Atkinson Hyperlegible Next", "DM Sans", sans-serif;
   text-decoration: none;
 }
 
 .f-page .f-eyebrow {
   margin: 0;
-  color: var(--f-accent-2);
+  color: var(--f-gold);
   text-decoration: none;
 }
 
