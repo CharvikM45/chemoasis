@@ -172,7 +172,7 @@ function folds(x, y, z, ax) {
   let depth = 0.072 * (1 - Math.sqrt(Math.max(0, 1 - g * g)));
   depth *= 0.45 + 0.55 * smoothstep(0.02, 0.12, ax); // gentler on the hidden inner side
 
-  // The central sulcus is a little deeper than its neighbours; the lateral fissure much deeper.
+  // The central sulcus is a little deeper than its neighbors; the lateral fissure much deeper.
   depth += 0.02 * Math.exp(-((c / 0.02) ** 2)) * wCentral;
   depth += 0.085 * Math.exp(-((below / 0.03) ** 2)) * smoothstep(0.28, 0.42, ax) * smoothstep(-0.32, -0.12, z);
   return depth;
