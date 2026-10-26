@@ -10,7 +10,6 @@
   --card: rgba(14, 11, 14, .84);
   --line: rgba(255, 236, 220, .13);
   --plum: #3b1832;
-  --wall: var(--plum); /* the opening wall; brain/intro.js reads this too */
   --pink: #d3a5c9; /* people and steps: labels, step numbers, card icons */
   --blue: #a7bcdd; /* games and checks: game chips, ticks, Verified */
 }
@@ -39,9 +38,16 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: "DM San
 #brain { display: block; width: 100%; height: 100%; opacity: 0; } /* brain/intro.js fades it in */
 .no-brain #brain { display: none; }
 
-/* The opening wall: the page starts on one solid colour that turns out to be a jigsaw (brain/intro.js).
+/* The opening wall: the page starts on a twilight nebula that turns out to be a jigsaw (brain/intro.js).
    Until the 3D wall is drawn, the hero itself is the wall, so it never flashes dark first. */
-.wall:not(.no-brain) .hero { background: var(--wall); transition: background-color .5s ease; }
+.wall:not(.no-brain) .hero {
+  /* A rough copy of the nebula the 3D wall paints, until it is drawn. */
+  background:
+    radial-gradient(ellipse 22% 18% at 82% 62%, rgba(231, 140, 168, .45), transparent 70%),
+    radial-gradient(ellipse 40% 45% at 76% 76%, rgba(150, 125, 220, .55), transparent 70%),
+    radial-gradient(ellipse 35% 55% at 4% 35%, rgba(13, 92, 94, .35), transparent 70%),
+    linear-gradient(180deg, #100d2c 0%, #231a4d 55%, #33276a 100%);
+}
 .wall.wall-live:not(.no-brain) .hero { background: transparent; }
 .wall:not(.no-brain) .vignette { opacity: 0; }
 
