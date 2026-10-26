@@ -74,7 +74,7 @@ const hasMouse = () => matchMedia('(any-pointer: fine)').matches && 'requestPoin
 const why3DOff = () => (window.reframeCalm ? '3D worlds are off in Calm mode. Turn Calm mode off in the top bar to use them.' : '');
 const viewOf = (game) => (game.w3 && hasMouse() && !why3DOff() && readJSON(VIEW)[game.id] === '3d' ? '3d' : '2d');
 function saveView(game, view) { const all = readJSON(VIEW); all[game] = view; writeJSON(VIEW, all); }
-const W3 = { lumen: () => import('./worlds/lumen.js?v=2'), starling: () => import('./worlds/starling.js?v=2'), cloudpath: () => import('./worlds/cloudpath.js?v=2') };
+const W3 = { lumen: () => import('./worlds/lumen.js?v=4'), starling: () => import('./worlds/starling.js?v=4'), cloudpath: () => import('./worlds/cloudpath.js?v=4') };
 
 /* ---------- the world around each game: a calm 3D backdrop and a panel ---------- */
 

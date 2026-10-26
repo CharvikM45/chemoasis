@@ -310,6 +310,46 @@ button.tol-peg:hover, button.tol-peg:focus-visible { background: linear-gradient
 .w3-side { position: absolute; right: clamp(16px, 3vw, 40px); bottom: 16px; min-height: 44px; padding: 10px 16px; border: 1px solid rgba(255, 236, 220, .4); background: rgba(14, 11, 14, .8); color: var(--ink); font: 500 12px "DM Mono", monospace; letter-spacing: .08em; text-transform: uppercase; cursor: pointer; }
 .w3-side:hover, .w3-side:focus-visible { border-color: var(--accent); color: var(--accent); outline: none; }
 
+/* Keep the horizon and the central play area clear. */
+.brain-game.is-3d::after { background: linear-gradient(rgba(5, 12, 22, .32), transparent 22%, transparent 78%, rgba(5, 12, 22, .3)); }
+.w3-hud .world-top h2 { font-size: clamp(23px, 2.5vw, 34px); }
+.w3-hud .world-kicker { font-size: 11px; margin-bottom: 6px; }
+.w3-goal { left: clamp(16px, 3vw, 40px); top: 112px; bottom: auto; transform: none; width: min(340px, calc(100vw - 32px)); padding: 12px 15px; background: rgba(10, 22, 32, .68); text-align: left; border: 1px solid rgba(220, 238, 244, .18); border-radius: 12px; }
+.w3-goal small { font-size: 12px; margin-bottom: 6px; }
+.w3-goal b { font-size: 24px; }
+.w3-tokens { justify-content: flex-start; gap: 5px; }
+.w3-token { padding: 4px 7px; font-size: 13px; border: 0; background: rgba(255,255,255,.06); border-radius: 6px; }
+.w3-route { display: block; max-height: 100px; overflow-y: auto; pointer-events: auto; overflow-wrap: anywhere; }
+.w3-status { bottom: 76px; width: min(560px, calc(100vw - 32px)); padding: 8px 14px; border: 0; border-radius: 10px; background: rgba(10, 22, 32, .65); font-size: 14px; }
+.w3-enter { top: 65%; border-radius: 24px; min-height: 44px; padding: 10px 20px; box-shadow: none; font-size: 14px; }
+.w3-cross { width: 6px; height: 6px; border: 1px solid #fff; border-radius: 50%; box-shadow: 0 1px 5px #000; }
+.w3-cross::before, .w3-cross::after { display: none; }
+.w3-keys { max-width: calc(100vw - 270px); font-size: 12px; line-height: 1.6; }
+.w3-side { border-radius: 22px; letter-spacing: 0; text-transform: none; }
+.w3-settings { position: absolute; top: 112px; right: clamp(16px, 3vw, 40px); width: 230px; max-width: calc(100vw - 32px); max-height: calc(100dvh - 240px); overflow-y: auto; pointer-events: auto; background: rgba(10, 22, 32, .88); border: 1px solid rgba(220, 238, 244, .22); border-radius: 12px; padding: 0 12px; color: #f1f5ef; text-shadow: none; backdrop-filter: blur(10px); }
+.w3-settings:not([open]) { width: auto; }
+.w3-settings summary { padding: 12px 4px; cursor: pointer; font-size: 13px; min-height: 44px; }
+.w3-settings p { font-size: 12px; line-height: 1.5; color: #bfccd1; margin: 0 0 10px; }
+.w3-settings button { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 44px; margin-bottom: 8px; padding: 8px 10px; border: 1px solid #ffffff26; border-radius: 8px; background: #ffffff08; color: inherit; font: inherit; font-size: 12px; cursor: pointer; }
+.w3-settings button span { font-size: 11px; color: #bdc7ca; }
+.w3-settings button[aria-pressed="true"] span { color: #b8e7cd; }
+.w3-settings button:disabled { opacity: .55; cursor: default; }
+.w3-settings summary:focus-visible, .w3-settings button:focus-visible { outline: 2px solid #e8cf96; outline-offset: 2px; }
+@media (max-width: 700px), (max-height: 560px) {
+  .w3-hud { padding-top: 12px; }
+  .w3-hud .world-kicker { display: none; }
+  .w3-hud .world-top h2 { font-size: 22px; }
+  .w3-goal { top: 74px; width: min(280px, calc(100vw - 32px)); font-size: 14px; }
+  .w3-goal b { font-size: 20px; }
+  .w3-status { bottom: 100px; font-size: 12px; }
+  .w3-keys { bottom: 12px; max-width: calc(100vw - 210px); font-size: 10px; }
+  .w3-side { bottom: 10px; max-width: 180px; font-size: 10px; }
+  .w3-settings { top: 74px; max-height: calc(100dvh - 190px); }
+}
+@media (max-width: 600px) {
+  .w3-settings { top: auto; bottom: 150px; }
+}
+
 @media (max-width: 620px) {
   .brain-game .world-top { align-items: flex-start; flex-direction: column; gap: 12px; }
   .brain-game .world-actions { justify-content: flex-start; flex-wrap: wrap; }

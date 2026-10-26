@@ -3,36 +3,36 @@
  * at the top for a few seconds; then it hides, and you walk to each plant and click it in order.
  * Restored from the original 3D Lumen Garden (games/assets/js/lumen-3d.js before commit 04ebfa8).
  */
-import { Walk, mat, label, reduceMotion, shuffle, esc } from './walk.js';
+import { Walk, mat, label, reduceMotion, shuffle, esc, horizon } from './walk.js?v=4';
 
 // [name, x, z, color]
-const PLANTS = [['Moonfern', -3.6, 6.4, '#e46eff'], ['Prism bloom', 3.4, -0.8, '#75edff'], ['Star reed', -3.9, -8.1, '#ffd366'], ['Sunbud', 4.2, -12.4, '#ff8ec5'], ['Dawn orchid', -5.7, -14.7, '#8effc9']];
+const PLANTS = [['Moonfern', -8, 8, '#e46eff'], ['Prism bloom', 10, 0, '#75edff'], ['Star reed', -13, -12, '#ffd366'], ['Sunbud', 12, -23, '#ff8ec5'], ['Dawn orchid', -7, -32, '#8effc9']];
 const hue = Object.fromEntries(PLANTS.map(([name, , , c]) => [name, c]));
 
 function build(T, walk) {
   const { scene } = walk;
   const targets = [], lights = [];
   const add = (mesh, parent = scene) => { parent.add(mesh); return mesh; };
-  scene.background = new T.Color('#03030c');
-  scene.fog = new T.FogExp2('#09051d', 0.043);
+  scene.background = new T.Color('#18243e');
+  scene.fog = new T.Fog('#18243e', 48, 180);
+  horizon(T, scene, '#26394b');
   scene.add(new T.HemisphereLight('#4e2a88', '#06160f', 1.2));
   const moon = new T.DirectionalLight('#c2b3ff', 1.3);
   moon.position.set(-6, 12, 4);
   scene.add(moon);
-  const ground = add(new T.Mesh(new T.PlaneGeometry(70, 70), mat(T, '#061510', '#061510', 0.15)));
+  const ground = add(new T.Mesh(new T.PlaneGeometry(380, 380), mat(T, '#142e29', '#061510', 0.15)));
   ground.rotation.x = -Math.PI / 2;
-  const water = add(new T.Mesh(new T.PlaneGeometry(70, 70), new T.MeshStandardMaterial({ color: '#081438', metalness: 0.83, roughness: 0.22, transparent: true, opacity: 0.68 })));
-  water.position.y = -0.04;
+  const water = add(new T.Mesh(new T.CircleGeometry(18, 48), new T.MeshStandardMaterial({ color: '#274b63', metalness: 0.65, roughness: 0.3 })));
+  water.position.set(42, 0.015, -12);
   water.rotation.x = -Math.PI / 2;
   // The glowing stepping-stone path down the middle of the garden.
-  for (let z = 16; z > -25; z -= 3.5) {
-    add(new T.Mesh(new T.BoxGeometry(5.6, 0.07, 2.55), mat(T, '#181044', '#4a1678', 0.4))).position.set(0, 0.02, z);
-    add(new T.Mesh(new T.BoxGeometry(5.75, 0.05, 0.045), mat(T, '#be4fff', '#be4fff', 2))).position.set(0, 0.08, z - 1.23);
+  for (let z = 24; z > -44; z -= 4) {
+    add(new T.Mesh(new T.CylinderGeometry(1.6, 1.7, 0.07, 7), mat(T, '#405050', '#617c83', 0.12))).position.set(Math.sin(z * 0.07) * 3, 0.02, z);
   }
   [[-7, 12, 1.5], [7, 12, 1.7], [-9, 3, 2], [9, 3, 2], [-8, -7, 2.3], [8, -7, 2.1], [-11, -16, 2.6], [11, -16, 2.6], [-5, -19, 1.6], [5, -19, 1.7]].forEach(([x, z, s], i) => {
     const tint = i % 2 ? '#4c1075' : '#275943';
     const tree = new T.Group();
-    tree.position.set(x, 0, z);
+    tree.position.set(x * 2.8, 0, z * 2.3);
     tree.scale.setScalar(s);
     add(new T.Mesh(new T.CylinderGeometry(0.18, 0.28, 3.2, 7), mat(T, '#1d1021')), tree).position.y = 1.55;
     for (let j = 0; j < 4; j++) {
@@ -67,12 +67,12 @@ function build(T, walk) {
     targets.push(g);
   }
   const gate = new T.Group();
-  gate.position.set(0, 0, -20);
+  gate.position.set(0, 0, -43);
   for (const x of [-3.3, 3.3]) add(new T.Mesh(new T.CylinderGeometry(0.18, 0.24, 5.4, 8), mat(T, '#30205d', '#671fc1', 0.7)), gate).position.set(x, 2.7, 0);
   add(new T.Mesh(new T.TorusGeometry(3.3, 0.16, 8, 40, Math.PI), mat(T, '#a24bff', '#a24bff', 1.2)), gate).position.set(0, 5.3, 0);
   scene.add(gate);
-  const count = 650, positions = new Float32Array(count * 3);
-  for (let i = 0; i < count; i++) { positions[i * 3] = (Math.random() - 0.5) * 80; positions[i * 3 + 1] = Math.random() * 27 + 2; positions[i * 3 + 2] = (Math.random() - 0.5) * 80; }
+  const count = 240, positions = new Float32Array(count * 3);
+  for (let i = 0; i < count; i++) { positions[i * 3] = (Math.random() - 0.5) * 200; positions[i * 3 + 1] = Math.random() * 65 + 25; positions[i * 3 + 2] = (Math.random() - 0.5) * 200; }
   const stars = new T.BufferGeometry();
   stars.setAttribute('position', new T.BufferAttribute(positions, 3));
   scene.add(new T.Points(stars, new T.PointsMaterial({ color: '#dcb9ff', size: 0.07, sizeAttenuation: true })));
@@ -83,10 +83,11 @@ const token = (name, i) => `<span class="w3-token" style="--c:${hue[name]}">${i 
 
 // Resolves { mistakes, peeks } when the path is done, or null if the game closes first.
 export async function play(T, world, level, alive) {
-  const walk = new Walk(T, world, { bounds: { x: [-14, 14], z: [-21, 18] }, speed: 3.6, exposure: 1.25, pitch: [-1.15, 1.05] });
+  const walk = new Walk(T, world, { bounds: { x: [-30, 22], z: [-48, 30] }, speed: 5.5, exposure: 1.15, pitch: [-1.15, 1.05] });
   const { targets, lights } = build(T, walk);
+  walk.decorate('lumen');
   const path = shuffle(PLANTS.map(([name]) => name)).slice(0, level.count);
-  walk.place([0, 1.65, 16], 0, -0.04);
+  walk.place([0, 1.65, 23], 0, 0.02);
   walk.mount(walk.hud({
     goal: `<small>Remember this path · hides in <span data-count>${level.secs}</span> s</small><div class="w3-tokens">${path.map(token).join('')}</div>`,
     status: `Look around the garden and remember these ${path.length} plants, in order.`,

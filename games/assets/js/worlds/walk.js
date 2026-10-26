@@ -8,10 +8,23 @@
  * (brain-games.js), so Pause, Escape, switching tabs and Exit behave exactly as they do in 2D.
  * three.js is passed in (T), so these files never download it themselves.
  */
+import { environment } from './environment.js?v=1';
 export const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 export const shuffle = (a) => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 export const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 export const mat = (T, color, emissive = color, power = 0, roughness = 0.68, metalness = 0.05) => new T.MeshStandardMaterial({ color, emissive, emissiveIntensity: power, roughness, metalness });
+
+// Sparse silhouettes beyond the playable area give every world a distant horizon.
+export function horizon(T, scene, color, radius = 100) {
+  const material = mat(T, color);
+  for (let i = 0; i < 18; i++) {
+    const angle = i * Math.PI * 2 / 18;
+    const hill = new T.Mesh(new T.ConeGeometry(15 + (i % 4) * 5, 12 + (i % 5) * 5, 5), material);
+    hill.position.set(Math.cos(angle) * radius, -5, Math.sin(angle) * radius);
+    hill.rotation.y = angle;
+    scene.add(hill);
+  }
+}
 
 // A name tag that floats in the world and always faces you.
 export function label(T, text, color = '#fff7e8') {
@@ -42,7 +55,7 @@ export class Walk {
   constructor(T, world, o) {
     this.T = T;
     this.world = world;
-    this.o = { fov: 68, far: 100, speed: 3.5, exposure: 1.2, pitch: [-1.1, 1.05], ...o };
+    this.o = { fov: 74, far: 240, speed: 5, exposure: 1.2, pitch: [-1.1, 1.05], ...o };
     // Throws when the browser can't make a WebGL context; brain-games.js then offers 2D instead.
     this.renderer = new T.WebGLRenderer({ antialias: !reduceMotion, powerPreference: 'high-performance' });
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, reduceMotion ? 1 : 1.7));
@@ -87,6 +100,20 @@ export class Walk {
   }
   listen(target, type, fn) { target.addEventListener(type, fn); this.listeners.push([target, type, fn]); }
   $(sel) { return this.world.host.querySelector(sel); }
+  decorate(kind) {
+    this.environment = environment(this.T, this, kind);
+    this.environmentTime = 0;
+    this.preferences = { scenery: true, lamps: true, atmosphere: true, motion: !reduceMotion };
+    try {
+      const saved = JSON.parse(localStorage.getItem('chemoasis-world-atmosphere') || '{}');
+      for (const key of Object.keys(this.preferences)) if (typeof saved[key] === 'boolean') this.preferences[key] = saved[key];
+    } catch (_) { /* Defaults also work with storage disabled. */ }
+    if (reduceMotion) this.preferences.motion = false;
+    this.applyEnvironment();
+  }
+  applyEnvironment() {
+    for (const key of ['scenery', 'lamps', 'atmosphere']) this.environment[key].visible = this.preferences[key];
+  }
   lock() {
     if (this.locked || this.world.paused || !this.canvas.requestPointerLock) return;
     const p = this.canvas.requestPointerLock();
@@ -97,17 +124,28 @@ export class Walk {
     return `<div class="w3-goal" data-goal>${goal}</div>
       <p class="w3-status" data-status aria-live="polite">${esc(status)}</p>${extra}
       <button class="w3-enter" data-enter>Click here to look around</button>
+      ${this.environment ? `<details class="w3-settings"><summary>Atmosphere</summary><p>Make this place your own. Esc releases the mouse.</p>${[['scenery', 'Landscape details'], ['lamps', 'Warm lanterns'], ['atmosphere', 'Sky & water effects'], ['motion', 'Ambient movement']].map(([key, title]) => `<button type="button" data-environment="${key}" aria-pressed="${this.preferences[key]}" ${key === 'motion' && reduceMotion ? 'disabled' : ''}>${title}<span aria-hidden="true">${this.preferences[key] ? 'On' : 'Off'}</span></button>`).join('')}${reduceMotion ? '<p>Movement is off to match your reduced-motion preference.</p>' : ''}</details>` : ''}
       <div class="w3-cross" aria-hidden="true"></div>
-      <p class="w3-keys"><b>W A S D</b> walk · <b>mouse</b> look · <b>click</b> pick · <b>Esc</b> frees the mouse</p>`;
+      <p class="w3-keys"><b>W A S D</b> walk · <b>Shift</b> hurry · <b>mouse</b> look · <b>click</b> pick · <b>Esc</b> release</p>`;
   }
   mount(hud) {
     this.world.mount3D(this.canvas, hud);
     this.$('[data-enter]').addEventListener('click', () => this.lock());
+    if (this.environment) for (const key of Object.keys(this.preferences)) {
+      const button = this.$(`[data-environment="${key}"]`);
+      this.listen(button, 'click', () => {
+        this.preferences[key] = !this.preferences[key];
+        button.setAttribute('aria-pressed', String(this.preferences[key]));
+        button.querySelector('span').textContent = this.preferences[key] ? 'On' : 'Off';
+        this.applyEnvironment();
+        try { localStorage.setItem('chemoasis-world-atmosphere', JSON.stringify(this.preferences)); } catch (_) { /* Session-only settings. */ }
+      });
+    }
     this.resize();
   }
   goal(html) { const el = this.$('[data-goal]'); if (el) el.innerHTML = html; }
   status(text) { const el = this.$('[data-status]'); if (el) el.textContent = text; }
-  place([x, y, z], yaw = 0, pitch = 0) { this.camera.position.set(x, y, z); this.yaw = yaw; this.pitch = pitch; }
+  place([x, y, z], yaw = 0, pitch = 0) { this.camera.position.set(x, y, z); this.yaw = yaw; this.pitch = pitch; this.camera.rotation.set(pitch, yaw, 0, 'YXZ'); }
   // What's under the crosshair (only things registered in clickables count).
   aim() {
     this.ray.setFromCamera(new this.T.Vector2(0, 0), this.camera);
@@ -133,6 +171,10 @@ export class Walk {
         return;
       }
       this.move(dt);
+      if (this.environment && this.preferences.motion && !reduceMotion) {
+        this.environmentTime += dt;
+        this.environment.update(this.environmentTime);
+      }
       if (update) update(dt, performance.now());
       this.renderer.render(this.scene, this.camera);
     };
@@ -144,7 +186,7 @@ export class Walk {
     let f = 0, r = 0;
     for (const k of this.keys) if (MOVES[k]) { f += MOVES[k][0]; r += MOVES[k][1]; }
     if (!f && !r) return;
-    const step = this.o.speed * (this.keys.has('shift') ? 1.75 : 1) * dt;
+    const step = this.o.speed * (this.keys.has('shift') ? 1.75 : 1) * dt / Math.hypot(f, r);
     p.addScaledVector(new T.Vector3(0, 0, -1).applyAxisAngle(this.up, this.yaw), f * step);
     p.addScaledVector(new T.Vector3(1, 0, 0).applyAxisAngle(this.up, this.yaw), r * step);
     p.x = T.MathUtils.clamp(p.x, x[0], x[1]);
@@ -158,6 +200,7 @@ export class Walk {
     if (this.world.keyHandler === this.keyHandler) this.world.keyHandler = null;
     this.onPick = null;
     this.scene.traverse((o) => {
+      if (o.isInstancedMesh) o.dispose();
       if (o.geometry) o.geometry.dispose();
       [].concat(o.material || []).forEach((m) => { if (m.map) m.map.dispose(); m.dispose(); });
     });
