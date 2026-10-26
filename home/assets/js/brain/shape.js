@@ -178,11 +178,16 @@ function folds(x, y, z, ax) {
   return depth;
 }
 
-function cerebrum(x, y, z) {
+// soft (0 to 1) scales the folds down toward a smooth surface at their average depth, for the
+// gentler look of a piece shown up close.
+function cerebrum(x, y, z, soft = 1) {
   const ax = Math.abs(x);
   const d = hemisphere(ax, y, z);
   if (d > 0.13 || d < -0.2) return d; // far from the surface: the folds don't matter
-  return d - 0.03 + folds(x, y, z, ax);
+  const f = folds(x, y, z, ax);
+  // A softer surface (the solid close-up piece) also keeps its deepest grooves shallow, so none
+  // of them cuts right through the piece.
+  return d - 0.03 + 0.035 * (1 - soft) + soft * (soft < 1 ? Math.min(f, 0.05) : f);
 }
 
 /* ---------- cerebellum and brainstem ---------- */
@@ -206,9 +211,9 @@ function brainstem(x, y, z) {
   return smin(stem, pons, 0.08);
 }
 
-export function field(x, y, z) {
+export function field(x, y, z, soft = 1) {
   // Hard joins keep visible creases between the cerebrum, cerebellum and brainstem.
-  return Math.min(cerebrum(x, y, z), cerebellum(x, y, z), brainstem(x, y, z));
+  return Math.min(cerebrum(x, y, z, soft), cerebellum(x, y, z), brainstem(x, y, z));
 }
 
 export const BOUNDS = { min: [-0.82, -0.98, -1.0], max: [0.82, 0.76, 1.0] };
