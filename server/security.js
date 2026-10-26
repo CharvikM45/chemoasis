@@ -40,7 +40,7 @@ function contentSecurityPolicy({ root, folders, isProd }) {
   const policy = [
     "default-src 'self'",
     `script-src 'self' ${scriptHashes.join(' ')}`,
-    // Inline style attributes are used for layout values (colours, positions) set from scripts.
+    // Inline style attributes are used for layout values (colors, positions) set from scripts.
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
     "img-src 'self' data: blob:",
