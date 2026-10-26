@@ -14,19 +14,6 @@
   --blue: #a7bcdd; /* games and checks: game chips, ticks, Verified */
 }
 
-/* The games library and its launch button (games/assets/css/*) use the light palette. */
-#experience-view, .launch-experience, .game-player {
-  --ink: #33241e;
-  --espresso: #4a3025;
-  --clay: #a86c4e;
-  --latte: #d7b391;
-  --cream: #f7f0e7;
-  --paper: #fffaf4;
-  --muted: #80695b;
-}
-
-#experience-view:not([hidden]) ~ .launch-experience { display: none !important; }
-
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; background: var(--bg); }
 body { margin: 0; background: var(--bg); color: var(--ink); font-family: "DM Sans", sans-serif; -webkit-font-smoothing: antialiased; }
