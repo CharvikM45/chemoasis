@@ -64,7 +64,7 @@
 .brain-game::after { background: radial-gradient(120% 95% at 50% 40%, transparent 45%, rgba(0, 0, 0, .6) 100%); }
 .brain-game .world-panel { padding-top: 24px; }
 .brain-game .world-top { align-items: center; }
-.brain-game .world-kicker { margin: 0 0 10px; color: var(--accent-2); font: 600 15px "Atkinson Hyperlegible Next", "DM Sans", sans-serif; }
+.brain-game .world-kicker { margin: 0 0 10px; color: var(--gold, #f2c35b); font: 600 15px "Atkinson Hyperlegible Next", "DM Sans", sans-serif; }
 .brain-game .world-kicker::before { content: "●"; margin-right: 8px; color: var(--tone); }
 .brain-game .world-top h2 { color: var(--ink); }
 .world-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
@@ -110,7 +110,7 @@
   box-shadow: 0 24px 80px rgba(0, 0, 0, .5);
 }
 .brain-game .world-card p { color: var(--ink); }
-.brain-game .world-note { margin: 0; color: var(--accent-2) !important; font: 500 14px/1.5 "Atkinson Hyperlegible Next", "DM Sans", sans-serif!important; }
+.brain-game .world-note { margin: 0; color: var(--gold, #f2c35b) !important; font: 500 14px/1.5 "Atkinson Hyperlegible Next", "DM Sans", sans-serif!important; }
 .bg-card { text-align: left; }
 .brain-game .howto .howto-meta { color: var(--muted); font-size: 13px; line-height: 1.45; }
 .brain-game .game-status { margin: 16px 0 0; min-height: 28px; color: var(--ink) !important; font-size: 17px !important; text-align: center; }
@@ -291,7 +291,7 @@ button.tol-peg:hover, button.tol-peg:focus-visible { background: linear-gradient
 /* The goal box sits low, just above the status line, so it doesn't cover the sky you're searching. */
 .w3-goal { position: absolute; left: 50%; bottom: 124px; transform: translateX(-50%); width: min(580px, calc(100vw - 32px)); padding: 12px 18px 14px; border: 1px solid var(--line); border-top: 2px solid var(--tone); background: rgba(14, 11, 14, .78); backdrop-filter: blur(10px); text-align: center; font-size: 17px; line-height: 1.4; text-shadow: none; }
 .w3-goal:empty { display: none; }
-.w3-goal small { display: block; margin-bottom: 8px; color: var(--accent-2); font: 600 14px "Atkinson Hyperlegible Next", "DM Sans", sans-serif; }
+.w3-goal small { display: block; margin-bottom: 8px; color: var(--gold, #f2c35b); font: 600 14px "Atkinson Hyperlegible Next", "DM Sans", sans-serif; }
 .w3-goal b { font: 400 28px/1.1 "Playfair Display", serif; letter-spacing: -.02em; }
 .w3-tokens { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
 .w3-token { display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px; border: 1px solid var(--line); font-size: 15px; }

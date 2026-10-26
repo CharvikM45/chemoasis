@@ -11,7 +11,7 @@
 .activity-card { position: relative; min-height: 255px; padding: 24px; background: var(--paper); }
 .activity-card button { position: absolute; inset: 0; border: 0; background: transparent; cursor: pointer; }
 .activity-icon { display: grid; place-items: center; width: 52px; height: 52px; background: var(--tile); font: 22px "Playfair Display"; }
-.activity-area { display: block; margin-top: 25px; color: var(--clay); font: 600 14px "Atkinson Hyperlegible Next", "DM Sans", sans-serif; }
+.activity-area { display: block; margin-top: 25px; color: var(--gold, #f2c35b); font: 600 14px "Atkinson Hyperlegible Next", "DM Sans", sans-serif; }
 .activity-card h4 { font: 400 29px "Playfair Display"; letter-spacing: -.04em; margin: 9px 0; }
 .activity-card p { max-width: 260px; margin: 0; color: #70594a; font-size: 13px; line-height: 1.55; }
 .activity-meta { position: absolute; bottom: 20px; color: var(--muted); font: 10px "DM Mono"; }
