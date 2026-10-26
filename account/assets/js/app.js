@@ -375,6 +375,16 @@
   const MODE_NAME = { gentle: 'Gentle', challenge: 'Challenge' };
   const esc = (v) => String(v).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 
+  // Levels are saved by number from 0. Games have three levels now; Lumen's third is Backwards,
+  // which keeps its old number 3. A 2 for Lumen or a 3 elsewhere comes from a level that was removed.
+  function levelName(game, level) {
+    const n = Number(level);
+    if (game === 'lumen' && n === 3) return 'Level 3 · Backwards';
+    if (game === 'lumen' && n === 2) return 'Old level 3 (Bigger garden)';
+    if (n >= 3) return `Old level ${n + 1}`;
+    return `Level ${n + 1}`;
+  }
+
   function renderProgress(results) {
     const box = $('progress');
     box.innerHTML = '';
@@ -389,7 +399,7 @@
       const values = same.map((r) => r.score).filter((v) => typeof v === 'number' && isFinite(v));
       const best = values.length ? (m.lower ? Math.min(...values) : Math.max(...values)) : null;
       const last = values[values.length - 1];
-      const where = latest ? `Level ${Number(latest.level) + 1}${latest.mode ? ` · ${MODE_NAME[latest.mode]}` : ''}` : '';
+      const where = latest ? `${levelName(game.id, latest.level)}${latest.mode ? ` · ${MODE_NAME[latest.mode]}` : ''}` : '';
       let trend = '';
       if (values.length >= 4) {
         const half = Math.floor(values.length / 2);
