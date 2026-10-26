@@ -33,6 +33,9 @@ function object(T, walk, name, x, y, z) {
       ray.rotation.z = (-i * Math.PI) / 4;
     }
   }
+  // An unseen ball around each object, so thin shapes (the comet's tail, the diamonds) are as easy to
+  // click as the solid ones.
+  add(new T.Mesh(new T.SphereGeometry(1.15, 10, 8), new T.MeshBasicMaterial({ visible: false })));
   g.traverse((o) => { if (o.isMesh) { o.userData.object = g; o.userData.glow = o.material.emissiveIntensity; walk.clickables.push(o); } });
   walk.scene.add(g);
   return g;

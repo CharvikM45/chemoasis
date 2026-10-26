@@ -9,6 +9,7 @@
   function message(text) {
     $("message").textContent = text;
     $("message").hidden = false;
+    $("messageTitle").hidden = false; // the page's heading when there's no activity to show
   }
 
   (async function start() {

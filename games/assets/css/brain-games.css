@@ -318,8 +318,14 @@ button.tol-peg:hover, button.tol-peg:focus-visible { background: linear-gradient
   .brain-game .world-panel:has(.bg-progress) { padding-top: 12px; }
   .brain-game .world-panel:has(.bg-progress) .world-top { flex-direction: row; align-items: center; gap: 10px; }
   .brain-game .world-panel:has(.bg-progress) .world-kicker { display: none; }
-  .brain-game .world-panel:has(.bg-progress) .world-top h2 { font-size: 24px; }
-  .brain-game .world-panel:has(.bg-progress) .world-top button { min-height: 44px; padding: 8px 10px; font-size: 13px; }
+  /* A long name ("Cloudpath Cartographer") drops the buttons to their own row instead of running under them. */
+  .brain-game .world-panel:has(.bg-progress) .world-top { flex-wrap: wrap; }
+  .brain-game .world-panel:has(.bg-progress) .world-top > div:first-child { flex: 1 1 min-content; }
+  .brain-game .world-panel:has(.bg-progress) .world-actions { margin-left: auto; }
+  .brain-game .world-panel:has(.bg-progress) .world-top h2 { font-size: 20px; }
+  .brain-game .world-panel:has(.bg-progress) .world-top button { min-height: 44px; padding: 8px; font-size: 13px; }
+  /* The start card is taller than a phone screen, so Start stays in reach at the bottom. */
+  .brain-game .world-card > .world-controls:has(> [data-go]) { position: sticky; bottom: 0; z-index: 2; margin-bottom: -1px; padding: 12px 0; background: rgba(14, 11, 14, .96); box-shadow: 0 -12px 18px rgba(14, 11, 14, .9); }
   .brain-game .world-panel:has(.bg-progress) .bg-progress { margin-top: 10px; }
   .brain-game .world-panel:has(.bg-progress) .world-card { margin-top: 12px; padding: 16px; }
   .brain-game .world-panel:has(.bg-progress) .world-controls { margin-top: 14px; }
