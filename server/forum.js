@@ -127,8 +127,12 @@ function forumRouter({ db, isProd, moderators = [], limits = {} }) {
     const type = moderatorEmails.has(user.email) ? 'moderator' : 'member';
     let profile = state.profiles.find((p) => p.id === user.id);
     if (!profile) {
-      const number = String(parseInt(user.id.replace(/-/g, '').slice(-6), 16) % 10000).padStart(4, '0');
-      profile = { id: user.id, displayName: 'Member ' + number, type, bio: '', showBio: false, createdAt: new Date().toISOString() };
+      // The number comes from the account id. If another member already has it, take the next free one,
+      // so two people never share a starting name.
+      const taken = new Set(state.profiles.map((p) => String(p.displayName || '').toLowerCase()));
+      let n = parseInt(user.id.replace(/-/g, '').slice(-6), 16) % 10000;
+      for (let tries = 0; tries < 10000 && taken.has('member ' + String(n).padStart(4, '0')); tries++) n = (n + 1) % 10000;
+      profile = { id: user.id, displayName: 'Member ' + String(n).padStart(4, '0'), type, bio: '', showBio: false, createdAt: new Date().toISOString() };
       state.profiles.push(profile);
       dirty = true;
     } else if (profile.type !== type && (profile.type === 'member' || profile.type === 'moderator')) {

@@ -1071,11 +1071,15 @@ html {
     gap: 12px;
     flex-wrap: wrap;
     justify-content: flex-end;
-    row-gap: 6px;
+    row-gap: 2px;
   }
 
+  /* Each link is at least 24px tall, an easier tap with numb fingertips. */
   .f-page .f-top__link {
     font-size: 14px;
+    padding-top: 4px;
+    padding-bottom: 4px;
+    min-height: 24px;
   }
 
   .f-page .f-top__cta {
