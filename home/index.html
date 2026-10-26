@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&family=Playfair+Display:ital,wght@0,400;0,500;1,400;1,500&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="assets/css/home.css?v=13" />
+    <link rel="stylesheet" href="assets/css/home.css?v=14" />
     <script type="importmap">{ "imports": { "three": "../games/assets/vendor/three/three.module.min.js" } }</script>
     <link rel="stylesheet" href="../games/assets/css/experience.css?v=3" />
     <link rel="stylesheet" href="../games/assets/css/new-worlds-3d.css?v=2" />
@@ -25,6 +25,7 @@
         if (calm !== '1' && !matchMedia('(prefers-reduced-motion: reduce)').matches) document.body.classList.add('wall');
       })();
     </script>
+    <a class="skip-link" href="#main">Skip to main content</a>
     <div class="scene" aria-hidden="true"><canvas id="brain"></canvas></div>
     <div class="vignette" aria-hidden="true"></div>
 
@@ -39,7 +40,7 @@
       </div>
     </nav>
 
-    <main>
+    <main id="main">
       <section class="hero" id="top" aria-labelledby="hero-title">
         <div class="copy">
           <p class="eyebrow">During and after chemotherapy</p>
@@ -166,9 +167,9 @@
         document.body.appendChild(s);
       })();
     </script>
-    <script src="../account/assets/js/auth.js?v=4"></script>
+    <script src="../account/assets/js/auth.js?v=6"></script>
     <script src="assets/js/account-link.js?v=3"></script>
-    <script src="../games/assets/js/experience.js?v=research-4"></script>
+    <script src="../games/assets/js/experience.js?v=research-5"></script>
     <script src="../games/assets/js/game-launch.js?v=corner-1"></script>
     <script>
       document.querySelectorAll('[data-open-worlds]').forEach(function (b) {

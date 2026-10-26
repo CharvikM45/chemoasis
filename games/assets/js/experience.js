@@ -2,6 +2,7 @@
   const view = document.createElement('section');
   view.id = 'experience-view';
   view.hidden = true;
+  view.setAttribute('aria-label', 'Games library');
   document.body.append(view);
 
   const launch = document.createElement('button');
@@ -19,15 +20,21 @@
     ['signal', 'Signal Match', 'Mental flexibility', '◇', 'Sort each shape by the rule shown on top.']
   ];
 
+  let opener = null; // what opened the library, so focus can go back there
+  let inerted = []; // the page behind, out of reach of Tab and screen readers while the library is open
+
   function close() {
     view.hidden = true;
     document.body.style.overflow = '';
-    launch.focus();
+    inerted.forEach((el) => { el.inert = false; });
+    inerted = [];
+    (opener && opener.isConnected ? opener : launch).focus({ preventScroll: true });
+    opener = null;
   }
 
   function library() {
     // The site's own top bar stays above the library (see brain-games.css), so it has no bar of its own.
-    view.innerHTML = `<header class="experience-hero atlas"><div><p class="eyebrow">The Quiet Atlas</p><h2>Six worlds,<br><em>your pace.</em></h2><button class="button" id="home">← Back to home</button></div><p>Short games for memory, focus and hand coordination, during chemo or after it. Each is inspired by tasks used in research with people after cancer treatment, though results so far are mixed and these games haven't been studied themselves. Open one to see how to play.</p></header>
+    view.innerHTML = `<header class="experience-hero atlas"><div><p class="eyebrow">The Quiet Atlas</p><h2 tabindex="-1">Six worlds,<br><em>your pace.</em></h2><button class="button" id="home">← Back to home</button></div><p>Short games for memory, focus and hand coordination, during chemo or after it. Each is inspired by tasks used in research with people after cancer treatment, though results so far are mixed and these games haven't been studied themselves. Open one to see how to play.</p></header>
       <section class="experience-section"><p class="eyebrow">Featured worlds</p><div class="activity-grid">${games.map(([id, name, area, icon, how, has3D]) => `<article class="activity-card atlas-card ${id}"><button data-game="${id}" aria-label="Play ${name}"></button><i class="activity-icon">${icon}</i><span class="activity-area">${area}</span><h4>${name}</h4><p>${how}</p><small class="activity-meta">A few minutes · pause any time${has3D ? ' · <b>2D or 3D</b>' : ''}</small></article>`).join('')}</div></section>`;
     view.querySelector('#home').onclick = close;
   }
@@ -36,9 +43,16 @@
   document.querySelector('.nav .brand')?.addEventListener('click', () => { if (!view.hidden) close(); });
 
   launch.onclick = () => {
+    if (view.hidden) {
+      opener = document.activeElement !== document.body ? document.activeElement : null;
+      // The top bar stays usable (its logo closes the library), and so do the games, which open on top.
+      inerted = [...document.querySelectorAll('body > main, body > footer, body > .scene, body > .vignette, body > .skip-link')].filter((el) => !el.inert);
+      inerted.forEach((el) => { el.inert = true; });
+    }
     view.hidden = false;
     document.body.style.overflow = 'hidden';
     library();
+    view.querySelector('h2').focus({ preventScroll: true });
   };
   addEventListener('keydown', event => {
     if (event.key === 'Escape' && !view.hidden) close();
