@@ -81,7 +81,7 @@ function build(T, walk) {
 
 const token = (name, i) => `<span class="w3-token" style="--c:${hue[name]}">${i + 1}. ${esc(name)}</span>`;
 
-// Resolves { mistakes } when the path is done, or null if the game closes first.
+// Resolves { mistakes, peeks } when the path is done, or null if the game closes first.
 export async function play(T, world, level, alive) {
   const walk = new Walk(T, world, { bounds: { x: [-14, 14], z: [-21, 18] }, speed: 3.6, exposure: 1.25, pitch: [-1.15, 1.05] });
   const { targets, lights } = build(T, walk);
@@ -89,7 +89,8 @@ export async function play(T, world, level, alive) {
   walk.place([0, 1.65, 16], 0, -0.04);
   walk.mount(walk.hud({
     goal: `<small>Remember this path · hides in <span data-count>${level.secs}</span> s</small><div class="w3-tokens">${path.map(token).join('')}</div>`,
-    status: `Look around the garden and remember these ${path.length} plants, in order.`
+    status: `Look around the garden and remember these ${path.length} plants, in order.`,
+    extra: '<button class="w3-side" data-peek hidden>Show the path again (P)</button>'
   }));
   walk.start((dt, now) => {
     if (reduceMotion) return;
@@ -104,7 +105,24 @@ export async function play(T, world, level, alive) {
   }
   walk.goal(`<small>Path hidden · 0 of ${path.length} found</small>Visit the plants in the order you remember.`);
   walk.status('Walk up to each plant and click it, in order. You need to be close enough to tend it.');
-  let step = 0, mistakes = 0;
+  let step = 0, mistakes = 0, peeks = 0, peeking = false;
+  const hidden = () => `<small>Path hidden · ${step} of ${path.length} found</small>${step ? `<div class="w3-tokens">${path.slice(0, step).map(token).join('')}</div>` : 'Visit the plants in the order you remember.'}`;
+  // Forgot the path? A peek shows it again for 4 seconds. It counts toward the result, like a wrong pick.
+  const peek = async () => {
+    if (peeking || step >= path.length) return;
+    peeking = true;
+    peeks++;
+    walk.goal(`<small>Peek ${peeks} · the path</small><div class="w3-tokens">${path.map(token).join('')}</div>`);
+    await world.sleep(4000);
+    peeking = false;
+    if (alive() && step < path.length) walk.goal(hidden());
+  };
+  const button = walk.$('[data-peek]');
+  button.hidden = false;
+  button.addEventListener('click', peek);
+  // P peeks too, so nobody has to free the mouse to reach the button. Movement keys go to the walk as before.
+  const keys = walk.keyHandler;
+  walk.keyHandler = world.keyHandler = (e) => { if (e.key.toLowerCase() === 'p' && !e.repeat) { e.preventDefault(); peek(); } else keys(e); };
   return new Promise((resolve) => {
     walk.onPick = (hit) => {
       if (!hit) return walk.status('Aim the crosshair at a glowing plant, then click.');
@@ -115,11 +133,13 @@ export async function play(T, world, level, alive) {
       plant.userData.found = true;
       plant.traverse((o) => { if (o.isMesh && o.material.emissive) o.material.emissiveIntensity = 3.4; });
       step++;
-      walk.goal(`<small>Path hidden · ${step} of ${path.length} found</small><div class="w3-tokens">${path.slice(0, step).map(token).join('')}</div>`);
+      if (!peeking) walk.goal(hidden());
       if (step < path.length) return walk.status(`Yes, ${name}. Now find the next plant.`);
       walk.onPick = null;
+      button.hidden = true;
+      walk.goal(`<small>Garden complete</small><div class="w3-tokens">${path.map(token).join('')}</div>`);
       walk.status(`Garden complete: all ${path.length} plants, in order.`);
-      world.sleep(900).then(() => resolve(alive() ? { mistakes } : null));
+      world.sleep(900).then(() => resolve(alive() ? { mistakes, peeks } : null));
     };
   });
 }

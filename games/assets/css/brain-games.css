@@ -96,6 +96,8 @@
 .brain-game .world-controls .bg-primary:hover, .brain-game .world-controls .bg-primary:focus-visible,
 .bg-pause .world-controls .bg-primary:hover, .bg-pause .world-controls .bg-primary:focus-visible { background: #f2c2a3; border-color: #f2c2a3; color: #1c120d; }
 .brain-game button:disabled { cursor: default; }
+/* `hidden` always hides, even on elements whose class sets a display (like .world-controls). */
+.brain-game [hidden] { display: none !important; }
 
 /* How far through the session: a thin line under the title bar. */
 .bg-progress { height: 2px; margin: 20px 0 0; background: var(--line); }
@@ -152,10 +154,10 @@ kbd.bg-key { font: inherit; }
 .span-grid { display: grid; grid-template-columns: repeat(var(--n), 1fr); gap: 10px; width: min(100%, calc(var(--n) * 100px)); margin: 22px auto 6px; }
 .span-grid button {
   aspect-ratio: 1;
-  border: 1px solid rgba(255, 236, 220, .16);
+  border: 1px solid rgba(255, 236, 220, .3);
   border-radius: 50% 50% 46% 46%;
   background: radial-gradient(circle at 50% 38%, rgba(197, 140, 255, .14), rgba(255, 255, 255, .02) 68%);
-  color: rgba(197, 140, 255, .42);
+  color: rgba(197, 140, 255, .72);
   font-size: clamp(24px, 5vw, 34px);
   cursor: pointer;
   transition: background .14s, color .14s, box-shadow .14s, transform .14s;
@@ -169,7 +171,7 @@ kbd.bg-key { font: inherit; }
 /* ---------- Starling Observatory: the flash sky ---------- */
 .sky {
   position: relative;
-  width: min(100%, 360px);
+  width: min(100%, 360px, 46vh);
   aspect-ratio: 1;
   margin: 18px auto 6px;
   border-radius: 50%;
@@ -184,9 +186,11 @@ kbd.bg-key { font: inherit; }
     radial-gradient(circle, rgba(127, 184, 255, .16), rgba(6, 5, 7, .8) 72%);
   box-shadow: inset 0 0 60px rgba(127, 184, 255, .12), 0 0 50px rgba(127, 184, 255, .08);
 }
-.sky::before { content: ""; position: absolute; left: 50%; top: 50%; width: 144px; height: 144px; margin: -72px 0 0 -72px; border: 1px dashed rgba(127, 184, 255, .22); border-radius: 50%; pointer-events: none; }
+.sky::before { content: ""; position: absolute; left: 12%; top: 12%; width: 76%; height: 76%; border: 1px dashed rgba(127, 184, 255, .22); border-radius: 50%; pointer-events: none; }
 .sky-centre { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 66px; height: 66px; display: grid; place-items: center; border: 1px solid rgba(255, 255, 255, .3); border-radius: 50%; background: rgba(6, 5, 7, .7); box-shadow: 0 0 24px rgba(127, 184, 255, .25); font-size: 36px; color: #fff; }
-.sky-slot { position: absolute; left: 50%; top: 50%; width: 52px; height: 52px; margin: -26px 0 0 -26px; transform: rotate(var(--a)) translateY(-138%) rotate(calc(-1 * var(--a))); border: 1px solid transparent; border-radius: 50%; background: transparent; color: #fff3e6; font-size: 26px; cursor: pointer; }
+/* The eight comet spots sit on the dashed ring, 38% of the sky out from the centre (placed in
+   brain-games.js), so they spread out with the sky and stay easy to tap. */
+.sky-slot { position: absolute; width: 56px; height: 56px; transform: translate(-50%, -50%); border: 1px solid transparent; border-radius: 50%; background: transparent; color: #fff3e6; font-size: 28px; cursor: pointer; }
 .sky-slot:not(:disabled) { border-color: rgba(255, 255, 255, .4); background: rgba(127, 184, 255, .08); }
 .sky-slot:not(:disabled):hover { background: rgba(127, 184, 255, .3); }
 .sky-slot.answer { border-color: #fff3e6; box-shadow: 0 0 18px #fff3e6; }
@@ -197,8 +201,8 @@ kbd.bg-key { font: inherit; }
 .tol { display: flex; justify-content: center; align-items: flex-end; gap: 14px; }
 .tol-goal { display: grid; justify-items: center; gap: 8px; width: max-content; margin: 16px auto 20px; padding: 12px 16px; border: 1px dashed rgba(246, 209, 132, .45); background: rgba(246, 209, 132, .04); }
 .tol-goal small { color: #f6d184; font: 10px "DM Mono", monospace; letter-spacing: .16em; text-transform: uppercase; }
-.tol-goal .tol-peg { width: 54px; height: calc(var(--cap) * 24px + 14px); border-bottom-width: 3px; }
-.tol-goal .tol-peg i { width: 22px; height: 22px; font-size: 10px; }
+.tol-goal .tol-peg { width: 72px; height: calc(var(--cap) * 36px + 16px); border-bottom-width: 3px; }
+.tol-goal .tol-peg i { width: 32px; height: 32px; font-size: 14px; }
 .tol-peg {
   position: relative;
   width: clamp(80px, 22vw, 116px);
@@ -286,7 +290,8 @@ button.tol-peg:hover, button.tol-peg:focus-visible { background: linear-gradient
 .w3-hud { position: fixed; inset: 0; z-index: 2; pointer-events: none; padding: 22px clamp(16px, 3vw, 40px); text-shadow: 0 2px 16px rgba(0, 0, 0, .8); }
 .w3-hud button { pointer-events: auto; }
 .w3-hud .world-top h2 { font-size: clamp(28px, 3.4vw, 46px); }
-.w3-goal { position: absolute; left: 50%; top: clamp(104px, 15vh, 140px); transform: translateX(-50%); width: min(580px, calc(100vw - 32px)); padding: 12px 18px 14px; border: 1px solid var(--line); border-top: 2px solid var(--tone); background: rgba(14, 11, 14, .78); backdrop-filter: blur(10px); text-align: center; font-size: 17px; line-height: 1.4; text-shadow: none; }
+/* The goal box sits low, just above the status line, so it doesn't cover the sky you're searching. */
+.w3-goal { position: absolute; left: 50%; bottom: 124px; transform: translateX(-50%); width: min(580px, calc(100vw - 32px)); padding: 12px 18px 14px; border: 1px solid var(--line); border-top: 2px solid var(--tone); background: rgba(14, 11, 14, .78); backdrop-filter: blur(10px); text-align: center; font-size: 17px; line-height: 1.4; text-shadow: none; }
 .w3-goal:empty { display: none; }
 .w3-goal small { display: block; margin-bottom: 8px; color: var(--accent-2); font: 11px "DM Mono", monospace; letter-spacing: .14em; text-transform: uppercase; }
 .w3-goal b { font: 400 28px/1.1 "Playfair Display", serif; letter-spacing: -.02em; }
@@ -310,6 +315,18 @@ button.tol-peg:hover, button.tol-peg:focus-visible { background: linear-gradient
 @media (max-width: 620px) {
   .brain-game .world-top { align-items: flex-start; flex-direction: column; gap: 12px; }
   .brain-game .world-actions { justify-content: flex-start; flex-wrap: wrap; }
+  /* While a session is under way, a smaller title bar leaves room for the board, so the game
+     (Starling's sky and its answers, Signal Match's card and buttons) fits on one phone screen. */
+  .brain-game .world-panel:has(.bg-progress) { padding-top: 12px; }
+  .brain-game .world-panel:has(.bg-progress) .world-top { flex-direction: row; align-items: center; gap: 10px; }
+  .brain-game .world-panel:has(.bg-progress) .world-kicker { display: none; }
+  .brain-game .world-panel:has(.bg-progress) .world-top h2 { font-size: 24px; }
+  .brain-game .world-panel:has(.bg-progress) .world-top button { min-height: 44px; padding: 8px 10px; font-size: 10px; }
+  .brain-game .world-panel:has(.bg-progress) .bg-progress { margin-top: 10px; }
+  .brain-game .world-panel:has(.bg-progress) .world-card { margin-top: 12px; padding: 16px; }
+  .brain-game .world-panel:has(.bg-progress) .world-controls { margin-top: 14px; }
+  .brain-game .bg-choices button { min-width: 140px; min-height: 56px; }
+  .switch-card { width: min(200px, 52vw); font-size: clamp(96px, 28vw, 140px); }
 }
 @media (prefers-reduced-motion: reduce) {
   .span-grid button, .tol-peg, .tol-peg i, .brain-game .pad, .bg-progress i, .word-grid button, .bg-modes button { transition: none; }
