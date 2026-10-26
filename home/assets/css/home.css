@@ -186,10 +186,10 @@ h1 em, h2 em { color: var(--accent); }
 .no-brain .lede, .no-brain .disclaimer { margin-left: auto; margin-right: auto; }
 .no-brain .actions { justify-content: center; }
 .no-brain .closing { min-height: 100vh; align-items: center; padding-bottom: 80px; } /* no finished brain to leave room for */
-/* The cards stay left-aligned inside: long lines of centred text are hard to read. */
+/* The cards stay left-aligned inside: long lines of centered text are hard to read. */
 .no-brain .stats, .no-brain .steps, .no-brain .features, .no-brain .panel { text-align: left; }
 
-/* ---------- narrow screens: brain centred behind the text ---------- */
+/* ---------- narrow screens: brain centered behind the text ---------- */
 
 @media (max-width: 899px) {
   .copy { margin: 0 auto; }

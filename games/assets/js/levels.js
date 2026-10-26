@@ -6,7 +6,7 @@
  *     the "How to play" box at the top. `views` ({ current, off, onChange }) adds the 2D / 3D
  *     choice; `off` is the reason 3D can't be picked right now ('' when it can). `note` is the
  *     one-line honesty note under the levels, and `about` ({ text, cite, href, more }) says what
- *     the exercise practises and which research inspired it, behind "About the research".
+ *     the exercise practices and which research inspired it, behind "About the research".
  *   GameLevels.done({ host, game, level, levels, message, details, sync, low, onPick, onLevels, onExit, extra })
  *     records the level as finished and shows "Level N complete" with Next / Again / All levels.
  *     `low: true` (a hard session) shows "Session done" instead, suggests staying on the level and

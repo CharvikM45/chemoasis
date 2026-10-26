@@ -4,7 +4,7 @@
  * after you miss. Sessions are a few minutes long.
  *
  *   lumen      Lumen Garden            spatial working memory span (forward, then backward)
- *   starling   Starling Observatory    speed of processing (brief flashes, centre + periphery)
+ *   starling   Starling Observatory    speed of processing (brief flashes, center + periphery)
  *   cloudpath  Cloudpath Cartographer  planning (Tower of London puzzles)
  *   echo       Story Echo              verbal memory (word lists, linking strategy)
  *   rhythm     Finger Rhythm           finger tapping with a hidden repeating sequence
@@ -365,7 +365,7 @@ function levelsFor(game, focusView) {
   GameLevels.pick({
     host: world.host, game: view === '3d' ? `${game.id}-3d` : game.id, title: game.title,
     kicker: `${game.kicker} · choose a level`, levels: def.levels, how: def.summary, focusView,
-    // The 2D / 3D choice: only on computers with a mouse or trackpad, and greyed out in Calm mode.
+    // The 2D / 3D choice: only on computers with a mouse or trackpad, and grayed out in Calm mode.
     views: game.w3 && hasMouse() ? { current: view, off: why3DOff(), onChange: (v) => { saveView(game.id, v); levelsFor(game, true); } } : null,
     ...(view === '3d'
       ? { lede: 'Fixed levels, at your own pace.', note: 'The 3D world is a simpler explore version of this game, for fun and practice. It isn’t based on a research task, and it isn’t a treatment.' }
@@ -422,7 +422,7 @@ async function play3D(world, game, level, alive) {
 
 const lumen = {
   id: 'lumen', title: 'Lumen Garden', kicker: 'Working memory', tone: '#c58cff',
-  about: { text: 'Practises working memory: holding a short sequence in mind and replaying it. Inspired by span tasks used in research. A small pilot with childhood cancer survivors found gains on similar tasks; results in adults after cancer are early and mixed, and this game itself hasn’t been studied.', cite: 'Hardy et al., Psycho-Oncology 2013', href: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC4820841/' },
+  about: { text: 'Practices working memory: holding a short sequence in mind and replaying it. Inspired by span tasks used in research. A small pilot with childhood cancer survivors found gains on similar tasks; results in adults after cancer are early and mixed, and this game itself hasn’t been studied.', cite: 'Hardy et al., Psycho-Oncology 2013', href: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC4820841/' },
   levels: [
     // span: where paths start; min and max: how short and long they get, here and when picked up next time.
     { name: 'Forward paths', desc: '3 × 3 garden. Paths of 2 to 5 lights, starting at 3.', size: 3, span: 3, min: 2, max: 5, on: 650 },
@@ -517,13 +517,13 @@ const STARLING_FASTEST = 80;
 const starling = {
   id: 'starling', title: 'Starling Observatory', kicker: 'Processing speed', tone: '#7fb8ff',
   about: {
-    text: 'Practises taking in quick glimpses, in the centre and at the edges of your vision. Inspired by speed-of-processing training used in research. An early trial with breast cancer survivors found gains compared with a waiting list, but a stricter later trial by the same team found no clear difference on thinking tests. This game itself hasn’t been studied.',
+    text: 'Practices taking in quick glimpses, in the center and at the edges of your vision. Inspired by speed-of-processing training used in research. An early trial with breast cancer survivors found gains compared with a waiting list, but a stricter later trial by the same team found no clear difference on thinking tests. This game itself hasn’t been studied.',
     cite: 'Von Ah et al., Breast Cancer Research and Treatment 2012', href: 'https://scholarworks.indianapolis.iu.edu/items/6103443c-9611-461c-adc1-1e42f0215fb2',
     more: [{ cite: 'Von Ah et al., Supportive Care in Cancer 2022', href: 'https://scholarworks.indianapolis.iu.edu/items/cc28c83f-bff2-4250-a944-e640a19b5526' }]
   },
   levels: [
-    { name: 'Centre', desc: 'Name the symbol that flashes in the centre.', ring: false, clutter: false, start: 400 },
-    { name: 'Centre and edge', desc: 'Name the centre symbol and find the comet at the edge.', ring: true, clutter: false, start: 450 },
+    { name: 'Center', desc: 'Name the symbol that flashes in the center.', ring: false, clutter: false, start: 400 },
+    { name: 'Center and edge', desc: 'Name the center symbol and find the comet at the edge.', ring: true, clutter: false, start: 450 },
     { name: 'Busy sky', desc: 'As before, with look-alike stars in the way.', ring: true, clutter: true, start: 500 }
   ],
   summary: ['Keep your eyes on the + in the middle. A symbol flashes there for a moment.', 'Pick which symbol it was. On later levels, also tap where the comet ☄ flashed at the edge.'],
@@ -538,7 +538,7 @@ const starling = {
     const history = [];
     const panel = world.render(`<main class="world-card bg-card">
       <p class="world-note" data-info></p>
-      <div class="sky" data-sky><span class="sky-centre" data-centre>+</span>${Array.from({ length: 8 }, (_, i) => `<button class="sky-slot" data-slot="${i}" style="left:${(50 + 38 * Math.sin(i * Math.PI / 4)).toFixed(2)}%;top:${(50 - 38 * Math.cos(i * Math.PI / 4)).toFixed(2)}%" disabled aria-label="Edge position ${i + 1}"></button>`).join('')}<div class="sky-clutter" data-clutter></div></div>
+      <div class="sky" data-sky><span class="sky-center" data-center>+</span>${Array.from({ length: 8 }, (_, i) => `<button class="sky-slot" data-slot="${i}" style="left:${(50 + 38 * Math.sin(i * Math.PI / 4)).toFixed(2)}%;top:${(50 - 38 * Math.cos(i * Math.PI / 4)).toFixed(2)}%" disabled aria-label="Edge position ${i + 1}"></button>`).join('')}<div class="sky-clutter" data-clutter></div></div>
       <p class="game-status" data-status></p>
       <div class="world-controls bg-choices" data-choices hidden>${SYMBOLS.map(([s, n], i) => `<button data-sym="${i}"><kbd class="bg-key">${i + 1}. </kbd>${s} ${n}</button>`).join('')}</div>
     </main>`);
@@ -555,12 +555,12 @@ const starling = {
       // (Escape, switching tabs) spoils it, so the same flash plays again once the game resumes.
       for (;;) {
         slots.forEach((s) => { s.textContent = ''; });
-        $('[data-centre]').textContent = '+';
+        $('[data-center]').textContent = '+';
         $('[data-clutter]').innerHTML = '';
         status('Eyes on the +');
         await world.sleep(700 + Math.random() * 500);
         if (!alive()) return;
-        $('[data-centre]').textContent = SYMBOLS[sym][0];
+        $('[data-center]').textContent = SYMBOLS[sym][0];
         if (level.ring) {
           slots[slot].textContent = '☄';
           if (level.clutter) {
@@ -574,14 +574,14 @@ const starling = {
         if (!world.paused && world.pausedTotal === pausedBefore) break;
       }
       // Mask: cover everything with noise so the picture can't linger.
-      $('[data-centre]').textContent = '▩';
+      $('[data-center]').textContent = '▩';
       slots.forEach((s) => { s.textContent = '▩'; });
       $('[data-clutter]').innerHTML = Array.from({ length: 16 }, () => `<i style="left:${Math.random() * 90}%;top:${Math.random() * 90}%">▩</i>`).join('');
       await world.sleep(250);
-      $('[data-centre]').textContent = '?';
+      $('[data-center]').textContent = '?';
       slots.forEach((s) => { s.textContent = ''; });
       $('[data-clutter]').innerHTML = '';
-      status('Which symbol was in the centre?');
+      status('Which symbol was in the center?');
       $('[data-choices]').hidden = false;
       if (panel.contains(document.activeElement) || document.activeElement === document.body) $('[data-sym="0"]').focus({ preventScroll: true });
       const symOk = await new Promise((resolve) => {
@@ -668,13 +668,13 @@ function distances(from) {
   return d;
 }
 const COLORS = { R: '#ff8a78', G: '#8fe3a4', B: '#7fb8ff' };
-// A shape on each lantern as well as a colour, so the puzzle never depends on telling colours apart.
+// A shape on each lantern as well as a color, so the puzzle never depends on telling colors apart.
 const GLYPHS = { R: '▲', G: '●', B: '■' };
 const NAMES = { R: 'red triangle', G: 'green circle', B: 'blue square' };
 
 const cloudpath = {
   id: 'cloudpath', title: 'Cloudpath Cartographer', kicker: 'Planning', tone: '#f6d184',
-  about: { text: 'Practises planning ahead: working out a whole sequence of moves before you make them. Inspired by Tower of London puzzles used in research. A small trial with breast cancer survivors found gains on some thinking tests from home-based online training compared with a waiting list; results across studies are mixed, and this game itself hasn’t been studied.', cite: 'Kesler et al., Clinical Breast Cancer 2013', href: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC3726272/' },
+  about: { text: 'Practices planning ahead: working out a whole sequence of moves before you make them. Inspired by Tower of London puzzles used in research. A small trial with breast cancer survivors found gains on some thinking tests from home-based online training compared with a waiting list; results across studies are mixed, and this game itself hasn’t been studied.', cite: 'Kesler et al., Clinical Breast Cancer 2013', href: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC3726272/' },
   levels: [
     // target: where puzzles start; min and max: the shortest and longest they get on this level.
     { name: 'Short routes', desc: 'Puzzles that take 2 to 4 moves.', target: 3, min: 2, max: 4 },
@@ -794,7 +794,7 @@ const echo = {
   id: 'echo', title: 'Story Echo', kicker: 'Verbal memory', tone: '#e7b574',
   modes: true, challengeNote: 'Each word shows for a set time, quicker on the last level.',
   about: {
-    text: 'Practises remembering words, using strategies like linking them into a story. Inspired by memory training used in research. An early trial with breast cancer survivors found memory gains compared with a waiting list, but its authors called it preliminary, and a stricter later trial of brain training by the same team found no clear difference on thinking tests. This game itself hasn’t been studied.',
+    text: 'Practices remembering words, using strategies like linking them into a story. Inspired by memory training used in research. An early trial with breast cancer survivors found memory gains compared with a waiting list, but its authors called it preliminary, and a stricter later trial of brain training by the same team found no clear difference on thinking tests. This game itself hasn’t been studied.',
     cite: 'Von Ah et al., Breast Cancer Research and Treatment 2012', href: 'https://scholarworks.indianapolis.iu.edu/items/6103443c-9611-461c-adc1-1e42f0215fb2',
     more: [{ cite: 'Von Ah et al., Supportive Care in Cancer 2022', href: 'https://scholarworks.indianapolis.iu.edu/items/cc28c83f-bff2-4250-a944-e640a19b5526' }]
   },
@@ -867,7 +867,7 @@ const echo = {
         await world.sleep(gentle ? 150 : 250);
       }
       if (!alive()) return;
-      // Challenge: first type what you remember (recalling is harder than recognising), or skip.
+      // Challenge: first type what you remember (recalling is harder than recognizing), or skip.
       const chosenSet = new Set();
       if (!gentle) {
         const typing = world.render(`<main class="world-card bg-card">
@@ -910,7 +910,7 @@ const echo = {
       const falseAlarms = [...chosenSet].filter((w) => !list_.includes(w)).length;
       const score = Math.max(0, (hits - falseAlarms) / n);
       totalHits += hits; totalShown += n;
-      // Marks use a symbol as well as a colour: ✓ found, ○ missed, ✗ not on the list.
+      // Marks use a symbol as well as a color: ✓ found, ○ missed, ✗ not on the list.
       recall.querySelectorAll('[data-w]').forEach((b) => {
         const w = b.dataset.w;
         b.disabled = true;
@@ -945,7 +945,7 @@ const echo = {
       await new Promise((r) => { check.querySelector('[data-done]').onclick = r; });
       if (!alive()) return;
       const kept = old.filter((w) => picked.has(w)).length, wrong = fresh.filter((w) => picked.has(w)).length;
-      later = `At the end you still recognised ${kept} of ${old.length} earlier words${wrong ? ` (and picked ${wrong} that were never shown)` : ''}.`;
+      later = `At the end you still recognized ${kept} of ${old.length} earlier words${wrong ? ` (and picked ${wrong} that were never shown)` : ''}.`;
     }
     saveCarry(world.saveAs, n);
     const { best, isNew } = bestLen ? recordBest(world.saveAs, bestLen) : { best: readJSON(BEST)[world.saveAs] };
@@ -977,7 +977,7 @@ function tapPattern(n) {
 const rhythm = {
   id: 'rhythm', title: 'Finger Rhythm', kicker: 'Hand coordination', tone: '#8ed9c3',
   modes: true, challengeNote: 'Catch each light before the next one. The pace adapts, never faster than one every 0.6 seconds.',
-  about: { text: 'Practises gentle, accurate finger movements and picking up a pattern. Fine-motor and sensorimotor training are being studied for hand symptoms after chemotherapy; the evidence is still early, and this game itself hasn’t been studied.', cite: 'Feasibility trial, Supportive Care in Cancer 2025', href: 'https://link.springer.com/article/10.1007/s00520-025-09712-2' },
+  about: { text: 'Practices gentle, accurate finger movements and picking up a pattern. Fine-motor and sensorimotor training are being studied for hand symptoms after chemotherapy; the evidence is still early, and this game itself hasn’t been studied.', cite: 'Feasibility trial, Supportive Care in Cancer 2025', href: 'https://link.springer.com/article/10.1007/s00520-025-09712-2' },
   safety: 'Rest your hands comfortably and tap lightly. Stop if you feel pain, cramping, or more numbness or tingling than usual, and tell your care team about new or worse symptoms.',
   levels: [
     { name: 'Two pads', desc: 'Two big pads: F and J.', pads: 2, interval: 1100 },
@@ -1096,14 +1096,14 @@ const rhythm = {
  * 6. Signal Match: mental flexibility (task switching)
  * ==================================================================== */
 
-// Colour is only decoration: both rules (shape and fill) can be seen without it.
+// Color is only decoration: both rules (shape and fill) can be seen without it.
 const SIGNAL_TONES = ['#ff9a62', '#5fa8ff', '#8fe3a4', '#f6d184', '#d8a4f0'];
 const SIGNAL_FASTEST = 1000; // Challenge always leaves at least 1 second to answer
 
 const signal = {
   id: 'signal', title: 'Signal Match', kicker: 'Mental flexibility', tone: '#d8a4f0',
   modes: true, challengeNote: 'A timer bar. Answer well and the time shrinks, never below 1 second.',
-  about: { text: 'Practises switching between two rules, a part of mental flexibility. Inspired by task-switching exercises used in research. A small trial with breast cancer survivors found gains on flexibility tests from online training compared with a waiting list; results across studies are mixed, and this game itself hasn’t been studied.', cite: 'Kesler et al., Clinical Breast Cancer 2013', href: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC3726272/' },
+  about: { text: 'Practices switching between two rules, a part of mental flexibility. Inspired by task-switching exercises used in research. A small trial with breast cancer survivors found gains on flexibility tests from online training compared with a waiting list; results across studies are mixed, and this game itself hasn’t been studied.', cite: 'Kesler et al., Clinical Breast Cancer 2013', href: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC3726272/' },
   levels: [
     { name: 'One rule at a time', desc: 'The rule changes every 10 signals.', switchEvery: 10, p: 0, deadline: 3000 },
     { name: 'Some switches', desc: 'The rule changes about 1 time in 3.', p: 0.3, deadline: 2500 },
