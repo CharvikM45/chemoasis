@@ -1,16 +1,12 @@
 /*
  * Connects the home page to the account area:
  *   - ?play=<game id> opens that game (used by the "Play" buttons on recommendations)
- *   - real clicks on any game card are logged for the signed-in person's recommender
- * Runs before the game scripts (they're modules), so its listener sees clicks first.
+ *   - ?games opens the games library
+ * Plays are logged for the recommender by the games themselves (brain-games.js), once a session
+ * starts, so opening a game and leaving straight away doesn't count as a play.
  */
 (() => {
   const GAMES = ['lumen', 'starling', 'cloudpath', 'echo', 'rhythm', 'signal'];
-
-  window.addEventListener('click', (e) => {
-    const card = e.isTrusted && e.target.closest && e.target.closest('[data-game]');
-    if (card && window.Account && Account.auth) Account.auth.recordPlay(card.dataset.game);
-  }, true);
 
   const params = new URLSearchParams(location.search);
   // ?games: open the games library (the "Games" link on other pages).

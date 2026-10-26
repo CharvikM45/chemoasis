@@ -109,6 +109,7 @@ class World {
   render(body) {
     this.leave3D();
     this.host.innerHTML = `<div class="world-panel">${this.header()}${this.playing ? '<div class="bg-progress" aria-hidden="true"><i></i></div>' : ''}${body}</div>`;
+    this.host.scrollTop = 0; // each new screen starts at its top, not where the last one was scrolled to
     if (this.renderer) this.host.prepend(this.renderer.domElement);
     this.wire();
     this.progress();
@@ -239,6 +240,7 @@ class World {
     // Freeze anything animating, such as Signal Match's timer bar.
     this.frozen = (this.host.getAnimations ? this.host.getAnimations({ subtree: true }) : []);
     this.frozen.forEach((a) => a.pause());
+    window.speechSynthesis && speechSynthesis.cancel(); // Story Echo's read-aloud stops too
     this.showPause();
   }
   showPause() {
@@ -268,6 +270,7 @@ class World {
     this.run++;
     this.resume();
     this.playing = false;
+    this.keyHandler = null; // a game's keys (Space for Next word, F and J...) end with the game
     cancelAnimationFrame(this.raf);
     this.host.hidden = true;
     this.leave3D();
@@ -275,6 +278,9 @@ class World {
     GameLevels.close(this.host);
     (this.inerted || []).forEach((el) => { el.inert = false; });
     this.inerted = null;
+    // Back to the card or button that opened the game, so keyboard players keep their place.
+    if (this.opener && this.opener.isConnected) this.opener.focus({ preventScroll: true });
+    this.opener = null;
     // Back to the games library if it's open underneath, otherwise back to the page.
     document.body.style.overflow = document.querySelector('#experience-view:not([hidden])') ? 'hidden' : '';
     window.speechSynthesis && speechSynthesis.cancel();
@@ -313,22 +319,24 @@ function intro(world, game, level) {
     if (from !== undefined) panel.querySelector('[data-carry-text]').textContent = `Picking up near where you finished last time: ${game.carry.label(from)}.`;
   };
   panel.querySelectorAll('[data-mode]').forEach((b) => { b.onclick = () => { mode = b.dataset.mode; saveMode(game.id, mode); show(); }; });
-  panel.querySelector('[data-fresh]').onclick = () => { fresh = true; show(); panel.querySelector('[data-go]').focus(); };
+  panel.querySelector('[data-fresh]').onclick = () => { fresh = true; show(); panel.querySelector('[data-go]').focus({ preventScroll: true }); };
   show();
   return new Promise((resolve) => {
     panel.querySelector('[data-go]').onclick = () => resolve({ go: true, mode, startAt: startAt() });
     panel.querySelector('[data-levels]').onclick = () => resolve({ go: false });
-    panel.querySelector('[data-go]').focus();
+    panel.querySelector('[data-go]').focus({ preventScroll: true });
   });
 }
 
 // The level-complete screen. `lines` are the friendly results; `details` (speed numbers and
 // the like) sit behind "Show details". Every finished session is saved to the account for the
 // Your games page; `score` is null when there is no number to chart (Gentle mode keeps none).
-function finish(world, game, level, lines, bestText = '', details = [], score = null) {
-  if (window.Account && Account.auth) Account.auth.recordResult(game.id, level.index, score, world.mode || undefined);
+// `low` marks a hard session: the screen suggests staying on the level instead of moving on.
+// Results are saved under the level's id, like its tick and bests (Lumen's Backwards is 3, once level 4).
+function finish(world, game, level, lines, bestText = '', details = [], score = null, low = false) {
+  if (window.Account && Account.auth) Account.auth.recordResult(game.id, GameLevels.idOf(level, level.index), score, world.mode || undefined);
   GameLevels.done({
-    host: world.host, game: game.id, level: level.index, levels: game.levels,
+    host: world.host, game: game.id, level: level.index, levels: game.levels, low,
     message: [...lines, bestText, 'These scores track your practice, not your health.'].filter(Boolean).join(' '),
     details: details.filter(Boolean),
     onPick: (n) => start(game, n), onLevels: () => levelsFor(game), onExit: () => world.close()
@@ -369,12 +377,16 @@ function levelsFor(game, focusView) {
 async function start(game, n) {
   const world = worlds[game.id];
   const run = ++world.run;
+  world.keyHandler = null; // nothing from an earlier session listens to keys any more
   const in3D = viewOf(game) === '3d', def = in3D ? game.w3 : game;
   const level = { ...def.levels[n], index: n };
   const alive = () => world.run === run && !world.host.hidden;
   const { go, mode, startAt } = await intro(world, def, level);
   if (!alive()) return;
   if (!go) return levelsFor(game);
+  // A play counts for the recommender once a session starts, not when a card is merely opened.
+  // Games opened from the Your games page (?play=) were already counted there.
+  if (world.logPlay) { world.logPlay = false; if (window.Account && Account.auth) Account.auth.recordPlay(game.id); }
   world.playing = true;
   world.mode = in3D ? '3d' : mode;
   world.saveAs = keyFor(game.id, level, world.mode); // the name this session's best and carry use
@@ -400,7 +412,7 @@ async function play3D(world, game, level, alive) {
     <p>The 3D world couldn’t start on this device. The 2D board works everywhere.</p>
     <div class="world-controls"><button data-2d class="bg-primary">Play in 2D</button></div></main>`);
   panel.querySelector('[data-2d]').onclick = () => { saveView(game.id, '2d'); levelsFor(game); };
-  panel.querySelector('[data-2d]').focus();
+  panel.querySelector('[data-2d]').focus({ preventScroll: true });
   return null;
 }
 
@@ -412,15 +424,16 @@ const lumen = {
   id: 'lumen', title: 'Lumen Garden', kicker: 'Working memory', tone: '#c58cff',
   about: { text: 'Practises working memory: holding a short sequence in mind and replaying it. Inspired by span tasks used in research. A small pilot with childhood cancer survivors found gains on similar tasks; results in adults after cancer are early and mixed, and this game itself hasn’t been studied.', cite: 'Hardy et al., Psycho-Oncology 2013', href: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC4820841/' },
   levels: [
-    { name: 'Forward paths', desc: '3 × 3 garden. Sequences start at 3 lights.', size: 3, span: 3, on: 650 },
-    { name: 'Longer paths', desc: '3 × 3 garden. Starts at 4 lights, a little faster.', size: 3, span: 4, on: 520 },
+    // span: where paths start; min and max: how short and long they get, here and when picked up next time.
+    { name: 'Forward paths', desc: '3 × 3 garden. Paths of 3 to 5 lights.', size: 3, span: 3, min: 2, max: 5, on: 650 },
+    { name: 'Longer paths', desc: '3 × 3 garden. Paths of 4 to 8 lights, a little faster.', size: 3, span: 4, min: 3, max: 8, on: 520 },
     // Backwards was level 4 until levels went from four to three, so it still saves as L4.
-    { name: 'Backwards', desc: '4 × 4 garden. Tap the path in reverse order.', size: 4, span: 4, on: 520, backward: true, save: 'L4' }
+    { name: 'Backwards', desc: '3 × 3 garden. Tap the path in reverse order, from 3 lights.', size: 3, span: 3, min: 2, max: 7, on: 650, backward: true, save: 'L4' }
   ],
   summary: ['Watch the flowers light up, one at a time.', 'Then tap them in the same order. On the last level, tap them backwards.'],
   how: (l) => ['Watch the flowers light up, one at a time.', `Then tap them in the <b>${l.backward ? 'reverse' : 'same'}</b> order${l.backward ? ' (last one first)' : ''}.`],
   meta: () => '14 paths · about 3 minutes · each right answer adds a flower',
-  carry: { from: (v) => clamp(v - 1, 2, 9), label: (v) => `paths of ${v} flowers` },
+  carry: { from: (v, l) => clamp(v - 1, l.min, l.max), label: (v) => `paths of ${v} flowers` },
   async play(world, level, alive, mode, startAt) {
     const TRIALS = 14;
     let span = startAt ?? level.span, longest = 0, correct = 0;
@@ -436,6 +449,7 @@ const lumen = {
       world.progress(trial, TRIALS);
       const seq = [];
       while (seq.length < span) { const c = Math.floor(Math.random() * cells); if (c !== seq[seq.length - 1]) seq.push(c); }
+      const had = buttons.indexOf(document.activeElement); // keyboard players get their place back below
       buttons.forEach((b) => { b.disabled = true; b.className = ''; });
       status('Watch…');
       await world.sleep(700);
@@ -449,6 +463,7 @@ const lumen = {
       const want = level.backward ? seq.slice().reverse() : seq;
       status(level.backward ? 'Your turn: tap them in reverse order.' : 'Your turn: tap them in the same order.');
       buttons.forEach((b) => { b.disabled = false; });
+      buttons[Math.max(0, had)].focus({ preventScroll: true });
       const ok = await new Promise((resolve) => {
         let step = 0;
         buttons.forEach((b, i) => {
@@ -461,14 +476,14 @@ const lumen = {
         });
       });
       buttons.forEach((b) => { b.disabled = true; b.onclick = null; });
-      if (ok) { correct++; longest = Math.max(longest, span); status(`Yes, ${span} in a row.`); span = Math.min(9, span + 1); buttons.forEach((b) => b.classList.add('bloom')); }
-      else { status('Not quite. The next path is a little shorter.'); span = Math.max(2, span - 1); }
+      if (ok) { correct++; longest = Math.max(longest, span); status(`Yes, ${span} in a row.`); span = Math.min(level.max, span + 1); buttons.forEach((b) => b.classList.add('bloom')); }
+      else { status('Not quite. The next path is a little shorter.'); span = Math.max(level.min, span - 1); }
       await world.sleep(1000);
     }
     if (!alive()) return;
     saveCarry(world.saveAs, span);
     const { best, isNew } = longest ? recordBest(world.saveAs, longest) : { best: readJSON(BEST)[world.saveAs] };
-    finish(world, lumen, level, [`Longest path you got right: ${longest} flowers${level.backward ? ' backwards' : ''}. Paths correct: ${correct} of ${TRIALS}.`], isNew ? 'That is a new personal best on this level!' : best ? `Personal best on this level: ${best} flowers.` : '', [], longest);
+    finish(world, lumen, level, [`Longest path you got right: ${longest} flowers${level.backward ? ' backwards' : ''}. Paths correct: ${correct} of ${TRIALS}.`], isNew ? 'That is a new personal best on this level!' : best ? `Personal best on this level: ${best} flowers.` : '', [], longest, correct < 5);
   }
 };
 
@@ -476,22 +491,28 @@ lumen.w3 = {
   id: 'lumen', is3D: true,
   levels: [
     { name: 'Two lights', desc: 'Remember 2 plants in order. 15 seconds to look.', count: 2, secs: 15 },
-    { name: 'Three lights', desc: 'Remember 3 plants in order. 10 seconds to look.', count: 3, secs: 10 },
-    { name: 'Four lights', desc: 'Remember 4 plants in order. 12 seconds to look.', count: 4, secs: 12 }
+    { name: 'Three lights', desc: 'Remember 3 plants in order. 15 seconds to look.', count: 3, secs: 15 },
+    { name: 'Four lights', desc: 'Remember 4 plants in order. 20 seconds to look.', count: 4, secs: 20 }
   ],
   summary: ['Remember the plants shown at the top, in order. Then they hide.', 'Walk to each plant and click it, in that order.'],
-  how: (l) => [`Remember the ${l.count} plants shown at the top, in order. They hide after ${l.secs} seconds.`, 'Walk up to each plant and click it, in that order.'],
-  meta: () => '<b>W A S D</b> walk · <b>mouse</b> look · <b>click</b> pick · no other timer',
+  how: (l) => [`Remember the ${l.count} plants in the box, in order. They hide after ${l.secs} seconds.`, 'Walk up to each plant and click it, in that order. Forgot? <b>Show the path again</b> (or press <b>P</b>).'],
+  meta: () => '<b>W A S D</b> walk · <b>mouse</b> look · <b>click</b> pick · <b>P</b> peek · no other timer',
   async play(world, level, alive) {
     const result = await play3D(world, lumen, level, alive);
     if (!result) return;
-    finish3D(world, lumen, level, [`You found all ${level.count} plants in order${result.mistakes ? `, with ${result.mistakes} wrong ${result.mistakes === 1 ? 'pick' : 'picks'} on the way` : ', with no wrong picks'}.`], best3D(world, result.mistakes, 'wrong picks'));
+    const { mistakes, peeks } = result;
+    const extra = [mistakes && `${mistakes} wrong ${mistakes === 1 ? 'pick' : 'picks'}`, peeks && `${peeks} ${peeks === 1 ? 'peek' : 'peeks'} at the path`].filter(Boolean);
+    // Fewer is better, and a peek counts like a wrong pick, so peeking can't set an easy best.
+    finish3D(world, lumen, level, [`You found all ${level.count} plants in order${extra.length ? `, with ${extra.join(' and ')}` : ', with no wrong picks'}.`], best3D(world, mistakes + peeks, 'wrong picks and peeks'));
   }
 };
 
 /* ======================================================================
  * 2. Starling Observatory: speed of processing (useful field of view style)
  * ==================================================================== */
+
+// The shortest flash. Lower than this is close to impossible on a tired or low-vision day.
+const STARLING_FASTEST = 80;
 
 const starling = {
   id: 'starling', title: 'Starling Observatory', kicker: 'Processing speed', tone: '#7fb8ff',
@@ -507,8 +528,8 @@ const starling = {
   ],
   summary: ['Keep your eyes on the + in the middle. A symbol flashes there for a moment.', 'Pick which symbol it was. On later levels, also tap where the comet ☄ flashed at the edge.'],
   how: (l) => ['Keep your eyes on the + in the middle. A symbol flashes there for a moment.', `Pick which symbol it was${l.ring ? ', then tap where the comet ☄ flashed around the edge' : ''}.`],
-  meta: () => '20 flashes · they get shorter as you get them right',
-  carry: { from: (v) => Math.round(clamp(v * 1.25, 17, 800)), label: (v) => `flashes of about ${v} ms` },
+  meta: () => '20 flashes · they get shorter as you get them right, and longer if you miss',
+  carry: { from: (v) => Math.round(clamp(v * 1.25, STARLING_FASTEST, 800)), label: (v) => `flashes of about ${v} ms` },
   async play(world, level, alive, mode, startAt) {
     const TRIALS = 20;
     const SYMBOLS = [['☾', 'Moon'], ['✦', 'Star']];
@@ -517,7 +538,7 @@ const starling = {
     const history = [];
     const panel = world.render(`<main class="world-card bg-card">
       <p class="world-note" data-info></p>
-      <div class="sky" data-sky><span class="sky-centre" data-centre>+</span>${Array.from({ length: 8 }, (_, i) => `<button class="sky-slot" data-slot="${i}" style="--a:${i * 45}deg" disabled aria-label="Edge position ${i + 1}"></button>`).join('')}<div class="sky-clutter" data-clutter></div></div>
+      <div class="sky" data-sky><span class="sky-centre" data-centre>+</span>${Array.from({ length: 8 }, (_, i) => `<button class="sky-slot" data-slot="${i}" style="left:${(50 + 38 * Math.sin(i * Math.PI / 4)).toFixed(2)}%;top:${(50 - 38 * Math.cos(i * Math.PI / 4)).toFixed(2)}%" disabled aria-label="Edge position ${i + 1}"></button>`).join('')}<div class="sky-clutter" data-clutter></div></div>
       <p class="game-status" data-status></p>
       <div class="world-controls bg-choices" data-choices hidden>${SYMBOLS.map(([s, n], i) => `<button data-sym="${i}"><kbd class="bg-key">${i + 1}. </kbd>${s} ${n}</button>`).join('')}</div>
     </main>`);
@@ -529,24 +550,29 @@ const starling = {
       $('[data-info]').textContent = `Flash ${trial + 1} of ${TRIALS}`;
       world.progress(trial, TRIALS);
       const sym = Math.floor(Math.random() * 2), slot = Math.floor(Math.random() * 8);
-      slots.forEach((s) => { s.textContent = ''; s.disabled = true; s.className = 'sky-slot'; });
-      $('[data-centre]').textContent = '+';
-      $('[data-clutter]').innerHTML = '';
-      status('Eyes on the +');
-      await world.sleep(700 + Math.random() * 500);
-      if (!alive()) return;
-      // Show the picture for `shown` ms, timed to screen refreshes.
-      $('[data-centre]').textContent = SYMBOLS[sym][0];
-      if (level.ring) {
-        slots[slot].textContent = '☄';
-        if (level.clutter) {
-          slots.forEach((s, i) => { if (i !== slot) s.textContent = '✧'; });
-          $('[data-clutter]').innerHTML = Array.from({ length: 10 }, () => `<i style="left:${10 + Math.random() * 80}%;top:${10 + Math.random() * 80}%">✧</i>`).join('');
+      slots.forEach((s) => { s.disabled = true; s.className = 'sky-slot'; });
+      // Show the picture for `shown` ms, timed to screen refreshes. A pause in the middle of a flash
+      // (Escape, switching tabs) spoils it, so the same flash plays again once the game resumes.
+      for (;;) {
+        slots.forEach((s) => { s.textContent = ''; });
+        $('[data-centre]').textContent = '+';
+        $('[data-clutter]').innerHTML = '';
+        status('Eyes on the +');
+        await world.sleep(700 + Math.random() * 500);
+        if (!alive()) return;
+        $('[data-centre]').textContent = SYMBOLS[sym][0];
+        if (level.ring) {
+          slots[slot].textContent = '☄';
+          if (level.clutter) {
+            slots.forEach((s, i) => { if (i !== slot) s.textContent = '✧'; });
+            $('[data-clutter]').innerHTML = Array.from({ length: 10 }, () => `<i style="left:${10 + Math.random() * 80}%;top:${10 + Math.random() * 80}%">✧</i>`).join('');
+          }
         }
+        const t0 = performance.now(), pausedBefore = world.pausedTotal;
+        await frame();
+        while (performance.now() - t0 < shown - 8 && !world.paused) await frame();
+        if (!world.paused && world.pausedTotal === pausedBefore) break;
       }
-      const t0 = performance.now();
-      await frame();
-      while (performance.now() - t0 < shown - 8) await frame();
       // Mask: cover everything with noise so the picture can't linger.
       $('[data-centre]').textContent = '▩';
       slots.forEach((s) => { s.textContent = '▩'; });
@@ -557,6 +583,7 @@ const starling = {
       $('[data-clutter]').innerHTML = '';
       status('Which symbol was in the centre?');
       $('[data-choices]').hidden = false;
+      if (panel.contains(document.activeElement) || document.activeElement === document.body) $('[data-sym="0"]').focus({ preventScroll: true });
       const symOk = await new Promise((resolve) => {
         panel.querySelectorAll('[data-sym]').forEach((b) => { b.onclick = () => resolve(+b.dataset.sym === sym); });
         world.keyHandler = (e) => { if (e.key === '1' || e.key === '2') resolve(+e.key - 1 === sym); };
@@ -567,6 +594,7 @@ const starling = {
       if (level.ring && alive()) {
         status('Where was the comet?');
         slots.forEach((s) => { s.disabled = false; });
+        slots[0].focus({ preventScroll: true });
         slotOk = await new Promise((resolve) => { slots.forEach((s, i) => { s.onclick = () => resolve(i === slot); }); });
         slots.forEach((s) => { s.disabled = true; s.onclick = null; });
         slots[slot].classList.add('answer');
@@ -574,7 +602,7 @@ const starling = {
       }
       const ok = symOk && slotOk;
       history.push(shown);
-      if (ok) { right++; status('Right.'); if (++streak >= 2) { streak = 0; shown = Math.max(17, shown * 0.8); } }
+      if (ok) { right++; status('Right.'); if (++streak >= 2) { streak = 0; shown = Math.max(STARLING_FASTEST, shown * 0.8); } }
       else { streak = 0; status(!symOk ? `It was ${SYMBOLS[sym][0]} ${SYMBOLS[sym][1]}.` : 'The comet was here.'); shown = Math.min(800, shown * 1.25); }
       await world.sleep(ok ? 500 : 1100);
     }
@@ -585,7 +613,7 @@ const starling = {
     finish(world, starling, level, [
       `You got ${right} of ${TRIALS} right.`,
       threshold < begin ? 'The flashes got shorter as you went: you were taking in more at a glance.' : 'The flashes stayed about the same length. That’s fine; it often takes a few sessions.'
-    ], '', [`Flash length it settled at: about ${threshold} ms (shorter means quicker).`, isNew ? 'That is a new personal best on this level.' : `Personal best on this level: ${best} ms.`], threshold);
+    ], '', [`Flash length it settled at: about ${threshold} ms (shorter means quicker).`, isNew ? 'That is a new personal best on this level.' : `Personal best on this level: ${best} ms.`], threshold, right < 8);
   }
 };
 
@@ -648,14 +676,15 @@ const cloudpath = {
   id: 'cloudpath', title: 'Cloudpath Cartographer', kicker: 'Planning', tone: '#f6d184',
   about: { text: 'Practises planning ahead: working out a whole sequence of moves before you make them. Inspired by Tower of London puzzles used in research. A small trial with breast cancer survivors found gains on some thinking tests from home-based online training compared with a waiting list; results across studies are mixed, and this game itself hasn’t been studied.', cite: 'Kesler et al., Clinical Breast Cancer 2013', href: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC3726272/' },
   levels: [
-    { name: 'Short routes', desc: 'Puzzles that take 2 to 3 moves.', target: 3 },
-    { name: 'Four moves', desc: 'Puzzles that take 4 moves.', target: 4 },
-    { name: 'Five moves', desc: 'Puzzles that take 5 moves.', target: 5 }
+    // target: where puzzles start; min and max: the shortest and longest they get on this level.
+    { name: 'Short routes', desc: 'Puzzles that take 2 to 4 moves.', target: 3, min: 2, max: 4 },
+    { name: 'Four moves', desc: 'Puzzles from 4 moves, up to 6.', target: 4, min: 3, max: 6 },
+    { name: 'Five moves', desc: 'Puzzles from 5 moves, up to 8.', target: 5, min: 4, max: 8 }
   ],
   summary: ['Make your clouds match the Goal. Tap a cloud to lift its top lantern, then tap another cloud to drop it.', 'Clouds hold 3, 2 and 1 lanterns. Plan ahead and use as few moves as you can.'],
   how: () => ['Make your clouds match the <b>Goal</b>. Tap a cloud to lift its top lantern, then tap another cloud to drop it.', 'Clouds hold 3, 2 and 1 lanterns. <b>Plan first</b> and use as few moves as you can.'],
   meta: () => '8 puzzles · a perfect solve makes the next one a move longer',
-  carry: { from: (v) => clamp(v - 1, 2, 8), label: (v) => `${v}-move puzzles` },
+  carry: { from: (v, l) => clamp(v - 1, l.min, l.max), label: (v) => `${v}-move puzzles` },
   async play(world, level, alive, mode, startAt) {
     const PUZZLES = 8;
     let target = startAt ?? level.target, perfect = 0, hardest = 0;
@@ -686,9 +715,11 @@ const cloudpath = {
           panel.querySelectorAll('[data-peg]').forEach((el) => {
             el.onclick = () => {
               const i = +el.dataset.peg;
-              if (held === null) { if (state[i].length) held = i; }
+              const say = (t) => { panel.querySelector('[data-status]').textContent = t; };
+              if (held === null) { if (state[i].length) held = i; else say('That cloud is empty. Tap a cloud with a lantern on it.'); }
               else if (held === i) held = null;
-              else if (state[i].length < CAP[i]) {
+              else if (state[i].length >= CAP[i]) say(`That cloud is full. It holds ${CAP[i]} ${CAP[i] === 1 ? 'lantern' : 'lanterns'}.`);
+              else {
                 state[i].push(state[held].pop());
                 held = null;
                 if (!count++) firstMove = world.now() - t0;
@@ -696,17 +727,20 @@ const cloudpath = {
                 if (key(state) === goal) { redraw(); resolve(true); return; }
               }
               redraw();
+              // The clouds are redrawn, so put keyboard focus back on the one just tapped.
+              panel.querySelector(`[data-play] [data-peg="${i}"]`).focus({ preventScroll: true });
             };
           });
         };
         panel.querySelector('[data-reset]').onclick = () => { state = parse(startKey); held = null; panel.querySelector('[data-status]').textContent = `Back to the start. Moves so far: ${count}`; redraw(); };
         panel.querySelector('[data-skip]').onclick = () => resolve(false);
         redraw();
+        panel.querySelector('[data-play] [data-peg]').focus({ preventScroll: true });
       });
       if (!alive()) return;
       const isPerfect = solved && count === need;
-      if (isPerfect) { perfect++; hardest = Math.max(hardest, need); target = Math.min(8, need + 1); }
-      else if (!solved || count > need + 2) target = Math.max(2, need - 1);
+      if (isPerfect) { perfect++; hardest = Math.max(hardest, need); target = Math.min(level.max, need + 1); }
+      else if (!solved || count > need + 2) target = Math.max(level.min, need - 1);
       panel.querySelector('[data-status]').textContent = isPerfect
         ? `Perfect: ${count} moves${firstMove > 4000 ? `, after ${Math.round(firstMove / 1000)} s of planning` : ''}.`
         : !solved ? 'Skipped. The next puzzle is a little shorter.'
@@ -716,7 +750,7 @@ const cloudpath = {
     if (!alive()) return;
     saveCarry(world.saveAs, target);
     const { best, isNew } = hardest ? recordBest(world.saveAs, hardest) : { best: readJSON(BEST)[world.saveAs] };
-    finish(world, cloudpath, level, [`Perfect solutions: ${perfect} of ${PUZZLES}. Longest route solved perfectly: ${hardest || 'none yet'}${hardest ? ' moves' : ''}.`], isNew ? 'That is a new personal best on this level!' : best ? `Personal best on this level: ${best} moves.` : '', [], hardest);
+    finish(world, cloudpath, level, [`Perfect solutions: ${perfect} of ${PUZZLES}. Longest route solved perfectly: ${hardest || 'none yet'}${hardest ? ' moves' : ''}.`], isNew ? 'That is a new personal best on this level!' : best ? `Personal best on this level: ${best} moves.` : '', [], hardest, perfect === 0);
   }
 };
 
@@ -752,7 +786,7 @@ const WORDS = {
   kitchen: ['kettle', 'spoon', 'ladle', 'oven', 'plate', 'whisk', 'teapot', 'bowl', 'grater', 'skillet']
 };
 // Gentle lists stop growing at 12 words so the recall screen stays short.
-const echoMax = (mode) => (mode === 'challenge' ? 16 : 12);
+const echoMax = (mode, level) => Math.min(level ? level.max : 16, mode === 'challenge' ? 16 : 12);
 
 const echo = {
   id: 'echo', title: 'Story Echo', kicker: 'Verbal memory', tone: '#e7b574',
@@ -763,9 +797,11 @@ const echo = {
     more: [{ cite: 'Von Ah et al., Supportive Care in Cancer 2022', href: 'https://scholarworks.indianapolis.iu.edu/items/cc28c83f-bff2-4250-a944-e640a19b5526' }]
   },
   levels: [
-    { name: 'Short lists', desc: 'Lists start at 6 words.', words: 6, pace: 1700 },
-    { name: 'Longer lists', desc: 'Lists start at 8 words.', words: 8, pace: 1600 },
-    { name: 'Long lists', desc: 'Lists start at 10 words.', words: 10, pace: 1500 }
+    // words: where lists start; min and max: the shortest and longest they get on this level
+    // (Gentle also stops at 12, see echoMax).
+    { name: 'Short lists', desc: 'Lists of 4 to 10 words, starting at 6.', words: 6, min: 4, max: 10, pace: 1700 },
+    { name: 'Longer lists', desc: 'Lists from 8 words, up to 12 (14 in Challenge).', words: 8, min: 6, max: 14, pace: 1600 },
+    { name: 'Long lists', desc: 'Lists from 10 words, up to 12 (16 in Challenge).', words: 10, min: 8, max: 16, pace: 1500 }
   ],
   summary: ['Words appear one at a time. Try to remember them all.', 'Then tap every word you saw, from a mix of old and new.'],
   how: (l, mode) => [
@@ -775,10 +811,10 @@ const echo = {
     'Then tap every word you saw, from a mix of old and new.',
     '<b>Tip:</b> link the words in a tiny story, like “the horse ate a lemon on the bridge.”'
   ],
-  meta: (l, mode) => `5 lists, starting at ${Math.min(l.words, echoMax(mode))} words · remember 85% and the next list grows${mode === 'challenge' ? ' · one last check at the end' : ''}`,
-  carry: { from: (v, l, mode) => clamp(v - 2, 4, echoMax(mode)), label: (v) => `lists of ${v} words` },
+  meta: (l, mode) => `5 lists, starting at ${Math.min(l.words, echoMax(mode, l))} words · remember 85% and the next list grows${mode === 'challenge' ? ' · one last check at the end' : ''}`,
+  carry: { from: (v, l, mode) => clamp(v - 2, l.min, echoMax(mode, l)), label: (v) => `lists of ${v} words` },
   async play(world, level, alive, mode, startAt) {
-    const LISTS = 5, gentle = mode !== 'challenge', max = echoMax(mode);
+    const LISTS = 5, gentle = mode !== 'challenge', max = echoMax(mode, level);
     let n = Math.min(startAt ?? level.words, max), bestLen = 0, totalHits = 0, totalShown = 0;
     let typedHits = 0, typedShown = 0; // Challenge: words typed from memory, before the list
     const seen = [], used = new Set(); // every listed word, and every word shown on any screen
@@ -786,7 +822,9 @@ const echo = {
     for (let list = 0; list < LISTS && alive(); list++) {
       const groups = shuffle(Object.keys(WORDS)).slice(0, Math.ceil(n / 2));
       const chosen = [], lures = [];
-      groups.forEach((g) => { const w = shuffle(WORDS[g]); chosen.push(...w.slice(0, 2)); lures.push(...w.slice(2, 4)); });
+      // Words not yet seen this session come first, so the same word doesn't turn up on two lists
+      // (long Challenge sessions can run out, and only then reuse words).
+      groups.forEach((g) => { const w = [...shuffle(WORDS[g].filter((x) => !used.has(x))), ...shuffle(WORDS[g].filter((x) => used.has(x)))]; chosen.push(...w.slice(0, 2)); lures.push(...w.slice(2, 4)); });
       const list_ = shuffle(chosen.slice(0, n));
       const foils = shuffle(lures).slice(0, n);
       seen.push(...list_);
@@ -879,7 +917,7 @@ const echo = {
       });
       recall.querySelector('[data-status]').textContent = `You found ${hits} of ${n}${falseAlarms ? `, and picked ${falseAlarms} that ${falseAlarms === 1 ? 'wasn’t' : 'weren’t'} on the list` : ''}. ✓ found · ○ missed · ✗ not on the list`;
       if (score >= 0.85) { bestLen = Math.max(bestLen, n); n = Math.min(max, n + 2); }
-      else if (score < 0.6) n = Math.max(4, n - 2);
+      else if (score < 0.6) n = Math.max(level.min, n - 2);
       await new Promise((r) => { const b = recall.querySelector('[data-done]'); b.textContent = list + 1 < LISTS ? 'Next list' : 'See results'; b.onclick = r; });
     }
     if (!alive()) return;
@@ -909,7 +947,7 @@ const echo = {
     finish(world, echo, level, [`You remembered ${totalHits} of ${totalShown} words. Longest list at 85% or better: ${bestLen || 'not yet'}${bestLen ? ' words' : ''}.`], isNew ? 'That is a new personal best on this level!' : best ? `Personal best on this level: ${best} words.` : '', [
       typedShown ? `Typed from memory before picking: ${typedHits} of ${typedShown} words.` : '',
       later
-    ], bestLen);
+    ], bestLen, !bestLen && totalHits < totalShown * 0.6);
   }
 };
 
@@ -969,7 +1007,12 @@ const rhythm = {
     // Taps closer together than 150 ms count once, so a shaky double tap isn't a mistake.
     let tap = null, lastTap = -Infinity;
     const press = (i) => { const t = world.now(); if (t - lastTap < 150) return; lastTap = t; tap && tap(i); };
-    pads.forEach((p, i) => { p.onpointerdown = (e) => { e.preventDefault(); press(i); }; });
+    pads.forEach((p, i) => {
+      p.onpointerdown = (e) => { e.preventDefault(); press(i); };
+      // Enter or Space on a focused pad (keyboard, switch access, screen readers) arrives as a click
+      // with no pointer behind it (detail 0). Taps are already handled on pointerdown.
+      p.onclick = (e) => { if (e.detail === 0) press(i); };
+    });
     world.keyHandler = (e) => {
       if (e.repeat) return;
       const i = pads_.findIndex(([k]) => k.toLowerCase() === e.key.toLowerCase());
@@ -1040,7 +1083,7 @@ const rhythm = {
       perMinute ? `Quickest pace you kept up with: ${perMinute} lights a minute.` : 'No round was quick enough to count toward a personal best yet.',
       learned > 30 ? `On the hidden pattern you were about ${learned} ms quicker than on the mixed-up round.` : '',
       record ? (record.isNew ? 'That is a new Challenge personal best on this level.' : `Challenge personal best on this level: ${record.best} a minute.`) : ''
-    ], perMinute || null);
+    ], perMinute || null, hitsAll < ROUNDS * 4);
   }
 };
 
@@ -1123,7 +1166,7 @@ const signal = {
     if (!alive()) return;
     const accuracy = Math.round((correct / TRIALS) * 100);
     const lines = [`You sorted ${correct} of ${TRIALS} correctly.`, accuracy >= 85 ? 'Nicely done: you kept track of the rule as it changed.' : 'Switching rules is tricky for everyone, and it usually gets easier with practice.'];
-    if (!challenge) return finish(world, signal, level, lines);
+    if (!challenge) return finish(world, signal, level, lines, '', [], null, accuracy < 60);
     saveCarry(world.saveAs, Math.round(deadline));
     const all = Math.round(mean([...rt.switch, ...rt.stay]));
     const cost = rt.switch.length && rt.stay.length ? Math.round(mean(rt.switch) - mean(rt.stay)) : null;
@@ -1132,7 +1175,7 @@ const signal = {
       `Average answer: ${all} ms.`,
       cost === null ? '' : cost > 15 ? `Switching rules slowed you by ${cost} ms (this often shrinks with practice).` : 'No slowdown when the rule switched.',
       record ? (record.isNew ? 'That is a new Challenge personal best on this level.' : `Challenge personal best on this level: ${record.best} ms with 85% or more right.`) : 'Get 85% right to set a Challenge personal best.'
-    ], record ? all : null);
+    ], record ? all : null, accuracy < 60);
   }
 };
 
@@ -1148,7 +1191,10 @@ addEventListener('click', (event) => {
   if (!game) return;
   event.preventDefault();
   event.stopImmediatePropagation();
-  worlds[game.id].open();
+  const world = worlds[game.id];
+  world.opener = card.closest('.activity-card')?.querySelector('button') || (document.activeElement !== document.body ? document.activeElement : null);
+  world.logPlay = event.isTrusted; // a ?play= link's click is made by script and was counted on the Your games page
+  world.open();
   levelsFor(game);
 }, true);
 
@@ -1167,6 +1213,8 @@ addEventListener('keydown', (event) => {
     return;
   }
   if (world.paused) return;
+  // Letters and spaces typed into a text box (Story Echo's recall box) are words, not game keys.
+  if (event.target.closest?.('textarea, input')) return;
   if (world.keyHandler) world.keyHandler(event);
 }, true);
 
